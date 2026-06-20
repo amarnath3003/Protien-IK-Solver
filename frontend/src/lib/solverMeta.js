@@ -4,7 +4,7 @@ export const SOLVERS = {
   fabrik: { name: 'FABRIK', short: 'FABRIK', color: '#5B6B66', family: 'classical' },
   trac_ik_style: { name: 'TRAC-IK style', short: 'TRAC-IK', color: '#E8B95C', family: 'production' },
   multi_start: { name: 'Multi-start', short: 'Multi-start', color: '#E8B95C', family: 'production' },
-  protein_ik: { name: 'ProteinIK', short: 'ProteinIK', color: '#6FFFB0', family: 'protein' },
+  protein_ik: { name: 'ProteinIK', short: 'ProteinIK', color: '#FF007F', family: 'protein' },
 };
 
 export const SOLVER_ORDER = [
