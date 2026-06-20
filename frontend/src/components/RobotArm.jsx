@@ -1,18 +1,9 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
-import { forwardKinematicsChain, selfCollisionMinDistance, UR5_SPEC } from '../lib/kinematics';
+import { forwardKinematicsChain, selfCollisionMinDistance, UR5_SPEC, rotationOf, matrixToQuaternion } from '../lib/kinematics';
 
-const PHOSPHOR = new THREE.Color('#6FFFB0');
 const ALARM = new THREE.Color('#FF6B5E');
-const STEEL = new THREE.Color('#5B6B66');
 
-/**
- * Renders one robot arm at a given joint configuration `q` (array of 6
- * angles). `accentColor` tints the joints/links (used to distinguish
- * solvers in the grid view); `glowCollision` blends toward alarm-red as
- * the arm nears self-collision, matching the design system's energy
- * signal vocabulary.
- */
 export function RobotArm({ q, accentColor = '#6FFFB0', glowCollision = true, scale = 3 }) {
   const chain = useMemo(() => forwardKinematicsChain(UR5_SPEC, q), [q]);
   const positions = useMemo(() => chain.map((c) => c.position), [chain]);
@@ -22,48 +13,79 @@ export function RobotArm({ q, accentColor = '#6FFFB0', glowCollision = true, sca
     [positions, glowCollision]
   );
 
-  // Map collision proximity to a 0..1 alarm blend: comfortably clear
-  // (>0.05m) stays at the accent color; tight or colliding (<=0) is pure
-  // alarm red, with a smooth ramp in between.
   const alarmT = THREE.MathUtils.clamp(1 - (minDist + 0.02) / 0.07, 0, 1);
-  const linkColor = useMemo(() => {
+  const ringColor = useMemo(() => {
     const base = new THREE.Color(accentColor);
     return base.clone().lerp(ALARM, alarmT);
   }, [accentColor, alarmT]);
 
+  const bodyColor = '#8A9591';
+  const darkMetal = '#2A302D';
+
   return (
     <group scale={scale}>
-      {/* base mounting plate -- small relative to the group scale so it
-          doesn't read as a stray dark smudge on the floor */}
-      <mesh position={[0, -0.015, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.06, 32]} />
-        <meshStandardMaterial color="#161B16" metalness={0.3} roughness={0.6} />
+      {/* Base Pedestal */}
+      <mesh position={[0, -0.04, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.08, 0.09, 0.08, 32]} />
+        <meshPhysicalMaterial color={darkMetal} metalness={0.8} roughness={0.5} />
       </mesh>
-      <mesh position={[0, -0.014, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.055, 0.065, 32]} />
-        <meshBasicMaterial color={accentColor} transparent opacity={0.5} />
+      <mesh position={[0, -0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.075, 0.085, 32]} />
+        <meshStandardMaterial color={ringColor} emissive={ringColor} emissiveIntensity={1.5} toneMapped={false} />
       </mesh>
 
+      {/* Links connecting the joints */}
       {positions.slice(0, -1).map((p0, i) => {
         const p1 = positions[i + 1];
-        const radius = UR5_SPEC.linkRadius[i] * 0.7;
+        const radius = UR5_SPEC.linkRadius[i] * 0.6;
         return (
-          <Link key={`link-${i}`} start={p0} end={p1} radius={radius} color={linkColor} />
+          <Link key={`link-${i}`} start={p0} end={p1} radius={radius} color={bodyColor} />
         );
       })}
 
-      {positions.map((p, i) => (
-        <mesh key={`joint-${i}`} position={p}>
-          <sphereGeometry args={[UR5_SPEC.linkRadius[Math.min(i, 5)] * 0.85, 16, 16]} />
-          <meshStandardMaterial
-            color={i === positions.length - 1 ? '#EDEAE2' : linkColor}
-            emissive={i === positions.length - 1 ? '#EDEAE2' : linkColor}
-            emissiveIntensity={i === positions.length - 1 ? 0.6 : 0.25}
-            metalness={0.3}
-            roughness={0.4}
-          />
-        </mesh>
-      ))}
+      {/* Joint Motors */}
+      {chain.map((frame, i) => {
+        if (i === chain.length - 1) {
+          // End Effector Tool
+          const quat = matrixToQuaternion(rotationOf(frame));
+          return (
+            <group key={`ee`} position={frame.position} quaternion={quat}>
+              <mesh position={[0, 0, 0.02]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
+                <cylinderGeometry args={[0.02, 0.035, 0.04, 16]} />
+                <meshPhysicalMaterial color="#EDEAE2" metalness={0.4} roughness={0.2} emissive="#EDEAE2" emissiveIntensity={0.2} />
+              </mesh>
+            </group>
+          );
+        }
+
+        const radius = UR5_SPEC.linkRadius[i] * 0.9;
+        const length = radius * 2.2;
+        const quat = matrixToQuaternion(rotationOf(frame));
+
+        return (
+          <group key={`joint-${i}`} position={frame.position} quaternion={quat}>
+            {/* Motor Cylinder aligned to Z axis (rotation axis) */}
+            <mesh rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
+              <cylinderGeometry args={[radius, radius, length, 32]} />
+              <meshPhysicalMaterial color={bodyColor} metalness={0.7} roughness={0.3} clearcoat={0.4} />
+            </mesh>
+            {/* Motor Caps */}
+            <mesh position={[0, 0, length / 2 + 0.002]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
+              <cylinderGeometry args={[radius * 0.85, radius * 0.85, 0.005, 32]} />
+              <meshPhysicalMaterial color={darkMetal} metalness={0.9} roughness={0.4} />
+            </mesh>
+            <mesh position={[0, 0, -length / 2 - 0.002]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
+              <cylinderGeometry args={[radius * 0.85, radius * 0.85, 0.005, 32]} />
+              <meshPhysicalMaterial color={darkMetal} metalness={0.9} roughness={0.4} />
+            </mesh>
+            {/* LED Ring */}
+            <mesh position={[0, 0, length / 2 - 0.01]} rotation={[Math.PI / 2, 0, 0]}>
+              <cylinderGeometry args={[radius * 1.02, radius * 1.02, 0.005, 32]} />
+              <meshStandardMaterial color={ringColor} emissive={ringColor} emissiveIntensity={1.5} toneMapped={false} />
+            </mesh>
+          </group>
+        );
+      })}
     </group>
   );
 }
@@ -86,9 +108,9 @@ function Link({ start, end, radius, color }) {
   if (length < 1e-6) return null;
 
   return (
-    <mesh position={position} quaternion={quaternion}>
-      <cylinderGeometry args={[radius, radius, length, 12]} />
-      <meshStandardMaterial color={color} metalness={0.35} roughness={0.45} />
+    <mesh position={position} quaternion={quaternion} castShadow receiveShadow>
+      <cylinderGeometry args={[radius, radius, length, 16]} />
+      <meshPhysicalMaterial color={color} metalness={0.5} roughness={0.4} clearcoat={0.3} />
     </mesh>
   );
 }
