@@ -50,6 +50,8 @@ class RotamerLibrary:
     cond_mean: list  # list of (n_bins,) arrays, one per joint pair (i -> i+1)
     cond_std: list   # list of (n_bins,) arrays
     global_std: list  # fallback std per joint pair if a bin has no data
+    pair_well_centers: list  # list of (K, 2) arrays of cluster centers
+    native_contacts: list    # list of (i, j, target_dist) tuples for native contacts
 
 
 def _quality_score(spec: RobotSpec, q: np.ndarray) -> float:
@@ -117,9 +119,45 @@ def build_rotamer_library(
         cond_std.append(stds)
         global_std.append(overall_std)
 
+    # Build 2D joint-pair well centers (Ramachandran analogs)
+    pair_well_centers = []
+    for i in range(n - 1):
+        H, xedges, yedges = np.histogram2d(good_samples[:, i], good_samples[:, i+1], bins=15)
+        # Find dominant peaks
+        threshold = np.mean(H[H > 0]) * 1.5 if np.any(H > 0) else 0
+        peak_idx = np.argwhere(H > threshold)
+        centers = []
+        for px, py in peak_idx:
+            cx = (xedges[px] + xedges[px+1]) / 2.0
+            cy = (yedges[py] + yedges[py+1]) / 2.0
+            centers.append([cx, cy])
+        if not centers:
+            centers.append([0.0, 0.0])
+        pair_well_centers.append(np.array(centers))
+
+    # Build Native Contacts from a subset of good samples to represent favorable topology
+    from app.core.kinematics import forward_kinematics_chain
+    native_contacts = []
+    subset_samples = good_samples[:200]
+    all_pts = []
+    for q_samp in subset_samples:
+        chain = forward_kinematics_chain(spec, q_samp)
+        all_pts.append(chain[:, :3, 3])
+    all_pts = np.array(all_pts)  # (M, n+1, 3)
+    
+    for i in range(n):
+        for j in range(i + 2, n + 1):
+            pair_dists = np.linalg.norm(all_pts[:, i, :] - all_pts[:, j, :], axis=1)
+            mean_dist = float(np.mean(pair_dists))
+            std_dist = float(np.std(pair_dists))
+            # If they are consistently close across good samples, it's a "native contact"
+            if mean_dist < 0.4 and std_dist < 0.15:
+                native_contacts.append((i, j, mean_dist))
+
     return RotamerLibrary(
         n_bins=n_bins, bin_edges=bin_edges,
         cond_mean=cond_mean, cond_std=cond_std, global_std=global_std,
+        pair_well_centers=pair_well_centers, native_contacts=native_contacts,
     )
 
 
