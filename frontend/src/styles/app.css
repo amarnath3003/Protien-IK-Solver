@@ -400,9 +400,6 @@
   position: relative;
   overflow: hidden;
 }
-.bar-stat__track--layered {
-  /* used for the layered mean/p95 time bar */
-}
 
 .bar-stat__fill {
   height: 100%;
