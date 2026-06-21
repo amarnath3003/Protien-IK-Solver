@@ -24,7 +24,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.core.kinematics import ur5_spec, forward_kinematics_chain, end_effector_pose, pose_error
-from app.solvers.registry import SOLVER_ORDER  # canonical ordered list
+from app.solvers.registry import SOLVER_REGISTRY
 from app.solvers.protein_energy import total_energy_fast
 
 SOLVER_ORDER = ['jacobian_dls', 'ccd', 'fabrik', 'trac_ik_style', 'multi_start', 'protein_ik']
