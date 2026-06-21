@@ -95,14 +95,17 @@ describe('matrixToQuaternion', () => {
     expect(w).toBeCloseTo(1, 12);
   });
 
-  it('90° rotation about Z → x=0, y=0, z≈0.707, w≈0.707', () => {
-    const c = Math.cos(Math.PI / 4), s = Math.sin(Math.PI / 4);
+  it('90° rotation about Z → x=0, y=0, z=sin(45°), w=cos(45°)', () => {
+    // A 90° rotation about Z in quaternion form is [0, 0, sin(π/4), cos(π/4)]
+    const c = Math.cos(Math.PI / 2), s = Math.sin(Math.PI / 2);  // rotation angle = π/2
     const R = [[c, -s, 0],[s, c, 0],[0, 0, 1]];
     const [x, y, z, w] = matrixToQuaternion(R);
     expect(x).toBeCloseTo(0, 9);
     expect(y).toBeCloseTo(0, 9);
-    expect(z).toBeCloseTo(Math.SQRT1_2, 9);
-    expect(w).toBeCloseTo(Math.SQRT1_2, 9);
+    // Quaternion half-angle: sin(π/4) ≈ 0.7071... No — sin(90°/2)=sin(45°)≈0.7071
+    // Wait: half-angle θ/2 = π/4, so z=sin(π/4)≈0.7071, w=cos(π/4)≈0.7071
+    expect(z).toBeCloseTo(Math.sin(Math.PI / 4), 9);
+    expect(w).toBeCloseTo(Math.cos(Math.PI / 4), 9);
   });
 
   it('unit norm for arbitrary rotation', () => {

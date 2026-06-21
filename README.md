@@ -1,5 +1,7 @@
 # ProteinIK
 
+[![CI](https://github.com/amarnath3003/Protien-IK---An-IK-Solver-inspired-by-protein-folding/actions/workflows/ci.yml/badge.svg)](https://github.com/amarnath3003/Protien-IK---An-IK-Solver-inspired-by-protein-folding/actions)
+
 A protein-folding-inspired inverse kinematics solver for a 6-DOF (UR5)
 robotic arm, benchmarked honestly against five other IK methods
 (Jacobian/DLS, CCD, FABRIK, a TRAC-IK-style restart solver, and a
@@ -39,6 +41,11 @@ uvicorn app.main:app --reload --port 8000
 Verify it's up: `curl http://localhost:8000/api/robot` should return the
 UR5's DH parameters as JSON.
 
+```bash
+# Run backend tests
+py -3.11 -m pytest tests/ -v
+```
+
 Key endpoints (all under `http://localhost:8000`):
 - `GET  /api/robot` — robot DH spec
 - `GET  /api/solvers` — list of available solver ids/names
@@ -56,7 +63,9 @@ Requires Node 18+.
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev     # dev server
+npm test        # run kinematics unit tests (vitest)
+npm run build   # production build
 ```
 
 Open the printed local URL (default `http://localhost:5173`). The
