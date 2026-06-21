@@ -12,7 +12,7 @@ import './styles/app.css';
 
 function App() {
   const [target, setTarget] = useState(null);
-  const [seed, setSeed] = useState(1);
+  const [seed] = useState(1);
   const [apiOk, setApiOk] = useState(null);
   const [focusedSolver, setFocusedSolver] = useState('protein_ik');
 
@@ -42,13 +42,14 @@ function App() {
       setApiOk(true);
       setTarget({ position: data.position, quaternion: data.quaternion });
       return data;
-    } catch (e) {
+    } catch {
       setApiOk(false);
       return null;
     }
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchNewTarget(seed);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -67,7 +68,7 @@ function App() {
       const data = await runBenchmark({ solvers: SOLVER_ORDER, nTrials, scenario, seed: 1 });
       setBenchResults(data.results);
       setApiOk(true);
-    } catch (e) {
+    } catch {
       setApiOk(false);
     } finally {
       setBenchLoading(false);
