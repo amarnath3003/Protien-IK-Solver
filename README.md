@@ -121,3 +121,13 @@ measured results — including negative results (e.g. the rotamer bias,
 a vectorial/domain-decomposition folding variant). These are left in
 place deliberately so the reasoning is auditable, not just the
 conclusion.
+
+## How Protein IK Mimics Protein Folding
+
+The solver explicitly replicates the staged, sequenced character of real protein folding, where qualitatively different physical processes dominate at different times:
+
+1. **Stage 1 (Local-blind relaxation)**: Mirrors how short-range hydrogen-bond structure (secondary structure like alpha helices and beta strands) forms before any long-range tertiary contact exists. Joints settle toward a neutral pose using only neighbor-based and joint-limit energy terms, without consulting the target at all.
+2. **Stage 2 (Coarse collapse)**: Analogous to the rapid, non-specific hydrophobic collapse that compacts an unfolded chain before any specific native contacts are determined. This is a fast, low-precision pull of the whole chain toward the target's general direction.
+3. **Stage 3 (Funneled narrowing search)**: Represents the folding funnel. The search space (accessible conformational volume) shrinks over iterations as the chain is guided toward the target, combining attraction, limit, collision, and smoothness energies via gradient-free local moves with a decaying perturbation radius.
+4. **Stage 4 (Scoped stuck-rescue)**: Acts like a molecular chaperone (e.g., GroEL/GroES). If progress stalls, the solver identifies the specific joints contributing most to the high energy (the "misfolded" substructure) and perturbs them locally, leaving the already-settled portions untouched. This is fundamentally different from global random restarts.
+5. **Stage 5 (Stability-checked termination)**: Mimics the kinetic stability of native protein structures under thermal noise. Before declaring success, the candidate solution is jittered. If the energy jumps significantly, the basin is deemed unstable (a knife-edge point) and refinement continues.
