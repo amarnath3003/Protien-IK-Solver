@@ -3,9 +3,12 @@ import * as THREE from 'three';
 import { forwardKinematicsChain, selfCollisionMinDistance, UR5_SPEC, rotationOf, matrixToQuaternion } from '../lib/kinematics';
 
 const ALARM = new THREE.Color('#FF6B5E');
+const IDLE_Q = [0, -0.7, 0.9, -0.4, 0.6, 0];
 
 export function RobotArm({ q, accentColor = '#6FFFB0', glowCollision = true, scale = 3 }) {
-  const chain = useMemo(() => forwardKinematicsChain(UR5_SPEC, q), [q]);
+  // Defensive fallback: if q is missing or incomplete, stay in idle pose
+  const safeQ = (q && q.length === UR5_SPEC.a.length) ? q : IDLE_Q;
+  const chain = useMemo(() => forwardKinematicsChain(UR5_SPEC, safeQ), [safeQ]);
   const positions = useMemo(() => chain.map((c) => c.position), [chain]);
 
   const minDist = useMemo(
