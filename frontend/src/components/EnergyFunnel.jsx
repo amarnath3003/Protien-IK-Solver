@@ -1,5 +1,4 @@
-import { useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useRef, useEffect } from 'react';
 
 /**
  * Renders a V-shaped funnel; a marker's vertical position tracks how
@@ -9,7 +8,7 @@ import { useFrame } from '@react-three/fiber';
  * narrowing toward the bottom) -- the literal visual form of a folding
  * funnel, not a decorative chart.
  *
- * Jitter is driven by an accumulated clock in a useFrame loop so it
+ * Jitter is driven by an accumulated clock in a requestAnimationFrame loop so it
  * animates continuously while the solver is running, not just when a
  * new WebSocket step arrives.
  */
@@ -18,28 +17,48 @@ export function EnergyFunnel({ posError = null, orientError = null, phase = '', 
   const rimY = 14, tipY = H - 14;
   const rimHalfWidth = 60, tipHalfWidth = 4;
 
-  // Accumulated time for smooth animated jitter (updated by useFrame)
+  // Accumulated time for smooth animated jitter
   const timeRef  = useRef(0);
   const circleRef = useRef(null);
+  const latestErrors = useRef({ posError, orientError });
 
-  useFrame((_, delta) => {
+  useEffect(() => {
+    latestErrors.current = { posError, orientError };
+  }, [posError, orientError]);
+
+  useEffect(() => {
     if (status !== 'running') return;
-    timeRef.current += delta;
 
-    if (!circleRef.current) return;
+    let lastTime = null;
+    let reqId = null;
 
-    // Recompute t (error → funnel position) every frame
-    const combined = (posError ?? 0) + 0.3 * (orientError ?? 0);
-    const t = Math.min(Math.max(1 - Math.exp(-combined * 4), 0), 1);
+    const animate = (time) => {
+      if (lastTime != null) {
+        const delta = (time - lastTime) / 1000;
+        timeRef.current += delta;
 
-    const y = rimY + t * (tipY - rimY);
-    const halfWidthAtY = rimHalfWidth + (tipHalfWidth - rimHalfWidth) * t;
-    const jitter = Math.sin(timeRef.current * 7.3) * halfWidthAtY * 0.45;
-    const markerX = W / 2 + jitter;
+        if (circleRef.current) {
+          const { posError: pe, orientError: oe } = latestErrors.current;
+          // Recompute t (error → funnel position) every frame
+          const combined = (pe ?? 0) + 0.3 * (oe ?? 0);
+          const t = Math.min(Math.max(1 - Math.exp(-combined * 4), 0), 1);
 
-    circleRef.current.setAttribute('cx', markerX);
-    circleRef.current.setAttribute('cy', y);
-  });
+          const y = rimY + t * (tipY - rimY);
+          const halfWidthAtY = rimHalfWidth + (tipHalfWidth - rimHalfWidth) * t;
+          const jitter = Math.sin(timeRef.current * 7.3) * halfWidthAtY * 0.45;
+          const markerX = W / 2 + jitter;
+
+          circleRef.current.setAttribute('cx', markerX);
+          circleRef.current.setAttribute('cy', y);
+        }
+      }
+      lastTime = time;
+      reqId = requestAnimationFrame(animate);
+    };
+
+    reqId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(reqId);
+  }, [status]);
 
   // Compute static initial position for SSR / first render
   const combined0 = (posError ?? 0) + 0.3 * (orientError ?? 0);
