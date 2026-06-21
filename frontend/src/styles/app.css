@@ -277,6 +277,24 @@
   flex-shrink: 0;
 }
 
+/* Convergence outcome indicators on tiles */
+.solver-tile--converged {
+  outline: 1px solid var(--phosphor-dim);
+  outline-offset: -1px;
+}
+.solver-tile--failed {
+  outline: 1px solid var(--alarm-dim);
+  outline-offset: -1px;
+}
+.solver-tile__outcome {
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+.solver-tile__outcome--ok  { color: var(--phosphor); }
+.solver-tile__outcome--fail { color: var(--alarm); }
+
 /* ---------- Benchmark panel ---------- */
 .benchmark-panel {
   border: 1px solid var(--panel-border);
@@ -327,11 +345,30 @@
   margin: 16px 0 4px;
 }
 
+.benchmark-header-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 18px;
+  margin-top: 12px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--panel-border);
+}
+.benchmark-col-labels {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--steel-dim);
+}
+
 .benchmark-rows {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  margin-top: 18px;
+  margin-top: 8px;
 }
 
 .benchmark-row {
@@ -352,7 +389,7 @@
 
 .benchmark-row__bars {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
 }
 
@@ -360,11 +397,26 @@
   height: 6px;
   background: var(--void);
   border: 1px solid var(--panel-border);
+  position: relative;
+  overflow: hidden;
+}
+.bar-stat__track--layered {
+  /* used for the layered mean/p95 time bar */
 }
 
 .bar-stat__fill {
   height: 100%;
   transition: width 0.4s ease;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.bar-stat__fill--p95 {
+  background: var(--steel-dim);
+  opacity: 0.5;
+}
+.bar-stat__fill--mean {
+  background: var(--steel);
 }
 
 .bar-stat__meta {
@@ -383,6 +435,21 @@
 
 .bar-stat__value {
   color: var(--bone-dim);
+}
+
+.bar-stat__p95 {
+  color: var(--steel);
+  font-size: 9.5px;
+}
+
+.bar-stat__num-display {
+  height: 6px;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--bone);
+  padding-top: 2px;
 }
 
 /* ---------- Footer ---------- */
@@ -407,9 +474,29 @@
     grid-template-columns: 1fr;
     gap: 8px;
   }
+  .benchmark-header-row {
+    display: none; /* labels don't fit at this width */
+  }
   .app-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+  }
+}
+
+/* On very narrow screens (< 540px) hide the 3D viewports in the grid to
+   avoid tiny, unreadable arm previews — show a flat list of labels only. */
+@media (max-width: 540px) {
+  .solver-tile__viewport {
+    display: none;
+  }
+  .solver-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .solver-tile__label {
+    padding: 14px 12px;
+  }
+  .benchmark-row__bars {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
