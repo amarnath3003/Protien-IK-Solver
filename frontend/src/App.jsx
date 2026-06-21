@@ -12,7 +12,8 @@ import './styles/app.css';
 
 function App() {
   const [target, setTarget] = useState(null);
-  const [seed] = useState(1);
+  // Random seed per page-load so the first solve is immediately unique
+  const [seed] = useState(() => Math.floor(Math.random() * 1e9));
   const [apiOk, setApiOk] = useState(null);
   const [focusedSolver, setFocusedSolver] = useState('protein_ik');
 
@@ -175,10 +176,13 @@ function App() {
           <div className="solver-grid">
             {SOLVER_ORDER.map((id) => {
               const h = solveHooks[id];
+              const convergenceClass = h.status === 'done'
+                ? (h.result?.success ? 'solver-tile--converged' : 'solver-tile--failed')
+                : '';
               return (
                 <button
                   key={id}
-                  className={`solver-tile ${focusedSolver === id ? 'is-focused' : ''}`}
+                  className={`solver-tile ${focusedSolver === id ? 'is-focused' : ''} ${convergenceClass}`}
                   onClick={() => setFocusedSolver(id)}
                   aria-label={`Focus ${SOLVERS[id].name}`}
                 >
@@ -191,7 +195,13 @@ function App() {
                   <div className="solver-tile__label">
                     <span className="solver-card__dot" style={{ background: SOLVERS[id].color }} />
                     {SOLVERS[id].short}
-                    <span className={`solver-tile__status solver-tile__status--${h.status}`}>{h.status}</span>
+                    {h.status === 'done' && h.result != null ? (
+                      <span className={`solver-tile__outcome ${h.result.success ? 'solver-tile__outcome--ok' : 'solver-tile__outcome--fail'}`}>
+                        {h.result.success ? '✓' : '✗'}
+                      </span>
+                    ) : (
+                      <span className={`solver-tile__status solver-tile__status--${h.status}`}>{h.status}</span>
+                    )}
                   </div>
                 </button>
               );
