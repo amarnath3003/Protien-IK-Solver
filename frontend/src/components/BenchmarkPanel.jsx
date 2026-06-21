@@ -1,7 +1,7 @@
 import { SOLVERS, SOLVER_ORDER, SCENARIOS } from '../lib/solverMeta';
 
 export function BenchmarkPanel({ results, scenario, onScenarioChange, loading, onRun, nTrials }) {
-  const maxTime = results
+  const maxMean = results
     ? Math.max(...Object.values(results).map((r) => r.mean_time_ms))
     : 1;
 
@@ -38,6 +38,17 @@ export function BenchmarkPanel({ results, scenario, onScenarioChange, loading, o
 
       {results && (
         <div className="benchmark-rows">
+          {/* column headers */}
+          <div className="benchmark-header-row">
+            <div />
+            <div className="benchmark-col-labels">
+              <span>success rate</span>
+              <span>speed (mean / p95)</span>
+              <span>clearance</span>
+              <span>iters</span>
+            </div>
+          </div>
+
           {SOLVER_ORDER.map((id) => {
             const r = results[id];
             if (!r) return null;
@@ -55,11 +66,10 @@ export function BenchmarkPanel({ results, scenario, onScenarioChange, loading, o
                     fraction={r.success_rate}
                     color={meta.color}
                   />
-                  <BarStat
-                    label="speed"
-                    value={`${r.mean_time_ms.toFixed(1)}ms`}
-                    fraction={1 - r.mean_time_ms / maxTime}
-                    color="var(--steel)"
+                  <TimeStat
+                    mean={r.mean_time_ms}
+                    p95={r.p95_time_ms}
+                    maxMean={maxMean}
                   />
                   <BarStat
                     label="clearance"
@@ -67,6 +77,7 @@ export function BenchmarkPanel({ results, scenario, onScenarioChange, loading, o
                     fraction={Math.min(Math.max((r.mean_min_self_distance + 0.05) / 0.1, 0), 1)}
                     color={r.mean_min_self_distance < 0 ? 'var(--alarm)' : 'var(--phosphor-dim)'}
                   />
+                  <NumStat label="iters" value={r.mean_iters.toFixed(1)} />
                 </div>
               </div>
             );
@@ -87,6 +98,39 @@ function BarStat({ label, value, fraction, color }) {
       <div className="bar-stat__meta">
         <span className="bar-stat__label">{label}</span>
         <span className="bar-stat__value">{value}</span>
+      </div>
+    </div>
+  );
+}
+
+function TimeStat({ mean, p95, maxMean }) {
+  const meanPct = Math.round(Math.min(Math.max(mean / (maxMean || 1), 0), 1) * 100);
+  const p95Pct  = Math.round(Math.min(Math.max(p95  / (maxMean || 1), 0), 1) * 100);
+  return (
+    <div className="bar-stat">
+      <div className="bar-stat__track bar-stat__track--layered">
+        {/* p95 bar (background, wider) */}
+        <div className="bar-stat__fill bar-stat__fill--p95" style={{ width: `${p95Pct}%` }} />
+        {/* mean bar (foreground, narrower) */}
+        <div className="bar-stat__fill bar-stat__fill--mean" style={{ width: `${meanPct}%` }} />
+      </div>
+      <div className="bar-stat__meta">
+        <span className="bar-stat__label">speed</span>
+        <span className="bar-stat__value">
+          {mean.toFixed(1)}ms
+          <span className="bar-stat__p95" title="p95 latency"> / {p95.toFixed(1)}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function NumStat({ label, value }) {
+  return (
+    <div className="bar-stat">
+      <div className="bar-stat__num-display">{value}</div>
+      <div className="bar-stat__meta">
+        <span className="bar-stat__label">{label}</span>
       </div>
     </div>
   );
