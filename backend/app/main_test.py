@@ -29,13 +29,7 @@ from app.api.scenarios import generate_target
 
 app = FastAPI(title="ProteinIK API")
 
-# app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # dev-friendly; tighten before any real deployment
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
 
 SPEC = ur5_spec()
 
