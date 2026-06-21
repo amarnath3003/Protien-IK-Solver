@@ -91,15 +91,22 @@ def _per_joint_energy_contribution(spec: RobotSpec, q: np.ndarray, T_target: np.
     (small perturbation of) this joint change the total energy. Used by
     the stuck-rescue stage to find the 'misfolded' substructure -- the
     joint(s) whose local state is most responsible for the current high
-    energy -- rather than restarting the whole chain blindly."""
+    energy -- rather than restarting the whole chain blindly.
+
+    Uses Stage-3 weights (3, 1, 2, 0.3) so the worst-joint detection is
+    consistent with the objective Stage 3 is actually minimizing. The base
+    energy is computed once and reused across all joint perturbations,
+    rather than recomputing it N times redundantly.
+    """
     n = spec.n_joints
-    base = _total_energy(spec, q, T_target, 1.0, 1.0, 1.0, 0.3)
+    W_TARGET, W_LIMIT, W_COLLISION, W_SMOOTH = 3.0, 1.0, 2.0, 0.3
+    base = _total_energy(spec, q, T_target, W_TARGET, W_LIMIT, W_COLLISION, W_SMOOTH)
     contributions = np.zeros(n)
     eps = 0.05
     for i in range(n):
         q_pert = q.copy()
         q_pert[i] = np.clip(q_pert[i] + eps, spec.joint_limits[i, 0], spec.joint_limits[i, 1])
-        e_pert = _total_energy(spec, q_pert, T_target, 1.0, 1.0, 1.0, 0.3)
+        e_pert = _total_energy(spec, q_pert, T_target, W_TARGET, W_LIMIT, W_COLLISION, W_SMOOTH)
         # large |change| means this joint strongly influences current energy
         contributions[i] = abs(e_pert - base)
     return contributions
