@@ -49,8 +49,19 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchNewTarget(seed);
+    // On load: fetch a target then immediately kick off all six solvers
+    // so the arm starts animating toward the goal without needing a button click.
+    (async () => {
+      const data = await fetchNewTarget(seed);
+      if (!data) return;
+      const t = { position: data.position, quaternion: data.quaternion };
+      SOLVER_ORDER.forEach((id, i) => {
+        // Small stagger so six WebSocket connections don't all open simultaneously
+        setTimeout(() => {
+          solveHooks[id].run({ target: t, seed: 2000 + i, stepDelayMs: 30 });
+        }, i * 80);
+      });
+    })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const solveAll = useCallback(async () => {
@@ -58,7 +69,9 @@ function App() {
     if (!data) return;
     const t = { position: data.position, quaternion: data.quaternion };
     SOLVER_ORDER.forEach((id, i) => {
-      solveHooks[id].run({ target: t, seed: 2000 + i, stepDelayMs: 30 });
+      setTimeout(() => {
+        solveHooks[id].run({ target: t, seed: 2000 + i, stepDelayMs: 30 });
+      }, i * 80);
     });
   }, [fetchNewTarget, solveHooks]);
 
