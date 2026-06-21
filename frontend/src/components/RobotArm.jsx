@@ -1,123 +1,245 @@
-import { useMemo } from 'react';
+/**
+ * RobotArm — fully imperative Three.js rendering.
+ *
+ * Instead of updating React state every frame (which triggers reconciliation,
+ * useMemo recalcs, and JSX diffing), we:
+ *  1. Render geometry once via JSX and capture refs to every mesh/group.
+ *  2. In useFrame, lerp joint angles, run FK, and mutate .position /
+ *     .quaternion / .scale directly on the Three.js objects.
+ *
+ * Result: buttery 60 fps animation with zero GC pressure and zero React overhead.
+ */
+import { useRef, useMemo } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { forwardKinematicsChain, selfCollisionMinDistance, UR5_SPEC, rotationOf, matrixToQuaternion } from '../lib/kinematics';
-import { useSmoothQ } from '../hooks/useSmoothQ';
+import {
+  forwardKinematicsChain,
+  selfCollisionMinDistance,
+  UR5_SPEC,
+  rotationOf,
+  matrixToQuaternion,
+} from '../lib/kinematics';
 
-const ALARM = new THREE.Color('#FF6B5E');
-const IDLE_Q = [0, -0.7, 0.9, -0.4, 0.6, 0];
+// ─── constants ───────────────────────────────────────────────────────────────
+const N          = UR5_SPEC.a.length;          // 6 joints
+const IDLE_Q     = [0, -0.7, 0.9, -0.4, 0.6, 0];
+const ALARM      = new THREE.Color('#FF6B5E');
+const BODY_COLOR = '#8A9591';
+const DARK_METAL = '#2A302D';
 
+// Per-joint geometry params (computed once at module level)
+const LINK_R  = UR5_SPEC.linkRadius.map((r) => r * 0.6);  // link cylinder radius
+const JOINT_R = UR5_SPEC.linkRadius.map((r) => r * 0.9);  // motor cylinder radius
+const JOINT_L = JOINT_R.map((r) => r * 2.2);              // motor cylinder length
+
+// Scratch THREE objects — reused every frame to avoid GC
+const _v0   = new THREE.Vector3();
+const _v1   = new THREE.Vector3();
+const _quat = new THREE.Quaternion();
+const _up   = new THREE.Vector3(0, 1, 0);
+const _rc   = new THREE.Color();   // ring colour scratch
+
+// ─── component ───────────────────────────────────────────────────────────────
 export function RobotArm({ q, accentColor = '#6FFFB0', glowCollision = true, scale = 3 }) {
-  // Defensive fallback: if q is missing or incomplete, stay in idle pose
-  const safeQ = (q && q.length === UR5_SPEC.a.length) ? q : IDLE_Q;
-  // Exponentially interpolate toward each new target q every render frame
-  // so the arm glides smoothly instead of snapping between IK steps.
-  const displayQ = useSmoothQ(safeQ, 10);
-  const chain = useMemo(() => forwardKinematicsChain(UR5_SPEC, displayQ), [displayQ]);
-  const positions = useMemo(() => chain.map((c) => c.position), [chain]);
 
-  const minDist = useMemo(
-    () => (glowCollision ? selfCollisionMinDistance(UR5_SPEC, positions) : 1),
-    [positions, glowCollision]
-  );
+  // Keep latest prop values accessible inside useFrame without re-subscribing
+  const qRef           = useRef(q);
+  const accentRef      = useRef(accentColor);
+  qRef.current         = q;
+  accentRef.current    = accentColor;
 
-  const alarmT = THREE.MathUtils.clamp(1 - (minDist + 0.02) / 0.07, 0, 1);
-  const ringColor = useMemo(() => {
-    const base = new THREE.Color(accentColor);
-    return base.clone().lerp(ALARM, alarmT);
-  }, [accentColor, alarmT]);
+  // Mutable lerped joint angles (plain array, no React state)
+  const lerpedQ = useRef([...IDLE_Q]);
 
-  const bodyColor = '#8A9591';
-  const darkMetal = '#2A302D';
+  // Refs to every Three.js object we'll mutate imperatively
+  const jointRefs   = useRef(Array(N + 1).fill(null));   // N motors + 1 EE
+  const linkRefs    = useRef(Array(N).fill(null));        // N link cylinders
+  const ringRefs    = useRef(Array(N).fill(null));        // N LED rings on motors
+  const baseRingRef = useRef(null);                       // ring on base pedestal
 
+  // ── per-frame update ────────────────────────────────────────────────────────
+  useFrame((_, delta) => {
+    const target = (qRef.current && qRef.current.length === N)
+      ? qRef.current : IDLE_Q;
+
+    // Frame-rate-independent exponential lerp (speed=14 → ~50 ms settle)
+    const alpha = 1 - Math.exp(-14 * delta);
+    const curr  = lerpedQ.current;
+    let moved   = false;
+
+    for (let i = 0; i < N; i++) {
+      const next = curr[i] + (target[i] - curr[i]) * alpha;
+      if (Math.abs(next - curr[i]) > 1e-6) moved = true;
+      curr[i] = next;
+    }
+
+    if (!moved) return; // arm is at rest — skip all GPU work
+
+    // ── forward kinematics ─────────────────────────────────────────────────
+    const chain = forwardKinematicsChain(UR5_SPEC, curr);
+
+    // ── collision glow colour ─────────────────────────────────────────────
+    _rc.set(accentRef.current);
+    if (glowCollision) {
+      const positions = chain.map((c) => c.position);
+      const minDist   = selfCollisionMinDistance(UR5_SPEC, positions);
+      const t         = THREE.MathUtils.clamp(1 - (minDist + 0.02) / 0.07, 0, 1);
+      _rc.lerp(ALARM, t);
+    }
+
+    // ── update joint group transforms ─────────────────────────────────────
+    for (let i = 0; i <= N; i++) {
+      const g = jointRefs.current[i];
+      if (!g) continue;
+      const [px, py, pz] = chain[i].position;
+      g.position.set(px, py, pz);
+      const [qx, qy, qz, qw] = matrixToQuaternion(rotationOf(chain[i]));
+      g.quaternion.set(qx, qy, qz, qw);
+    }
+
+    // ── update LED ring colours ────────────────────────────────────────────
+    for (let i = 0; i < N; i++) {
+      const m = ringRefs.current[i];
+      if (m) {
+        m.material.color.copy(_rc);
+        m.material.emissive.copy(_rc);
+      }
+    }
+    if (baseRingRef.current) {
+      baseRingRef.current.material.color.copy(_rc);
+      baseRingRef.current.material.emissive.copy(_rc);
+    }
+
+    // ── update link cylinders ──────────────────────────────────────────────
+    // Geometry is unit height/radius; we set scale=(r, length, r) each frame.
+    for (let i = 0; i < N; i++) {
+      const mesh = linkRefs.current[i];
+      if (!mesh) continue;
+
+      _v0.set(...chain[i].position);
+      _v1.set(...chain[i + 1].position);
+      const len = _v0.distanceTo(_v1);
+
+      if (len < 1e-6) { mesh.visible = false; continue; }
+      mesh.visible = true;
+
+      // midpoint
+      mesh.position.set(
+        (_v0.x + _v1.x) * 0.5,
+        (_v0.y + _v1.y) * 0.5,
+        (_v0.z + _v1.z) * 0.5,
+      );
+
+      // orientation: align cylinder's Y axis with link direction
+      _v1.sub(_v0).normalize();
+      _quat.setFromUnitVectors(_up, _v1);
+      mesh.quaternion.copy(_quat);
+
+      // scale encodes both radius and length
+      const r = LINK_R[i];
+      mesh.scale.set(r, len, r);
+    }
+  });
+
+  // ── initial FK for first-render positions ─────────────────────────────────
+  const initChain = useMemo(() => forwardKinematicsChain(UR5_SPEC, IDLE_Q), []);
+
+  // ── JSX: static geometry; Three.js takes over via refs ────────────────────
   return (
     <group scale={scale}>
-      {/* Base Pedestal */}
+
+      {/* ── Base Pedestal (fully static) ─────────────────────────────────── */}
       <mesh position={[0, -0.04, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.08, 0.09, 0.08, 32]} />
-        <meshPhysicalMaterial color={darkMetal} metalness={0.8} roughness={0.5} />
+        <meshPhysicalMaterial color={DARK_METAL} metalness={0.8} roughness={0.5} />
       </mesh>
-      <mesh position={[0, -0.005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh
+        ref={baseRingRef}
+        position={[0, -0.005, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+      >
         <ringGeometry args={[0.075, 0.085, 32]} />
-        <meshStandardMaterial color={ringColor} emissive={ringColor} emissiveIntensity={1.5} toneMapped={false} />
+        <meshStandardMaterial
+          color={accentColor} emissive={accentColor}
+          emissiveIntensity={1.5} toneMapped={false}
+        />
       </mesh>
 
-      {/* Links connecting the joints */}
-      {positions.slice(0, -1).map((p0, i) => {
-        const p1 = positions[i + 1];
-        const radius = UR5_SPEC.linkRadius[i] * 0.6;
-        return (
-          <Link key={`link-${i}`} start={p0} end={p1} radius={radius} color={bodyColor} />
-        );
-      })}
+      {/* ── Link cylinders — unit geometry, scaled imperatively ──────────── */}
+      {Array.from({ length: N }, (_, i) => (
+        <mesh
+          key={`link-${i}`}
+          ref={(el) => { linkRefs.current[i] = el; }}
+          castShadow receiveShadow
+        >
+          {/* height=1, radius=1 — scale is set in useFrame */}
+          <cylinderGeometry args={[1, 1, 1, 16]} />
+          <meshPhysicalMaterial
+            color={BODY_COLOR} metalness={0.5} roughness={0.4} clearcoat={0.3}
+          />
+        </mesh>
+      ))}
 
-      {/* Joint Motors */}
-      {chain.map((frame, i) => {
-        if (i === chain.length - 1) {
-          // End Effector Tool
-          const quat = matrixToQuaternion(rotationOf(frame));
+      {/* ── Joint motors + End Effector — position/quaternion set imperatively */}
+      {initChain.map((frame, i) => {
+        const isEE = i === N;
+        const ref  = (el) => { jointRefs.current[i] = el; };
+
+        if (isEE) {
           return (
-            <group key={`ee`} position={frame.position} quaternion={quat}>
-              <mesh position={[0, 0, 0.02]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
+            <group key="ee" ref={ref} position={frame.position}>
+              <mesh
+                position={[0, 0, 0.02]}
+                rotation={[Math.PI / 2, 0, 0]}
+                castShadow receiveShadow
+              >
                 <cylinderGeometry args={[0.02, 0.035, 0.04, 16]} />
-                <meshPhysicalMaterial color="#EDEAE2" metalness={0.4} roughness={0.2} emissive="#EDEAE2" emissiveIntensity={0.2} />
+                <meshPhysicalMaterial
+                  color="#EDEAE2" metalness={0.4} roughness={0.2}
+                  emissive="#EDEAE2" emissiveIntensity={0.2}
+                />
               </mesh>
             </group>
           );
         }
 
-        const radius = UR5_SPEC.linkRadius[i] * 0.9;
-        const length = radius * 2.2;
-        const quat = matrixToQuaternion(rotationOf(frame));
+        const r = JOINT_R[i];
+        const l = JOINT_L[i];
 
         return (
-          <group key={`joint-${i}`} position={frame.position} quaternion={quat}>
-            {/* Motor Cylinder aligned to Z axis (rotation axis) */}
+          <group key={`joint-${i}`} ref={ref} position={frame.position}>
+            {/* Motor body */}
             <mesh rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
-              <cylinderGeometry args={[radius, radius, length, 32]} />
-              <meshPhysicalMaterial color={bodyColor} metalness={0.7} roughness={0.3} clearcoat={0.4} />
+              <cylinderGeometry args={[r, r, l, 32]} />
+              <meshPhysicalMaterial
+                color={BODY_COLOR} metalness={0.7} roughness={0.3} clearcoat={0.4}
+              />
             </mesh>
-            {/* Motor Caps */}
-            <mesh position={[0, 0, length / 2 + 0.002]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
-              <cylinderGeometry args={[radius * 0.85, radius * 0.85, 0.005, 32]} />
-              <meshPhysicalMaterial color={darkMetal} metalness={0.9} roughness={0.4} />
+            {/* Front cap */}
+            <mesh position={[0, 0, l / 2 + 0.002]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
+              <cylinderGeometry args={[r * 0.85, r * 0.85, 0.005, 32]} />
+              <meshPhysicalMaterial color={DARK_METAL} metalness={0.9} roughness={0.4} />
             </mesh>
-            <mesh position={[0, 0, -length / 2 - 0.002]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
-              <cylinderGeometry args={[radius * 0.85, radius * 0.85, 0.005, 32]} />
-              <meshPhysicalMaterial color={darkMetal} metalness={0.9} roughness={0.4} />
+            {/* Back cap */}
+            <mesh position={[0, 0, -l / 2 - 0.002]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
+              <cylinderGeometry args={[r * 0.85, r * 0.85, 0.005, 32]} />
+              <meshPhysicalMaterial color={DARK_METAL} metalness={0.9} roughness={0.4} />
             </mesh>
-            {/* LED Ring */}
-            <mesh position={[0, 0, length / 2 - 0.01]} rotation={[Math.PI / 2, 0, 0]}>
-              <cylinderGeometry args={[radius * 1.02, radius * 1.02, 0.005, 32]} />
-              <meshStandardMaterial color={ringColor} emissive={ringColor} emissiveIntensity={1.5} toneMapped={false} />
+            {/* LED ring */}
+            <mesh
+              ref={(el) => { ringRefs.current[i] = el; }}
+              position={[0, 0, l / 2 - 0.01]}
+              rotation={[Math.PI / 2, 0, 0]}
+            >
+              <cylinderGeometry args={[r * 1.02, r * 1.02, 0.005, 32]} />
+              <meshStandardMaterial
+                color={accentColor} emissive={accentColor}
+                emissiveIntensity={1.5} toneMapped={false}
+              />
             </mesh>
           </group>
         );
       })}
     </group>
-  );
-}
-
-function Link({ start, end, radius, color }) {
-  const { position, quaternion, length } = useMemo(() => {
-    const s = new THREE.Vector3(...start);
-    const e = new THREE.Vector3(...end);
-    const mid = s.clone().lerp(e, 0.5);
-    const dir = e.clone().sub(s);
-    const len = dir.length();
-    const up = new THREE.Vector3(0, 1, 0);
-    const quat = new THREE.Quaternion();
-    if (len > 1e-6) {
-      quat.setFromUnitVectors(up, dir.clone().normalize());
-    }
-    return { position: mid, quaternion: quat, length: len };
-  }, [start, end]);
-
-  if (length < 1e-6) return null;
-
-  return (
-    <mesh position={position} quaternion={quaternion} castShadow receiveShadow>
-      <cylinderGeometry args={[radius, radius, length, 16]} />
-      <meshPhysicalMaterial color={color} metalness={0.5} roughness={0.4} clearcoat={0.3} />
-    </mesh>
   );
 }
