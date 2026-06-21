@@ -15,6 +15,9 @@ Run with: uvicorn app.main:app --reload --port 8000
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
+import os
+
 import numpy as np
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,15 +32,28 @@ from app.api.scenarios import generate_target
 
 app = FastAPI(title="ProteinIK API")
 
+# CORS: restrict origins in production by setting the ALLOWED_ORIGINS environment
+# variable (comma-separated). Falls back to "*" for local development convenience.
+_raw_origins = os.environ.get("ALLOWED_ORIGINS", "")
+_allowed_origins = [o.strip() for o in _raw_origins.split(",") if o.strip()] or ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # dev-friendly; tighten before any real deployment
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 SPEC = ur5_spec()
+
+# Thread pool for running blocking numpy solver code off the asyncio event loop.
+# Without this, a long solve / full benchmark blocks all WebSocket streams and
+# any concurrent requests for its entire duration.
+_executor = concurrent.futures.ThreadPoolExecutor(
+    max_workers=max(4, (os.cpu_count() or 4)),
+    thread_name_prefix="ik-solver",
+)
 
 
 @app.get("/api/robot", response_model=RobotSpecResponse)
@@ -67,28 +83,29 @@ def random_target(req: RandomTargetRequest):
     return {"position": pos, "quaternion": quat, "q_reference": q_true.tolist()}
 
 
-@app.post("/api/solve")
-def solve(req: SolveRequest):
-    if req.solver not in SOLVER_REGISTRY:
-        raise HTTPException(400, f"Unknown solver '{req.solver}'. Available: {list(SOLVER_REGISTRY)}")
-
+def _run_solve_sync(req: SolveRequest) -> dict:
+    """Pure synchronous solve — safe to call in a thread pool executor."""
     rng = np.random.default_rng(req.seed)
     q0 = np.array(req.q0) if req.q0 is not None else SPEC.random_config(rng)
     T_target = pose_to_transform(req.target.position, req.target.quaternion)
-
     result = run_solver(req.solver, SPEC, q0, T_target, rng, collect_steps=req.collect_steps)
     return result.to_dict(include_steps=req.collect_steps)
 
 
-@app.post("/api/benchmark")
-def benchmark(req: BatchBenchmarkRequest):
-    for s in req.solvers:
-        if s not in SOLVER_REGISTRY:
-            raise HTTPException(400, f"Unknown solver '{s}'. Available: {list(SOLVER_REGISTRY)}")
+@app.post("/api/solve")
+async def solve(req: SolveRequest):
+    if req.solver not in SOLVER_REGISTRY:
+        raise HTTPException(400, f"Unknown solver '{req.solver}'. Available: {list(SOLVER_REGISTRY)}")
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_executor, _run_solve_sync, req)
 
+
+def _run_benchmark_sync(req: BatchBenchmarkRequest) -> dict:
+    """Pure synchronous benchmark — safe to call in a thread pool executor."""
     target_rng = np.random.default_rng(req.seed)
     results_by_solver = {s: {"successes": 0, "times_ms": [], "iters": [],
-                              "pos_errors": [], "restarts": [], "min_self_distances": []}
+                              "pos_errors": [], "orient_errors": [], "restarts": [],
+                              "min_self_distances": []}
                           for s in req.solvers}
 
     for trial in range(req.n_trials):
@@ -101,6 +118,7 @@ def benchmark(req: BatchBenchmarkRequest):
             bucket["times_ms"].append(r.wall_time_ms)
             bucket["iters"].append(r.iterations)
             bucket["pos_errors"].append(r.pos_error)
+            bucket["orient_errors"].append(r.orient_error)
             bucket["restarts"].append(r.restarts)
             bucket["min_self_distances"].append(r.min_self_distance)
 
@@ -115,6 +133,7 @@ def benchmark(req: BatchBenchmarkRequest):
             "p95_time_ms": float(np.percentile(bucket["times_ms"], 95)),
             "mean_iters": float(np.mean(bucket["iters"])),
             "mean_pos_error": float(np.mean(bucket["pos_errors"])),
+            "mean_orient_error": float(np.mean(bucket["orient_errors"])),
             "mean_restarts": float(np.mean(bucket["restarts"])),
             "mean_min_self_distance": float(np.mean(bucket["min_self_distances"])),
             "collision_rate": float(np.mean([d < 0 for d in bucket["min_self_distances"]])),
@@ -123,16 +142,26 @@ def benchmark(req: BatchBenchmarkRequest):
     return {"scenario": req.scenario, "n_trials": req.n_trials, "results": summary}
 
 
+@app.post("/api/benchmark")
+async def benchmark(req: BatchBenchmarkRequest):
+    for s in req.solvers:
+        if s not in SOLVER_REGISTRY:
+            raise HTTPException(400, f"Unknown solver '{s}'. Available: {list(SOLVER_REGISTRY)}")
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(_executor, _run_benchmark_sync, req)
+
+
 @app.websocket("/ws/solve")
 async def ws_solve(websocket: WebSocket):
     """Streams a single solve step-by-step as it runs. Since our solvers
     are synchronous numpy code (not natively async/generator-based), we
-    run the full solve first (fast, <1s) and then stream the recorded
-    step trace back at a fixed cadence -- giving the frontend a live
-    'replay' feel without needing to restructure every solver into a
-    generator/coroutine.
+    run the full solve in a thread-pool executor (keeping the event loop
+    responsive for all other active WebSocket connections), then stream
+    the recorded step trace back at a fixed cadence -- giving the frontend
+    a live 'replay' feel.
     """
     await websocket.accept()
+    loop = asyncio.get_event_loop()
     try:
         while True:
             msg = await websocket.receive_json()
@@ -146,7 +175,12 @@ async def ws_solve(websocket: WebSocket):
             q0 = np.array(msg["q0"]) if msg.get("q0") is not None else SPEC.random_config(rng)
             T_target = pose_to_transform(msg["target"]["position"], msg["target"]["quaternion"])
 
-            result = run_solver(solver_name, SPEC, q0, T_target, rng, collect_steps=True)
+            # Run the blocking solve in the thread pool so other WS connections
+            # and API requests are not blocked during the solve.
+            result = await loop.run_in_executor(
+                _executor,
+                lambda: run_solver(solver_name, SPEC, q0, T_target, rng, collect_steps=True),
+            )
 
             await websocket.send_json({"type": "start", "solver": solver_name, "total_steps": len(result.steps)})
 
