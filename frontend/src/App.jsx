@@ -30,10 +30,11 @@ function App() {
   const trac = useLiveSolve('trac_ik_style');
   const multiStart = useLiveSolve('multi_start');
   const protein = useLiveSolve('protein_ik');
+  const protein_v2 = useLiveSolve('protein_ik_v2');
 
   const solveHooks = useMemo(() => ({
-    jacobian_dls: dls, ccd, fabrik, trac_ik_style: trac, multi_start: multiStart, protein_ik: protein,
-  }), [dls, ccd, fabrik, trac, multiStart, protein]);
+    jacobian_dls: dls, ccd, fabrik, trac_ik_style: trac, multi_start: multiStart, protein_ik: protein, protein_ik_v2: protein_v2,
+  }), [dls, ccd, fabrik, trac, multiStart, protein, protein_v2]);
 
   const focused = solveHooks[focusedSolver];
 
