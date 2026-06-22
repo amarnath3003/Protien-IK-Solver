@@ -75,8 +75,71 @@ def neutral_pose_energy(q: np.ndarray, q_neutral: np.ndarray) -> float:
     return float(np.sum((q - q_neutral) ** 2)) * 0.5
 
 
+def ramachandran_pair_energy(q: np.ndarray, pair_wells: list) -> float:
+    """2D joint-pair energy analogous to Ramachandran plot wells.
+    For each joint pair (i, i+1), finds the distance to the nearest
+    empirical well center in the 2D joint space."""
+    e = 0.0
+    for i in range(len(q) - 1):
+        wells = pair_wells[i]
+        pt = np.array([q[i], q[i+1]])
+        dists = np.sum((wells - pt)**2, axis=1)
+        e += float(np.min(dists))
+    return e * 2.0
+
+
+def go_contact_energy(chain: np.ndarray, native_contacts: list) -> float:
+    """Gō-model inspired native contact energy.
+    Pulls the chain toward a structurally favorable topology by penalizing
+    deviation from native distances for specific non-adjacent link pairs.
+    Takes a precomputed FK chain to avoid redundant computation."""
+    if not native_contacts:
+        return 0.0
+    e = 0.0
+    pts = chain[:, :3, 3]
+    for i, j, target_d in native_contacts:
+        # Distance between joint i and j origins
+        d = float(np.linalg.norm(pts[i] - pts[j]))
+        # Only penalize if they are further than target (attraction only)
+        if d > target_d:
+            e += (d - target_d)**2
+    return e * 5.0
+
+
+def frustration_index(spec: RobotSpec, q: np.ndarray, T_target: np.ndarray) -> np.ndarray:
+    """Frustration index for chaperone rescue.
+    Measures conflict between local preference (smoothness)
+    and global need (gradient toward target). Highly frustrated joints
+    are those that are locally trapped but globally required to move.
+    """
+    from app.core.kinematics import geometric_jacobian
+    n = len(q)
+    
+    # 1. Global need (Jacobian gradient toward target)
+    T_cur = end_effector_pose(spec, q)
+    err = pose_error(T_cur, T_target)
+    J = geometric_jacobian(spec, q)
+    global_dq = J.T @ err
+    q_global = q + global_dq
+    
+    # 2. Local preference (Smoothness pulls to neighbor average)
+    q_local_min = np.zeros(n)
+    for i in range(n):
+        if i == 0:
+            q_local_min[i] = q[1]
+        elif i == n - 1:
+            q_local_min[i] = q[n - 2]
+        else:
+            q_local_min[i] = (q[i - 1] + q[i + 1]) / 2.0
+            
+    # Frustration: absolute difference between where local and global want to go
+    return np.abs(q_local_min - q_global)
+
+
 def total_energy_fast(spec: RobotSpec, q: np.ndarray, T_target: np.ndarray,
-                       w_target: float, w_limit: float, w_collision: float, w_smooth: float) -> float:
+                       w_target: float, w_limit: float, w_collision: float, w_smooth: float,
+                       w_ramo: float = 0.0, pair_wells: list = None,
+                       w_go: float = 0.0, native_contacts: list = None) -> float:
     """Combined energy that computes the forward-kinematics chain exactly
     once and derives both target_energy and collision_energy from it,
     instead of each calling its own independent FK pass. Profiling showed
@@ -99,4 +162,8 @@ def total_energy_fast(spec: RobotSpec, q: np.ndarray, T_target: np.ndarray,
         e += w_collision * _collision_energy_from_distance(d_min)
     if w_smooth > 0:
         e += w_smooth * neighbor_smoothness_energy(q)
+    if w_ramo > 0 and pair_wells is not None:
+        e += w_ramo * ramachandran_pair_energy(q, pair_wells)
+    if w_go > 0 and native_contacts is not None:
+        e += w_go * go_contact_energy(chain, native_contacts)
     return e
