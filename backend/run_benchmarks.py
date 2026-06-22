@@ -3,19 +3,18 @@ from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
-solvers = [
-    "protein_ik", "multi_start", "jacobian_dls", "fabrik", "ccd"
-]
+solvers_res = client.get("/api/solvers")
+solvers = [s["id"] for s in solvers_res.json()]
 
 scenarios = ["open_space", "near_singular", "cluttered"]
 
-print("# Protein IK Upgrade Benchmark Results\n")
+print("# Protein IK Upgrade Benchmark Results (All Solvers)\n")
 
 for scenario in scenarios:
     print(f"## Scenario: {scenario}")
     res = client.post("/api/benchmark", json={
         "solvers": solvers,
-        "n_trials": 20,
+        "n_trials": 100,
         "scenario": scenario,
         "seed": 42
     })
