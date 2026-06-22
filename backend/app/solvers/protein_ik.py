@@ -305,11 +305,19 @@ def solve_protein_ik(
     search_radius = 0.5  # shrinks over the course of stage 3
     radius_decay = 0.985
     rescues_used = 0
-    cur_energy = _total_energy(spec, q, T_target, w_target=3.0, w_limit=1.0, w_collision=2.0, w_smooth=0.3)
+    cur_energy = _total_energy(spec, q, T_target, w_target=3.0, w_limit=1.0, w_collision=2.0, w_smooth=0.3,
+                               w_ramo=w_ramo, pair_wells=rotamer_lib.pair_well_centers if rotamer_lib else None,
+                               w_go=w_go, native_contacts=rotamer_lib.native_contacts if rotamer_lib else None)
     rotamer_lib = get_or_build_library(spec) if use_rotamer_bias else None
 
     while it < max_iters and not success:
         it += 1
+
+        # Metropolis temperature schedule: cools exponentially from T0 to T_final
+        T0 = 0.3
+        T_final = 0.01
+        progress_frac = min(it / max_iters, 1.0)
+        T_current = T0 * (T_final / T0) ** progress_frac
 
         # narrowing local search: try a small perturbation per joint,
         # keep if it improves total energy (coordinate-wise local descent
@@ -360,8 +368,10 @@ def solve_protein_ik(
                     cand = np.clip(q[i] + rng.uniform(-search_radius, search_radius),
                                     spec.joint_limits[i, 0], spec.joint_limits[i, 1])
                 q_try = q.copy(); q_try[i] = cand
-                e_try = _total_energy(spec, q_try, T_target, 3.0, 1.0, 2.0, 0.3)
-                if e_try < cur_energy:
+                e_try = _total_energy(spec, q_try, T_target, 3.0, 1.0, 2.0, 0.3,
+                                      w_ramo=w_ramo, pair_wells=rotamer_lib.pair_well_centers if rotamer_lib else None,
+                                      w_go=w_go, native_contacts=rotamer_lib.native_contacts if rotamer_lib else None)
+                if e_try < cur_energy or rng.uniform() < np.exp(-(e_try - cur_energy) / max(T_current, 1e-6)):
                     q = q_try
                     cur_energy = e_try
 
@@ -373,7 +383,9 @@ def solve_protein_ik(
         JJt = J @ J.T
         dq = J.T @ np.linalg.solve(JJt + (0.05 ** 2) * np.eye(6), err)
         q = spec.clip(q + dq)
-        cur_energy = _total_energy(spec, q, T_target, 3.0, 1.0, 2.0, 0.3)  # refresh after gradient step
+        cur_energy = _total_energy(spec, q, T_target, 3.0, 1.0, 2.0, 0.3,
+                                   w_ramo=w_ramo, pair_wells=rotamer_lib.pair_well_centers if rotamer_lib else None,
+                                   w_go=w_go, native_contacts=rotamer_lib.native_contacts if rotamer_lib else None)  # refresh after gradient step
 
         search_radius *= radius_decay
 
@@ -420,7 +432,8 @@ def solve_protein_ik(
                     # sensitivity) joint -- contiguous, not scattered,
                     # since real chaperone action unfolds a connected
                     # region of the chain, not arbitrary scattered residues
-                    contributions = _per_joint_energy_contribution(spec, q, T_target)
+                    from app.solvers.protein_energy import frustration_index
+                    contributions = frustration_index(spec, q, T_target)
                     worst = int(np.argmax(contributions))
                     half = scope // 2
                     lo = max(0, worst - half)
@@ -449,7 +462,9 @@ def solve_protein_ik(
 
                 search_radius = 0.5  # reset funnel radius after a rescue
                 recent_energies = []
-                cur_energy = _total_energy(spec, q, T_target, 3.0, 1.0, 2.0, 0.3)
+                cur_energy = _total_energy(spec, q, T_target, 3.0, 1.0, 2.0, 0.3,
+                                           w_ramo=w_ramo, pair_wells=rotamer_lib.pair_well_centers if rotamer_lib else None,
+                                           w_go=w_go, native_contacts=rotamer_lib.native_contacts if rotamer_lib else None)
                 record(record_phase, energy=cur_energy)
 
     # ---------- STAGE 5: stability-checked termination ----------
