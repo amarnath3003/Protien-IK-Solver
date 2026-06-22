@@ -75,17 +75,44 @@ from app.solvers.rotamer_library import get_or_build_library, propose_conditiona
 
 
 def _total_energy(spec: RobotSpec, q: np.ndarray, T_target: np.ndarray,
-                   w_target: float, w_limit: float, w_collision: float, w_smooth: float,
-                   w_ramo: float = 0.0, pair_wells: list = None,
-                   w_go: float = 0.0, native_contacts: list = None) -> float:
-    return total_energy_fast(spec, q, T_target, w_target, w_limit, w_collision, w_smooth,
-                             w_ramo, pair_wells, w_go, native_contacts)
+                   w_target: float, w_limit: float, w_collision: float, w_smooth: float) -> float:
+    # Delegates to the FK-chain-sharing fast path (see protein_energy.py
+    # for why this matters: avoids computing forward kinematics twice per
+    # call, which profiling showed as a major cost in this solver's hot
+    # inner loop). Numerically identical to the naive sum of individual
+    # energy terms -- verified directly against the original
+    # implementation in tests before this delegation was introduced.
+    return total_energy_fast(spec, q, T_target, w_target, w_limit, w_collision, w_smooth)
 
 
+def _per_joint_energy_contribution(spec: RobotSpec, q: np.ndarray, T_target: np.ndarray) -> np.ndarray:
+    """Estimate each joint's contribution to the current total energy via
+    a one-sided finite-difference sensitivity: how much does releasing
+    (small perturbation of) this joint change the total energy. Used by
+    the stuck-rescue stage to find the 'misfolded' substructure -- the
+    joint(s) whose local state is most responsible for the current high
+    energy -- rather than restarting the whole chain blindly.
+
+    Uses Stage-3 weights (3, 1, 2, 0.3) so the worst-joint detection is
+    consistent with the objective Stage 3 is actually minimizing. The base
+    energy is computed once and reused across all joint perturbations,
+    rather than recomputing it N times redundantly.
+    """
+    n = spec.n_joints
+    W_TARGET, W_LIMIT, W_COLLISION, W_SMOOTH = 3.0, 1.0, 2.0, 0.3
+    base = _total_energy(spec, q, T_target, W_TARGET, W_LIMIT, W_COLLISION, W_SMOOTH)
+    contributions = np.zeros(n)
+    eps = 0.05
+    for i in range(n):
+        q_pert = q.copy()
+        q_pert[i] = np.clip(q_pert[i] + eps, spec.joint_limits[i, 0], spec.joint_limits[i, 1])
+        e_pert = _total_energy(spec, q_pert, T_target, W_TARGET, W_LIMIT, W_COLLISION, W_SMOOTH)
+        # large |change| means this joint strongly influences current energy
+        contributions[i] = abs(e_pert - base)
+    return contributions
 
 
-
-def solve_protein_ik_v2(
+def solve_protein_ik_v1(
     spec: RobotSpec,
     q0: np.ndarray,
     T_target: np.ndarray,
@@ -102,30 +129,8 @@ def solve_protein_ik_v2(
     max_rescues: int = 6,
     use_vectorial_folding: bool = False,
     use_rotamer_bias: bool = False,
-    w_ramo: float = 0.1,
-    w_go: float = 0.5,
 ) -> SolveResult:
     n = spec.n_joints
-    
-    if use_rotamer_bias or w_ramo > 0 or w_go > 0:
-        rotamer_lib = get_or_build_library(spec)
-    else:
-        rotamer_lib = None
-        
-    # Adaptive stage budgets (Contact Order analog)
-    from app.core.kinematics import geometric_jacobian
-    T_cur_initial = end_effector_pose(spec, q0)
-    reach_needed = float(np.linalg.norm(T_target[:3, 3]))
-    max_reach = float(np.sum(np.abs(spec.a) + np.abs(spec.d)))
-    reach_ratio = min(reach_needed / max_reach, 1.0)
-    
-    J_initial = geometric_jacobian(spec, q0)
-    s = np.linalg.svd(J_initial, compute_uv=False)
-    cond = s[0] / (s[-1] + 1e-6)
-    
-    difficulty_mult = 1.0 + min(reach_ratio, 1.0) + min(cond / 100.0, 1.0)
-    stage1_iters = int(stage1_iters * difficulty_mult)
-    stage2_iters = int(stage2_iters * difficulty_mult)
     q = q0.copy()
     q_neutral = np.zeros(n)  # mid-range neutral pose used by stage 1
     steps = []
@@ -305,19 +310,11 @@ def solve_protein_ik_v2(
     search_radius = 0.5  # shrinks over the course of stage 3
     radius_decay = 0.985
     rescues_used = 0
-    cur_energy = _total_energy(spec, q, T_target, w_target=3.0, w_limit=1.0, w_collision=2.0, w_smooth=0.3,
-                               w_ramo=w_ramo, pair_wells=rotamer_lib.pair_well_centers if rotamer_lib else None,
-                               w_go=w_go, native_contacts=rotamer_lib.native_contacts if rotamer_lib else None)
+    cur_energy = _total_energy(spec, q, T_target, w_target=3.0, w_limit=1.0, w_collision=2.0, w_smooth=0.3)
     rotamer_lib = get_or_build_library(spec) if use_rotamer_bias else None
 
     while it < max_iters and not success:
         it += 1
-
-        # Metropolis temperature schedule: cools exponentially from T0 to T_final
-        T0 = 0.3
-        T_final = 0.01
-        progress_frac = min(it / max_iters, 1.0)
-        T_current = T0 * (T_final / T0) ** progress_frac
 
         # narrowing local search: try a small perturbation per joint,
         # keep if it improves total energy (coordinate-wise local descent
@@ -368,10 +365,8 @@ def solve_protein_ik_v2(
                     cand = np.clip(q[i] + rng.uniform(-search_radius, search_radius),
                                     spec.joint_limits[i, 0], spec.joint_limits[i, 1])
                 q_try = q.copy(); q_try[i] = cand
-                e_try = _total_energy(spec, q_try, T_target, 3.0, 1.0, 2.0, 0.3,
-                                      w_ramo=w_ramo, pair_wells=rotamer_lib.pair_well_centers if rotamer_lib else None,
-                                      w_go=w_go, native_contacts=rotamer_lib.native_contacts if rotamer_lib else None)
-                if e_try < cur_energy or rng.uniform() < np.exp(-(e_try - cur_energy) / max(T_current, 1e-6)):
+                e_try = _total_energy(spec, q_try, T_target, 3.0, 1.0, 2.0, 0.3)
+                if e_try < cur_energy:
                     q = q_try
                     cur_energy = e_try
 
@@ -383,9 +378,7 @@ def solve_protein_ik_v2(
         JJt = J @ J.T
         dq = J.T @ np.linalg.solve(JJt + (0.05 ** 2) * np.eye(6), err)
         q = spec.clip(q + dq)
-        cur_energy = _total_energy(spec, q, T_target, 3.0, 1.0, 2.0, 0.3,
-                                   w_ramo=w_ramo, pair_wells=rotamer_lib.pair_well_centers if rotamer_lib else None,
-                                   w_go=w_go, native_contacts=rotamer_lib.native_contacts if rotamer_lib else None)  # refresh after gradient step
+        cur_energy = _total_energy(spec, q, T_target, 3.0, 1.0, 2.0, 0.3)  # refresh after gradient step
 
         search_radius *= radius_decay
 
@@ -432,8 +425,7 @@ def solve_protein_ik_v2(
                     # sensitivity) joint -- contiguous, not scattered,
                     # since real chaperone action unfolds a connected
                     # region of the chain, not arbitrary scattered residues
-                    from app.solvers.protein_energy import frustration_index
-                    contributions = frustration_index(spec, q, T_target)
+                    contributions = _per_joint_energy_contribution(spec, q, T_target)
                     worst = int(np.argmax(contributions))
                     half = scope // 2
                     lo = max(0, worst - half)
@@ -462,9 +454,7 @@ def solve_protein_ik_v2(
 
                 search_radius = 0.5  # reset funnel radius after a rescue
                 recent_energies = []
-                cur_energy = _total_energy(spec, q, T_target, 3.0, 1.0, 2.0, 0.3,
-                                           w_ramo=w_ramo, pair_wells=rotamer_lib.pair_well_centers if rotamer_lib else None,
-                                           w_go=w_go, native_contacts=rotamer_lib.native_contacts if rotamer_lib else None)
+                cur_energy = _total_energy(spec, q, T_target, 3.0, 1.0, 2.0, 0.3)
                 record(record_phase, energy=cur_energy)
 
     # ---------- STAGE 5: stability-checked termination ----------
