@@ -1,6 +1,8 @@
-import requests
+from app.main import app
+from fastapi.testclient import TestClient
 import json
-import time
+
+client = TestClient(app)
 
 solvers = [
     "protein_ik", "multi_start", "jacobian_dls"
@@ -12,7 +14,7 @@ print("# Protein IK Upgrade Benchmark Results\n")
 
 for scenario in scenarios:
     print(f"## Scenario: {scenario}")
-    res = requests.post("http://127.0.0.1:8000/api/benchmark", json={
+    res = client.post("/api/benchmark", json={
         "solvers": solvers,
         "n_trials": 100,
         "scenario": scenario,
