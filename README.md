@@ -1,4 +1,4 @@
-# 🧬 ProteinIK
+# 🧬 ProteinIK - IK solver inspired by protein folding
 
 [![CI](https://github.com/amarnath3003/Protien-IK---An-IK-Solver-inspired-by-protein-folding/actions/workflows/ci.yml/badge.svg)](https://github.com/amarnath3003/Protien-IK---An-IK-Solver-inspired-by-protein-folding/actions)
 
