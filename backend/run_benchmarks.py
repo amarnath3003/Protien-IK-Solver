@@ -25,12 +25,11 @@ for scenario in scenarios:
         data = res.json()
         print("| Solver | Success Rate | Mean Time (ms) | Mean Restarts |")
         print("|---|---|---|---|")
-        for solver_res in data:
-            name = solver_res['solver']
+        for solver_name, solver_res in data.items():
             sr = solver_res['success_rate'] * 100
             mt = solver_res['mean_time_ms']
             restarts = solver_res['mean_restarts']
-            print(f"| {name} | {sr:.1f}% | {mt:.1f} | {restarts:.1f} |")
+            print(f"| {solver_name} | {sr:.1f}% | {mt:.1f} | {restarts:.1f} |")
     else:
         print("Error:", res.text)
     print("\n")
