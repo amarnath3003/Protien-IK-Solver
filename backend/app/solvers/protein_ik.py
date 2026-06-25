@@ -240,7 +240,6 @@ def solve_protein_ik_v2(
         from app.core.kinematics import geometric_jacobian
         n_proximal = max(1, n - 3)
         proximal = list(range(0, n_proximal))
-        distal = list(range(n_proximal, n))
 
         # Phase A: proximal domain folds first, in isolation, POSITION
         # ONLY (orientation is a distal-domain concern, mirroring how
@@ -277,7 +276,6 @@ def solve_protein_ik_v2(
         # residual adjustment budget retained below, mirroring that real
         # domains aren't perfectly rigid post-folding, just much more
         # stable than not-yet-folded regions).
-        anchor_q = q[proximal].copy()
 
         # Phase C: distal domain folds relative to the anchor -- full
         # pose (position fine-tune + orientation), distal joints only,

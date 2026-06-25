@@ -63,12 +63,12 @@ import numpy as np
 import time
 
 from app.core.kinematics import (
-    RobotSpec, forward_kinematics_chain, end_effector_pose, pose_error,
+    RobotSpec, end_effector_pose, pose_error,
     self_collision_min_distance,
 )
 from app.core.types import SolveResult, SolveStep
 from app.solvers.protein_energy import (
-    target_energy, joint_limit_energy, collision_energy,
+    joint_limit_energy,
     neighbor_smoothness_energy, neutral_pose_energy, total_energy_fast,
 )
 from app.solvers.rotamer_library import get_or_build_library, propose_conditional
@@ -245,7 +245,6 @@ def solve_protein_ik_v1(
         from app.core.kinematics import geometric_jacobian
         n_proximal = max(1, n - 3)
         proximal = list(range(0, n_proximal))
-        distal = list(range(n_proximal, n))
 
         # Phase A: proximal domain folds first, in isolation, POSITION
         # ONLY (orientation is a distal-domain concern, mirroring how
@@ -282,7 +281,6 @@ def solve_protein_ik_v1(
         # residual adjustment budget retained below, mirroring that real
         # domains aren't perfectly rigid post-folding, just much more
         # stable than not-yet-folded regions).
-        anchor_q = q[proximal].copy()
 
         # Phase C: distal domain folds relative to the anchor -- full
         # pose (position fine-tune + orientation), distal joints only,

@@ -174,7 +174,6 @@ def propose_conditional(
     rest of stage 3's narrowing-search character), rather than the bias
     being either all-or-nothing.
     """
-    n = spec.n_joints
     if joint_i == 0:
         return float(np.clip(
             q[joint_i] + rng.uniform(-search_radius, search_radius),

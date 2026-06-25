@@ -12,11 +12,11 @@ import { useRef, useEffect } from 'react';
  * animates continuously while the solver is running, not just when a
  * new WebSocket step arrives.
  */
-export function EnergyFunnel({ posError = null, orientError = null, phase = '', status = 'idle' }) {
-  const W = 160, H = 200;
-  const rimY = 14, tipY = H - 14;
-  const rimHalfWidth = 60, tipHalfWidth = 4;
+const W = 160, H = 200;
+const rimY = 14, tipY = H - 14;
+const rimHalfWidth = 60, tipHalfWidth = 4;
 
+export function EnergyFunnel({ posError = null, orientError = null, phase = '', status = 'idle' }) {
   // Accumulated time for smooth animated jitter
   const timeRef  = useRef(0);
   const circleRef = useRef(null);

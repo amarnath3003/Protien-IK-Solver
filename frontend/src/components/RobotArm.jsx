@@ -9,7 +9,7 @@
  *
  * Result: buttery 60 fps animation with zero GC pressure and zero React overhead.
  */
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import {
@@ -45,8 +45,10 @@ export function RobotArm({ q, accentColor = '#6FFFB0', glowCollision = true, sca
   // Keep latest prop values accessible inside useFrame without re-subscribing
   const qRef           = useRef(q);
   const accentRef      = useRef(accentColor);
-  qRef.current         = q;
-  accentRef.current    = accentColor;
+  useEffect(() => {
+    qRef.current         = q;
+    accentRef.current    = accentColor;
+  }, [q, accentColor]);
 
   // Mutable lerped joint angles (plain array, no React state)
   const lerpedQ = useRef([...IDLE_Q]);
