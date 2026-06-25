@@ -4,11 +4,14 @@ export const SOLVERS = {
   fabrik: { name: 'FABRIK', short: 'FABRIK', color: '#5B6B66', family: 'classical' },
   trac_ik_style: { name: 'TRAC-IK style', short: 'TRAC-IK', color: '#E8B95C', family: 'production' },
   multi_start: { name: 'Multi-start', short: 'Multi-start', color: '#E8B95C', family: 'production' },
-  protein_ik: { name: 'ProteinIK', short: 'ProteinIK', color: '#FF007F', family: 'protein' },
+  protein_ik: { name: 'ProteinIK V1', short: 'ProIK v1', color: '#B30059', family: 'protein' },
+  protein_ik_v2: { name: 'ProteinIK V2', short: 'ProIK v2', color: '#FF007F', family: 'protein' },
+  protein_ik_v3: { name: 'ProteinIK V3', short: 'ProIK v3', color: '#FF2D95', family: 'protein' },
+  protein_ik_v4: { name: 'ProteinIK V4', short: 'ProIK v4', color: '#FF5CAD', family: 'protein' },
 };
 
 export const SOLVER_ORDER = [
-  'jacobian_dls', 'ccd', 'fabrik', 'trac_ik_style', 'multi_start', 'protein_ik',
+  'jacobian_dls', 'ccd', 'fabrik', 'trac_ik_style', 'multi_start', 'protein_ik', 'protein_ik_v2', 'protein_ik_v3', 'protein_ik_v4'
 ];
 
 export const SCENARIOS = {
@@ -26,6 +29,10 @@ export const PHASE_LABELS = {
   iam_unfold_3: 'IAM rescue (3 joints)',
   iam_unfold_5: 'IAM rescue (5 joints)',
   iam_full_unfold: 'IAM full unfold',
+  funnel_lm_endgame: 'LM endgame (downhill)',
+  chaperone_rescue_1: 'chaperone rescue (1 joint)',
+  chaperone_rescue_3: 'chaperone rescue (3 joints)',
+  chaperone_rescue_5: 'chaperone rescue (5 joints)',
   full_reseed_after_exhausted_rescue: 'full reseed',
   stability_check_passed: 'stability check — passed',
   stability_check_failed: 'stability check — failed',
