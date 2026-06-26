@@ -4,11 +4,18 @@ export const SOLVERS = {
   fabrik: { name: 'FABRIK', short: 'FABRIK', color: '#5B6B66', family: 'classical' },
   trac_ik_style: { name: 'TRAC-IK style', short: 'TRAC-IK', color: '#E8B95C', family: 'production' },
   multi_start: { name: 'Multi-start', short: 'Multi-start', color: '#E8B95C', family: 'production' },
-  protein_ik: { name: 'ProteinIK', short: 'ProteinIK', color: '#FF007F', family: 'protein' },
+  protein_ik: { name: 'ProteinIK (V1)', short: 'ProIK v1', color: '#FF007F', family: 'protein' },
+  protein_homotopy: {
+    name: 'ProteinIK Homotopy (CCH-IK)',
+    short: 'CCH-IK',
+    color: '#00D4AA',          // distinct teal — V5 research solver
+    family: 'protein',
+  },
 };
 
 export const SOLVER_ORDER = [
-  'jacobian_dls', 'ccd', 'fabrik', 'trac_ik_style', 'multi_start', 'protein_ik',
+  'jacobian_dls', 'ccd', 'fabrik', 'trac_ik_style', 'multi_start',
+  'protein_ik', 'protein_homotopy',
 ];
 
 export const SCENARIOS = {
@@ -33,6 +40,9 @@ export const PHASE_LABELS = {
   ccd_sweep: 'CCD sweep',
   fabrik_pass: 'FABRIK pass',
   dls_attempt: 'gradient attempt',
+  // CCH-IK phases
+  cch_lambda_advance: 'λ advancing — low conflict',
+  cch_lambda_hold:    'λ held — conflict detected',
 };
 
 export function phaseLabel(phase) {

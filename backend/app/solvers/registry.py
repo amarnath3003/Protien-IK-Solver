@@ -21,6 +21,7 @@ from app.solvers.fabrik import solve_fabrik
 from app.solvers.trac_ik_style import solve_trac_ik
 from app.solvers.multi_start import solve_multi_start
 from app.solvers.protein_ik import solve_protein_ik
+from app.solvers.protein_homotopy import solve_protein_homotopy
 
 
 def _wrap_no_rng(fn) -> Callable:
@@ -41,7 +42,11 @@ SOLVER_REGISTRY: dict[str, Callable[..., SolveResult]] = {
     "fabrik": _wrap_no_rng(solve_fabrik),
     "trac_ik_style": _wrap_rng(solve_trac_ik),
     "multi_start": _wrap_rng(solve_multi_start),
-    "protein_ik": _wrap_rng(solve_protein_ik),
+    "protein_ik":         _wrap_rng(solve_protein_ik),
+    "protein_homotopy":   _wrap_rng(solve_protein_homotopy),
+    # protein_fast (V4) and protein_raw (V6) — implementations pending
+    # "protein_fast": _wrap_rng(solve_protein_fast),
+    # "protein_raw":  _wrap_rng(solve_protein_raw),
 }
 
 SOLVER_DISPLAY_NAMES: dict[str, str] = {
@@ -50,7 +55,10 @@ SOLVER_DISPLAY_NAMES: dict[str, str] = {
     "fabrik": "FABRIK",
     "trac_ik_style": "TRAC-IK style",
     "multi_start": "Multi-start",
-    "protein_ik": "ProteinIK",
+    "protein_ik":       "ProteinIK (V1)",
+    "protein_homotopy": "ProteinIK Homotopy (CCH-IK)",
+    # "protein_fast":   "ProteinIK Fast (V4)",
+    # "protein_raw":    "ProteinIK Raw Biology (V6)",
 }
 
 
