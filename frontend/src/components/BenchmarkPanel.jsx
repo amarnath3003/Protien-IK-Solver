@@ -32,7 +32,7 @@ export function BenchmarkPanel({ results, scenario, onScenarioChange, loading, o
 
       {!results && !loading && (
         <p className="benchmark-panel__empty">
-          Run a batch to compare success rate, solve time, and self-collision behavior across all six solvers on identical targets.
+          Run a batch to compare success rate, solve time, and self-collision behavior across all solvers on identical targets.
         </p>
       )}
 

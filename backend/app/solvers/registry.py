@@ -22,6 +22,8 @@ from app.solvers.trac_ik_style import solve_trac_ik
 from app.solvers.multi_start import solve_multi_start
 from app.solvers.protein_ik import solve_protein_ik
 from app.solvers.protein_homotopy import solve_protein_homotopy
+from app.solvers.fixed_lambda_ik import solve_fixed_lambda_ik
+from app.solvers.protein_fast import solve_protein_fast
 
 
 def _wrap_no_rng(fn) -> Callable:
@@ -43,9 +45,10 @@ SOLVER_REGISTRY: dict[str, Callable[..., SolveResult]] = {
     "trac_ik_style": _wrap_rng(solve_trac_ik),
     "multi_start": _wrap_rng(solve_multi_start),
     "protein_ik":         _wrap_rng(solve_protein_ik),
+    "fixed_lambda_ik":    _wrap_rng(solve_fixed_lambda_ik),
     "protein_homotopy":   _wrap_rng(solve_protein_homotopy),
-    # protein_fast (V4) and protein_raw (V6) — implementations pending
-    # "protein_fast": _wrap_rng(solve_protein_fast),
+    "protein_fast":       _wrap_rng(solve_protein_fast),
+    # protein_raw (V6) — implementation pending
     # "protein_raw":  _wrap_rng(solve_protein_raw),
 }
 
@@ -56,8 +59,9 @@ SOLVER_DISPLAY_NAMES: dict[str, str] = {
     "trac_ik_style": "TRAC-IK style",
     "multi_start": "Multi-start",
     "protein_ik":       "ProteinIK (V1)",
+    "fixed_lambda_ik":  "Fixed-λ Homotopy (Baseline)",
     "protein_homotopy": "ProteinIK Homotopy (CCH-IK)",
-    # "protein_fast":   "ProteinIK Fast (V4)",
+    "protein_fast":     "ProteinIK Fast (V4)",
     # "protein_raw":    "ProteinIK Raw Biology (V6)",
 }
 

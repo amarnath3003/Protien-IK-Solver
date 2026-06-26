@@ -30,10 +30,14 @@ function App() {
   const trac = useLiveSolve('trac_ik_style');
   const multiStart = useLiveSolve('multi_start');
   const protein = useLiveSolve('protein_ik');
+  const proteinFast = useLiveSolve('protein_fast');
+  const fixedLambda = useLiveSolve('fixed_lambda_ik');
+  const proteinHomotopy = useLiveSolve('protein_homotopy');
 
   const solveHooks = useMemo(() => ({
     jacobian_dls: dls, ccd, fabrik, trac_ik_style: trac, multi_start: multiStart, protein_ik: protein,
-  }), [dls, ccd, fabrik, trac, multiStart, protein]);
+    protein_fast: proteinFast, fixed_lambda_ik: fixedLambda, protein_homotopy: proteinHomotopy,
+  }), [dls, ccd, fabrik, trac, multiStart, protein, proteinFast, fixedLambda, proteinHomotopy]);
 
   const focused = solveHooks[focusedSolver];
 
@@ -112,7 +116,7 @@ function App() {
       <main className="app-main">
         <section className="solve-controls">
           <button className="run-button run-button--primary" onClick={solveAll}>
-            solve a new target — all six solvers
+            solve a new target — all solvers
           </button>
           <span className="solve-controls__hint">
             Generates one random reachable pose and streams every solver's attempt live, side by side.

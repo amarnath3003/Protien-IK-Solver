@@ -5,17 +5,29 @@ export const SOLVERS = {
   trac_ik_style: { name: 'TRAC-IK style', short: 'TRAC-IK', color: '#E8B95C', family: 'production' },
   multi_start: { name: 'Multi-start', short: 'Multi-start', color: '#E8B95C', family: 'production' },
   protein_ik: { name: 'ProteinIK (V1)', short: 'ProIK v1', color: '#FF007F', family: 'protein' },
+  fixed_lambda_ik: {
+    name: 'Fixed-λ Homotopy (Baseline)',
+    short: 'Fixed-λ',
+    color: '#8B9E9A',
+    family: 'baseline',
+  },
   protein_homotopy: {
     name: 'ProteinIK Homotopy (CCH-IK)',
     short: 'CCH-IK',
     color: '#00D4AA',          // distinct teal — V5 research solver
     family: 'protein',
   },
+  protein_fast: {
+    name: 'ProteinIK Fast (V4)',
+    short: 'ProIK Fast',
+    color: '#9D00FF',          // purple for speed/fast variants
+    family: 'protein',
+  },
 };
 
 export const SOLVER_ORDER = [
   'jacobian_dls', 'ccd', 'fabrik', 'trac_ik_style', 'multi_start',
-  'protein_ik', 'protein_homotopy',
+  'protein_ik', 'protein_fast', 'fixed_lambda_ik', 'protein_homotopy',
 ];
 
 export const SCENARIOS = {
