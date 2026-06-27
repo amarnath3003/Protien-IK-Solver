@@ -33,12 +33,49 @@ COMPONENT_C = True   # geometric warm-start seed
 # ---------------------------------------------------------------------------
 # Hyperparameters (tuned on Puma560 6-DOF)
 # ---------------------------------------------------------------------------
-CONFLICT_THRESHOLD = 0.2   # C above this → hold λ
-DELTA_LAMBDA       = 0.04  # λ step per iteration when conflict is low
+CONFLICT_THRESHOLD = 0.3   # C above this → hold λ
+DELTA_LAMBDA       = 0.05  # λ step per iteration when conflict is low
 ORIENT_WEIGHT      = 0.3   # orientation weight in combined error
-MAX_ITERS          = 250   # per-trajectory iteration budget
-N_RESTARTS         = 2     # random restarts after primary attempt
-FORCE_ADVANCE_AFTER = 30   # force λ advance if stuck for this many iters
+MAX_ITERS          = 400   # per-trajectory iteration budget
+N_RESTARTS         = 3     # random restarts after primary attempt
+FORCE_ADVANCE_AFTER = 25   # force λ advance if stuck for this many iters
+LM_ENDGAME_THRESH  = 0.05  # switch to LM polish when pos_err < this (metres)
+
+
+# ---------------------------------------------------------------------------
+# LM endgame helper (shared with homotopy solver for fair comparison)
+# ---------------------------------------------------------------------------
+
+def _fast_pose_jac_fl(spec, q):
+    from app.core.kinematics import forward_kinematics_chain
+    chain = forward_kinematics_chain(spec, q)
+    n = spec.n_joints; pose = chain[n]
+    z = chain[:n, :3, 2]; p = chain[:n, :3, 3]; d = chain[n, :3, 3] - p
+    J = np.empty((6, n))
+    J[0,:] = z[:,1]*d[:,2] - z[:,2]*d[:,1]
+    J[1,:] = z[:,2]*d[:,0] - z[:,0]*d[:,2]
+    J[2,:] = z[:,0]*d[:,1] - z[:,1]*d[:,0]
+    J[3:,:] = z.T
+    return pose, J
+
+def _lm_polish_fl(spec, q0, T_target, pos_tol, ori_tol, max_steps=20, lam0=0.05):
+    from app.core.kinematics import pose_error as _pe
+    q = q0.copy()
+    pose, J = _fast_pose_jac_fl(spec, q)
+    err = _pe(pose, T_target); lam = lam0
+    for _ in range(max_steps):
+        pe = float(np.linalg.norm(err[:3])); oe = float(np.linalg.norm(err[3:]))
+        if pe < pos_tol and oe < ori_tol: return q, True
+        dq = J.T @ np.linalg.solve(J @ J.T + (lam**2)*np.eye(6), err)
+        qt = spec.clip(q + dq)
+        pt, Jt = _fast_pose_jac_fl(spec, qt); et = _pe(pt, T_target)
+        if np.linalg.norm(et) < np.linalg.norm(err):
+            q, J, err, lam = qt, Jt, et, max(lam*0.5, 1e-4)
+        else:
+            lam = min(lam*2.5, 2.0)
+            if lam >= 2.0: break
+    pe = float(np.linalg.norm(err[:3])); oe = float(np.linalg.norm(err[3:]))
+    return q, (pe < pos_tol and oe < ori_tol)
 
 
 # ---------------------------------------------------------------------------
@@ -109,6 +146,13 @@ def _solve_single(
         alpha = backtracking_line_search(spec, q, g, T_target, lambda_)
         q = spec.clip(q - alpha * g)
 
+        # ---- LM endgame: fast convergence once in basin -------------------
+        if lambda_ >= 0.8 and pos_e < LM_ENDGAME_THRESH:
+            q_lm, lm_conv = _lm_polish_fl(spec, q, T_target, pos_tol, ori_tol)
+            if lm_conv and lambda_ >= 1.0:
+                return q_lm, best_err, True, it + 1, C_final, lambda_, steps_out
+            q = q_lm
+
         # ---- track best solution -------------------------------------------
         err_scalar = pos_e + ORIENT_WEIGHT * ori_e
         if err_scalar < best_err:
@@ -130,9 +174,14 @@ def _solve_single(
                 energy=float(lambda_),   # energy slot holds λ for visualisation
             ))
 
-        # ---- convergence check (only valid once constraints fully active) --
+        # ---- convergence check -------------------------------------------
         if lambda_ >= 1.0 and pos_e < pos_tol and ori_e < ori_tol:
             return best_q, best_err, True, it + 1, C_final, lambda_, steps_out
+
+        if it == max_iters - 1:
+            q_lm, lm_conv = _lm_polish_fl(spec, best_q, T_target, pos_tol, ori_tol, max_steps=30)
+            if lm_conv:
+                return q_lm, best_err, True, max_iters, C_final, lambda_, steps_out
 
     return best_q, best_err, False, max_iters, C_final, lambda_, steps_out
 
