@@ -71,14 +71,68 @@ COMPONENT_B = True   # gradient surgery (PCGrad projection)       [reduces inter
 COMPONENT_C = True   # geometric warm-start seed                  [standard practice]
 
 # ---------------------------------------------------------------------------
-# Hyperparameters (tuned on Puma560 6-DOF)
+# Hyperparameters
 # ---------------------------------------------------------------------------
-CONFLICT_THRESHOLD = 0.2   # C above this → hold λ
-DELTA_LAMBDA       = 0.04  # λ step per iteration when conflict is low
-ORIENT_WEIGHT      = 0.3   # orientation weight in combined error
-MAX_ITERS          = 250   # per-trajectory iteration budget
-N_RESTARTS         = 2     # random restarts after primary attempt
-FORCE_ADVANCE_AFTER = 30   # force λ advance if stuck for this many iters
+CONFLICT_THRESHOLD  = 0.3   # C above this → hold λ  (loosened from 0.2 to allow more advancement)
+DELTA_LAMBDA        = 0.05  # λ step per iteration when conflict is low
+ORIENT_WEIGHT       = 0.3   # orientation weight in combined error
+MAX_ITERS           = 400   # per-trajectory iteration budget
+N_RESTARTS          = 3     # random restarts after primary attempt
+FORCE_ADVANCE_AFTER = 25    # force λ advance if stuck this many iters
+LM_ENDGAME_THRESH   = 0.05  # switch to LM polish when pos_err < this (metres)
+
+
+# ---------------------------------------------------------------------------
+# Fast fused FK+Jacobian (one chain pass, no np.cross overhead)
+# ---------------------------------------------------------------------------
+
+def _fast_pose_jac(spec: RobotSpec, q: np.ndarray):
+    """Returns (end_effector_4x4, geometric_Jacobian_6xN) from one FK pass."""
+    from app.core.kinematics import forward_kinematics_chain
+    chain = forward_kinematics_chain(spec, q)
+    n = spec.n_joints
+    pose = chain[n]
+    z = chain[:n, :3, 2]          # rotation axes
+    p = chain[:n, :3, 3]          # joint origins
+    d = chain[n, :3, 3] - p       # lever arms to end-effector
+    J = np.empty((6, n))
+    J[0, :] = z[:, 1] * d[:, 2] - z[:, 2] * d[:, 1]
+    J[1, :] = z[:, 2] * d[:, 0] - z[:, 0] * d[:, 2]
+    J[2, :] = z[:, 0] * d[:, 1] - z[:, 1] * d[:, 0]
+    J[3:, :] = z.T
+    return pose, J
+
+
+def _lm_polish(spec: RobotSpec, q0: np.ndarray, T_target: np.ndarray,
+               pos_tol: float, ori_tol: float,
+               max_steps: int = 20, lam0: float = 0.05):
+    """Levenberg-Marquardt endgame: fast convergence once we're close.
+    Identical in structure to V4's LM polish; runs after homotopy places
+    us in the basin of attraction.  Returns (q, converged).
+    """
+    q = q0.copy()
+    pose, J = _fast_pose_jac(spec, q)
+    err = pose_error(pose, T_target)
+    lam = lam0
+    for _ in range(max_steps):
+        pos_e = float(np.linalg.norm(err[:3]))
+        ori_e = float(np.linalg.norm(err[3:]))
+        if pos_e < pos_tol and ori_e < ori_tol:
+            return q, True
+        dq = J.T @ np.linalg.solve(J @ J.T + (lam ** 2) * np.eye(6), err)
+        q_try = spec.clip(q + dq)
+        pose_t, J_t = _fast_pose_jac(spec, q_try)
+        err_t = pose_error(pose_t, T_target)
+        if (np.linalg.norm(err_t[:3]) + 0.3 * np.linalg.norm(err_t[3:])
+                < np.linalg.norm(err[:3]) + 0.3 * np.linalg.norm(err[3:])):
+            q, J, err, lam = q_try, J_t, err_t, max(lam * 0.5, 1e-4)
+        else:
+            lam = min(lam * 2.5, 2.0)
+            if lam >= 2.0:
+                break
+    pos_e = float(np.linalg.norm(err[:3]))
+    ori_e = float(np.linalg.norm(err[3:]))
+    return q, (pos_e < pos_tol and ori_e < ori_tol)
 
 
 # ---------------------------------------------------------------------------
@@ -166,6 +220,28 @@ def _solve_single(
         alpha = backtracking_line_search(spec, q, g, T_target, lambda_)
         q = spec.clip(q - alpha * g)
 
+        # ---- LM endgame: switch to fast LM once we're in the basin ----------
+        if lambda_ >= 0.8 and pos_e < LM_ENDGAME_THRESH:
+            q_lm, lm_conv = _lm_polish(spec, q, T_target, pos_tol, ori_tol)
+            T_lm = end_effector_pose(spec, q_lm)
+            err_lm = pose_error(T_lm, T_target)
+            pe_lm = float(np.linalg.norm(err_lm[:3]))
+            oe_lm = float(np.linalg.norm(err_lm[3:]))
+            sc_lm = pe_lm + ORIENT_WEIGHT * oe_lm
+            if sc_lm < best_err:
+                best_err = sc_lm
+                best_q   = q_lm.copy()
+            if lm_conv and lambda_ >= 1.0:
+                if collect_steps:
+                    steps_out.append(SolveStep(
+                        iteration=it_offset + it, q=q_lm.tolist(),
+                        pos_error=pe_lm, orient_error=oe_lm,
+                        min_self_distance=self_collision_min_distance(spec, q_lm),
+                        phase="cch_lm_endgame", energy=float(lambda_),
+                    ))
+                return best_q, best_err, True, it + 1, C_final, lambda_, steps_out
+            q = q_lm  # continue from LM result
+
         # ---- track best solution -------------------------------------------
         err_scalar = pos_e + ORIENT_WEIGHT * ori_e
         if err_scalar < best_err:
@@ -190,6 +266,12 @@ def _solve_single(
         # ---- convergence check (only valid once constraints fully active) --
         if lambda_ >= 1.0 and pos_e < pos_tol and ori_e < ori_tol:
             return best_q, best_err, True, it + 1, C_final, lambda_, steps_out
+
+        # ---- final LM sweep on best_q before giving up (end of budget) -----
+        if it == max_iters - 1:
+            q_lm, lm_conv = _lm_polish(spec, best_q, T_target, pos_tol, ori_tol, max_steps=30)
+            if lm_conv:
+                return q_lm, best_err, True, max_iters, C_final, lambda_, steps_out
 
     return best_q, best_err, False, max_iters, C_final, lambda_, steps_out
 
