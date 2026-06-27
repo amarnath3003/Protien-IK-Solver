@@ -50,6 +50,7 @@ import time
 
 from app.core.kinematics import (
     RobotSpec, end_effector_pose, pose_error, self_collision_min_distance,
+    geometric_jacobian,
 )
 from app.core.types import SolveResult, SolveStep
 from app.solvers.protein_homotopy.core import (
@@ -59,13 +60,15 @@ from app.solvers.protein_homotopy.core import (
     geometric_seed,
     e_target,
     e_constraints,
+    pcgrad_project,
 )
 
 # ---------------------------------------------------------------------------
 # Ablation switches (toggle for ablation study)
 # ---------------------------------------------------------------------------
-COMPONENT_A = True   # conflict-controlled λ advancement
-COMPONENT_C = True   # geometric warm-start seed
+COMPONENT_A = True   # conflict-controlled λ advancement          [the contribution]
+COMPONENT_B = True   # gradient surgery (PCGrad projection)       [reduces interference]
+COMPONENT_C = True   # geometric warm-start seed                  [standard practice]
 
 # ---------------------------------------------------------------------------
 # Hyperparameters (tuned on Puma560 6-DOF)
@@ -110,30 +113,30 @@ def _solve_single(
 
     for it in range(max_iters):
 
-        # ---- task gradient (analytical via Jacobian transpose) -------------
-        T_cur  = end_effector_pose(spec, q)
-        err_vec = pose_error(T_cur, T_target)       # ∈ ℝ⁶ task space
-        pos_e  = float(np.linalg.norm(err_vec[:3]))
-        ori_e  = float(np.linalg.norm(err_vec[3:]))
+        # ---- task gradient (analytical Jacobian — one FK pass) ---------------
+        T_cur   = end_effector_pose(spec, q)
+        err_vec = pose_error(T_cur, T_target)       # ∈ ℝ⁶  (p_target - p_cur, orient)
+        pos_e   = float(np.linalg.norm(err_vec[:3]))
+        ori_e   = float(np.linalg.norm(err_vec[3:]))
 
-        # Numerical Jacobian for g_target (6×n → n-vector in joint space)
-        n = spec.n_joints
-        J = np.zeros((6, n))
-        eps_fd = 1e-5
-        for i in range(n):
-            qp = q.copy(); qp[i] += eps_fd
-            T_p = end_effector_pose(spec, qp)
-            J[:, i] = (pose_error(T_p, T_target) - err_vec) / eps_fd
-        g_target = J.T @ err_vec                    # ∈ ℝⁿ joint space
+        # Analytical geometric Jacobian (replaces 6-FK FD loop).
+        # TRUE gradient of E_target w.r.t. q:
+        #   ∂E_target/∂q = -Jᵀ @ err_vec
+        # (err_vec points TOWARD target; gradient of squared-error points AWAY)
+        J        = geometric_jacobian(spec, q)
+        g_target = -J.T @ err_vec          # ∈ ℝⁿ  true gradient (uphill for E_target)
 
         # ---- constraint gradient (finite differences) ----------------------
-        g_constr = fd_constraint_gradient(spec, q)  # ∈ ℝⁿ
+        g_constr = fd_constraint_gradient(spec, q)  # ∈ ℝⁿ  true gradient (uphill for E_constr)
 
         # ---- full-vector conflict (Component A) ----------------------------
+        # Both g_target and g_constr are TRUE gradients (uphill).
+        # C > 0 → they oppose each other → hold λ
+        # C < 0 → they cooperate (aligned) → advance λ
         C = compute_conflict(g_target, g_constr)
         C_final = C
 
-        # ---- λ advancement -------------------------------------------------
+        # ---- λ advancement (Component A) ---------------------------------
         prev_lambda = lambda_
         if COMPONENT_A:
             if C < CONFLICT_THRESHOLD and lambda_ < 1.0:
@@ -141,16 +144,23 @@ def _solve_single(
                 iters_at_same_lambda = 0
             else:
                 iters_at_same_lambda += 1
-                # Force advance if stuck too long (prevents infinite λ=0 loops)
                 if iters_at_same_lambda >= FORCE_ADVANCE_AFTER and lambda_ < 1.0:
                     lambda_ = min(1.0, lambda_ + 0.5 * DELTA_LAMBDA)
                     iters_at_same_lambda = 0
         else:
-            # Fixed linear schedule for ablation (Component A off)
             lambda_ = min(1.0, (it + 1) / max_iters)
 
-        # ---- combined gradient (no surgery) --------------------------------
-        g = g_target + lambda_ * g_constr
+        # ---- gradient surgery (Component B) --------------------------------
+        # When conflict is high, project out the component of g_constr that
+        # directly opposes g_target, reducing gradient interference.
+        g_constr_used = (
+            pcgrad_project(g_constr, g_target)
+            if COMPONENT_B and C >= CONFLICT_THRESHOLD
+            else g_constr
+        )
+
+        # ---- combined TRUE gradient → descend via q -= α * g ---------------
+        g = g_target + lambda_ * g_constr_used
 
         # ---- Armijo backtracking step size ---------------------------------
         alpha = backtracking_line_search(spec, q, g, T_target, lambda_)

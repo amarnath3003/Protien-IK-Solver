@@ -12,6 +12,7 @@ import time
 
 from app.core.kinematics import (
     RobotSpec, end_effector_pose, pose_error, self_collision_min_distance,
+    geometric_jacobian,
 )
 from app.core.types import SolveResult, SolveStep
 from app.solvers.protein_homotopy.core import (
@@ -68,26 +69,21 @@ def _solve_single(
 
     for it in range(max_iters):
 
-        # ---- task gradient (analytical via Jacobian transpose) -------------
-        T_cur  = end_effector_pose(spec, q)
-        err_vec = pose_error(T_cur, T_target)       # ∈ ℝ⁶ task space
-        pos_e  = float(np.linalg.norm(err_vec[:3]))
-        ori_e  = float(np.linalg.norm(err_vec[3:]))
+        # ---- task gradient (analytical Jacobian — one FK pass) ---------------
+        T_cur   = end_effector_pose(spec, q)
+        err_vec = pose_error(T_cur, T_target)       # ∈ ℝ⁶
+        pos_e   = float(np.linalg.norm(err_vec[:3]))
+        ori_e   = float(np.linalg.norm(err_vec[3:]))
 
-        # Numerical Jacobian for g_target (6×n → n-vector in joint space)
-        n = spec.n_joints
-        J = np.zeros((6, n))
-        eps_fd = 1e-5
-        for i in range(n):
-            qp = q.copy(); qp[i] += eps_fd
-            T_p = end_effector_pose(spec, qp)
-            J[:, i] = (pose_error(T_p, T_target) - err_vec) / eps_fd
-        g_target = J.T @ err_vec                    # ∈ ℝⁿ joint space
+        # TRUE gradient of E_target: ∂E_target/∂q = -Jᵀ @ err_vec
+        J        = geometric_jacobian(spec, q)
+        g_target = -J.T @ err_vec          # ∈ ℝⁿ  true gradient (uphill for E_target)
 
         # ---- constraint gradient (finite differences) ----------------------
-        g_constr = fd_constraint_gradient(spec, q)  # ∈ ℝⁿ
+        g_constr = fd_constraint_gradient(spec, q)  # ∈ ℝⁿ  true gradient
 
         # ---- full-vector conflict (Component A) ----------------------------
+        # Both g_target and g_constr are TRUE gradients (uphill).
         C = compute_conflict(g_target, g_constr)
         C_final = C
 
@@ -103,10 +99,10 @@ def _solve_single(
                     lambda_ = min(1.0, lambda_ + 0.5 * DELTA_LAMBDA)
                     iters_at_same_lambda = 0
         else:
-            # Fixed linear schedule for ablation (Component A off)
+            # Fixed linear schedule (Component A off — ablation baseline)
             lambda_ = min(1.0, (it + 1) / max_iters)
 
-        # ---- combined gradient (no surgery) --------------------------------
+        # ---- combined TRUE gradient (no surgery — baseline has no Component B) --
         g = g_target + lambda_ * g_constr
 
         # ---- Armijo backtracking step size ---------------------------------
