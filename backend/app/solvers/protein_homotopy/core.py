@@ -15,6 +15,7 @@ import numpy as np
 
 from app.core.kinematics import (
     RobotSpec, end_effector_pose, pose_error, self_collision_min_distance,
+    geometric_jacobian,
 )
 from app.solvers.protein_energy import collision_energy, joint_limit_energy
 
@@ -127,6 +128,10 @@ def geometric_seed(spec: RobotSpec, q0: np.ndarray,
     Warm-start initialisation: fast unconstrained gradient descent on
     E_target only (λ=0) for `max_steps` steps.
 
+    Uses the analytical geometric Jacobian (one FK pass per step).
+    g_true = -J.T @ err_vec  is the TRUE gradient of E_target (uphill).
+    Descent step: q -= α * g_true  →  q += α * J.T @ err_vec
+
     This is standard IK practice — not claimed as biological.
     Returns the improved seed if it reduces task error, else q0.
     """
@@ -137,17 +142,46 @@ def geometric_seed(spec: RobotSpec, q0: np.ndarray,
     for _ in range(max_steps):
         T_cur = end_effector_pose(spec, q)
         err = pose_error(T_cur, T_target)
-        # Numerical Jacobian for task gradient (simple, avoids import cycle)
-        n = spec.n_joints
-        J = np.zeros((6, n))
-        eps = 1e-5
-        for i in range(n):
-            qp = q.copy(); qp[i] += eps
-            T_p = end_effector_pose(spec, qp)
-            J[:, i] = (pose_error(T_p, T_target) - err) / eps
-        g = J.T @ err
-        q = spec.clip(q - 0.05 * g)
+        # Analytical geometric Jacobian — one FK pass, no FD overhead
+        J = geometric_jacobian(spec, q)
+        # TRUE gradient of E_target = -J.T @ err_vec (negate the descent dir)
+        # Descent: q -= α * g_true  ⟺  q += α * J.T @ err
+        q = spec.clip(q + 0.05 * (J.T @ err))
 
     T_new = end_effector_pose(spec, q)
     e1 = float(np.linalg.norm(pose_error(T_new, T_target)[:3]))
     return q if e1 < e0 else q0.copy()
+
+
+# ---------------------------------------------------------------------------
+# Gradient surgery (Component B — PCGrad-style projection)
+# ---------------------------------------------------------------------------
+
+def pcgrad_project(g_constr: np.ndarray, g_target_true: np.ndarray,
+                   eps: float = 1e-8) -> np.ndarray:
+    """
+    PCGrad-style gradient surgery (Yu et al. NeurIPS 2020).
+
+    Both inputs are TRUE gradients (uphill directions):
+      g_target_true = -J.T @ err_vec   (gradient of E_target)
+      g_constr      = fd_constraint_gradient()  (gradient of E_constraints)
+
+    When g_constr and g_target point in OPPOSITE directions (dot < 0),
+    constraints directly oppose task progress.  We remove the opposing
+    component of g_constr — the part that climbs E_target — and keep only
+    the component orthogonal-to or aligned-with g_target.
+
+    Formally:
+        if g_constr · g_target < 0:
+            g_constr_proj = g_constr - (g_constr · g_target / ||g_target||²) * g_target
+        else:
+            g_constr_proj = g_constr   (already cooperative)
+
+    Honest claim: this is a heuristic.  It does not guarantee Pareto
+    optimality, but empirically reduces gradient interference.
+    """
+    dot = float(g_constr @ g_target_true)
+    if dot >= 0:
+        return g_constr  # cooperative or orthogonal — no surgery needed
+    norm_sq = float(g_target_true @ g_target_true) + eps
+    return g_constr - (dot / norm_sq) * g_target_true
