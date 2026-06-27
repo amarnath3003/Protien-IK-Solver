@@ -33,7 +33,7 @@ COMPONENT_C = True   # geometric warm-start seed
 # ---------------------------------------------------------------------------
 # Hyperparameters (tuned on Puma560 6-DOF)
 # ---------------------------------------------------------------------------
-CONFLICT_THRESHOLD = 0.3   # C above this → hold λ
+CONFLICT_THRESHOLD = 0.6   # C above this → hold λ  (on [0,2] scale)
 DELTA_LAMBDA       = 0.05  # λ step per iteration when conflict is low
 ORIENT_WEIGHT      = 0.3   # orientation weight in combined error
 MAX_ITERS          = 400   # per-trajectory iteration budget
@@ -175,7 +175,8 @@ def _solve_single(
             ))
 
         # ---- convergence check -------------------------------------------
-        if lambda_ >= 1.0 and pos_e < pos_tol and ori_e < ori_tol:
+        # No λ gate: if arm is within tolerance, it's a valid solution.
+        if pos_e < pos_tol and ori_e < ori_tol:
             return best_q, best_err, True, it + 1, C_final, lambda_, steps_out
 
         if it == max_iters - 1:

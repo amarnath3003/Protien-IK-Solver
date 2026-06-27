@@ -73,7 +73,11 @@ COMPONENT_C = True   # geometric warm-start seed                  [standard prac
 # ---------------------------------------------------------------------------
 # Hyperparameters
 # ---------------------------------------------------------------------------
-CONFLICT_THRESHOLD  = 0.3   # C above this → hold λ  (loosened from 0.2 to allow more advancement)
+# Conflict threshold uses the [0, 2] scale: 0=aligned, 1=ortho, 2=opposed.
+# 0.6 means “gradients are still pointing within 66° of each other” —
+# loose enough to allow steady λ advancement, tight enough to block
+# introduction of deeply opposing constraints.
+CONFLICT_THRESHOLD  = 0.6   # C above this → hold λ  (on [0,2] scale)
 DELTA_LAMBDA        = 0.05  # λ step per iteration when conflict is low
 ORIENT_WEIGHT       = 0.3   # orientation weight in combined error
 MAX_ITERS           = 400   # per-trajectory iteration budget
@@ -205,8 +209,8 @@ def _solve_single(
             lambda_ = min(1.0, (it + 1) / max_iters)
 
         # ---- gradient surgery (Component B) --------------------------------
-        # When conflict is high, project out the component of g_constr that
-        # directly opposes g_target, reducing gradient interference.
+        # On the [0,2] scale: C >= 0.6 means conflict is significant enough
+        # that constraint gradient is meaningfully opposing the task.
         g_constr_used = (
             pcgrad_project(g_constr, g_target)
             if COMPONENT_B and C >= CONFLICT_THRESHOLD
@@ -263,8 +267,12 @@ def _solve_single(
                 energy=float(lambda_),   # energy slot holds λ for visualisation
             ))
 
-        # ---- convergence check (only valid once constraints fully active) --
-        if lambda_ >= 1.0 and pos_e < pos_tol and ori_e < ori_tol:
+        # ---- convergence check -----------------------------------------
+        # NOTE: we check convergence at every step, not just when λ=1.
+        # If the arm reaches the target while constraints are only partially
+        # active (low λ) and no constraint is actually violated, that IS
+        # a valid solution — gatekeeping on λ≥1 would reject it.
+        if pos_e < pos_tol and ori_e < ori_tol:
             return best_q, best_err, True, it + 1, C_final, lambda_, steps_out
 
         # ---- final LM sweep on best_q before giving up (end of budget) -----

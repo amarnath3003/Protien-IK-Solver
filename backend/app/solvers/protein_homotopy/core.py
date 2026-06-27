@@ -27,25 +27,30 @@ from app.solvers.protein_energy import collision_energy, joint_limit_energy
 def compute_conflict(g_target: np.ndarray, g_constr: np.ndarray,
                      eps: float = 1e-8) -> float:
     """
-    Full-vector cosine similarity between the task gradient and the
-    constraint gradient, both ∈ ℝⁿ (joint space).
+    Gradient conflict index C ∈ [0, 2] — full joint-space cosine distance.
 
-    Returns C ∈ [-1, +1]:
-      C = -1  gradients fully aligned  → constraints cooperate with task
-      C =  0  orthogonal              → independent objectives
-      C = +1  fully opposed           → maximum conflict; hold λ
+    Convention (matches 1 - cosine):
+      C ≈ 0  → gradients aligned      → constraints cooperate   → advance λ
+      C ≈ 1  → gradients orthogonal   → independent objectives
+      C ≈ 2  → gradients fully opposed → maximum conflict        → hold λ
 
-    Using the full joint-space vector (not per-element scalars) gives a
-    continuous, informative measure. Per-element scalar cosines reduce to
-    ±1 (binary) because individual elements are scalars.
+    This is the 1-cosine distance, not signed cosine, because:
+    - Range [0, 2] is more intuitive than [-1, +1] for threshold reasoning
+    - "Advance λ when C < 0.6" reads naturally; signs require mental inversion
+    - Monotonically tracks conflict: 0 = perfect cooperation, 2 = total opposition
 
-    No Hessian interpretation is claimed. C is an empirical proxy for
-    objective incompatibility, not a convexity indicator.
+    Uses full joint-space vectors, not per-element scalars. Per-element
+    cosines are ±1 (binary) because scalar elements have no angular notion.
+
+    Honest claim: an empirical proxy for objective incompatibility, not
+    a convexity indicator or Hessian eigenvalue check.
     """
-    dot  = float(g_target @ g_constr)
-    norm = (float(np.linalg.norm(g_target)) *
-            float(np.linalg.norm(g_constr))) + eps
-    return -dot / norm   # negate so aligned = low C, conflicted = high C
+    norm_t = float(np.linalg.norm(g_target))
+    norm_c = float(np.linalg.norm(g_constr))
+    if norm_t < eps or norm_c < eps:
+        return 0.0   # one gradient vanishes → no conflict
+    cosine = float(g_target @ g_constr) / (norm_t * norm_c)
+    return 1.0 - cosine   # ∈ [0, 2]: 0=aligned, 1=ortho, 2=opposed
 
 
 # ---------------------------------------------------------------------------
