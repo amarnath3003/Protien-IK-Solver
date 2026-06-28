@@ -73,16 +73,27 @@ COMPONENT_C = True   # geometric warm-start seed                  [standard prac
 # ---------------------------------------------------------------------------
 # Hyperparameters
 # ---------------------------------------------------------------------------
-# Conflict threshold uses the [0, 2] scale: 0=aligned, 1=ortho, 2=opposed.
-# 0.6 means “gradients are still pointing within 66° of each other” —
-# loose enough to allow steady λ advancement, tight enough to block
-# introduction of deeply opposing constraints.
-CONFLICT_THRESHOLD  = 0.6   # C above this → hold λ  (on [0,2] scale)
-DELTA_LAMBDA        = 0.05  # λ step per iteration when conflict is low
+# Conflict threshold on [0, 2] scale: 0=aligned, 1=ortho, 2=opposed.
+CONFLICT_THRESHOLD  = 0.6   # C above this → hold λ
+
+# Exponential λ progression (Upgrade A):
+# delta(λ) = LAMBDA_MAX_STEP * exp(-LAMBDA_BETA * C)
+# At C=0 (full alignment): step = LAMBDA_MAX_STEP  (aggressive)
+# At C=THRESHOLD (0.6):   step ≈ LAMBDA_MAX_STEP * 0.09  (nearly stopped)
+# beta = ln(10) / 0.6 ≈ 3.84 gives a 10× range across [0, threshold]
+LAMBDA_MAX_STEP     = 0.10  # max λ step per iteration (when perfectly aligned)
+LAMBDA_BETA         = 3.84  # exponential decay rate for λ step vs. conflict
+
+# Conflict retreat (Upgrade B):
+# When stuck for CONFLICT_RETREAT_AFTER iters, take a deterministic constraint-
+# descent step on the most conflicted joints, then retract λ slightly.
+CONFLICT_RETREAT_AFTER  = 20    # iters before triggering retreat
+RETREAT_ALPHA           = 0.15  # step size for the constraint retreat move
+LAMBDA_RETRACT_FACTOR   = 0.90  # λ *= this on retreat (homotopy back-off)
+
 ORIENT_WEIGHT       = 0.3   # orientation weight in combined error
 MAX_ITERS           = 400   # per-trajectory iteration budget
 N_RESTARTS          = 3     # random restarts after primary attempt
-FORCE_ADVANCE_AFTER = 25    # force λ advance if stuck this many iters
 LM_ENDGAME_THRESH   = 0.05  # switch to LM polish when pos_err < this (metres)
 
 
@@ -152,13 +163,14 @@ def _solve_single(
     ori_tol: float,
     collect_steps: bool,
     it_offset: int,
-) -> tuple[np.ndarray, float, bool, int, float, float, list]:
+) -> tuple[np.ndarray, float, bool, int, float, float, float, list]:
     """
     One CCH-IK trajectory from seed q0.
 
     Returns
     -------
-    best_q, best_err, converged, iters_used, C_final, lambda_final, steps
+    best_q, best_err, converged, iters_used, C_final, lambda_final,
+    difficulty_score, steps
     """
     q        = q0.copy()
     lambda_  = 0.0
@@ -167,7 +179,8 @@ def _solve_single(
     C_final  = 0.0
     steps_out: list[SolveStep] = [] if collect_steps else []
 
-    iters_at_same_lambda = 0   # tracks consecutive iters without λ advance
+    iters_at_same_lambda = 0   # consecutive iters without λ advance
+    conflict_integral    = 0.0 # running sum of C — for difficulty_score
 
     for it in range(max_iters):
 
@@ -187,25 +200,49 @@ def _solve_single(
         # ---- constraint gradient (finite differences) ----------------------
         g_constr = fd_constraint_gradient(spec, q)  # ∈ ℝⁿ  true gradient (uphill for E_constr)
 
-        # ---- full-vector conflict (Component A) ----------------------------
-        # Both g_target and g_constr are TRUE gradients (uphill).
-        # C > 0 → they oppose each other → hold λ
-        # C < 0 → they cooperate (aligned) → advance λ
+        # ---- full-vector conflict ----------------------------------------
+        # Both TRUE gradients. C ∈ [0,2]: 0=aligned, 1=ortho, 2=opposed.
         C = compute_conflict(g_target, g_constr)
         C_final = C
+        conflict_integral += C  # accumulate for difficulty_score (Upgrade C)
 
-        # ---- λ advancement (Component A) ---------------------------------
+        # ---- λ advancement (Component A) — exponential step ----------------
+        # delta(λ) = LAMBDA_MAX_STEP * exp(-LAMBDA_BETA * C)
+        # Justification: when objectives strongly agree (C ≈ 0), the combined
+        # landscape is well-funneled — we can introduce constraints aggressively.
+        # When C approaches threshold, the step shrinks continuously toward 0.
+        # This replaces the binary if/else with a smooth, parameter-free schedule.
         prev_lambda = lambda_
         if COMPONENT_A:
             if C < CONFLICT_THRESHOLD and lambda_ < 1.0:
-                lambda_ = min(1.0, lambda_ + DELTA_LAMBDA)
+                delta = LAMBDA_MAX_STEP * np.exp(-LAMBDA_BETA * C)
+                lambda_ = min(1.0, lambda_ + delta)
                 iters_at_same_lambda = 0
             else:
                 iters_at_same_lambda += 1
-                if iters_at_same_lambda >= FORCE_ADVANCE_AFTER and lambda_ < 1.0:
-                    lambda_ = min(1.0, lambda_ + 0.5 * DELTA_LAMBDA)
+
+                # ---- Conflict retreat (Upgrade B) ---------------------------
+                # When stuck: instead of nudging λ forward (a hack), take a
+                # deterministic step to reduce constraint violation specifically
+                # in the joints where task and constraint forces most oppose.
+                # Then retract λ slightly so the homotopy can re-thread from
+                # this improved position.
+                # Filter: joints where per-element product < 0 means those
+                # two gradients directly oppose each other in that dimension.
+                if iters_at_same_lambda >= CONFLICT_RETREAT_AFTER and lambda_ > 0.0:
+                    per_joint_conflict = g_target * g_constr  # ∈ ℝⁿ, elementwise
+                    conflict_mask = per_joint_conflict < 0    # dimensions where forces oppose
+                    if conflict_mask.any():
+                        # Descend on constraint energy for conflicted joints only.
+                        # g_constr is the true (uphill) gradient of E_constraints,
+                        # so q -= alpha * g_constr is constraint descent.
+                        q_retreat = q.copy()
+                        q_retreat[conflict_mask] -= RETREAT_ALPHA * g_constr[conflict_mask]
+                        q = spec.clip(q_retreat)  # clip full array after update
+                    lambda_ = max(0.0, lambda_ * LAMBDA_RETRACT_FACTOR)
                     iters_at_same_lambda = 0
         else:
+            # Component A off: fixed linear schedule (ablation baseline)
             lambda_ = min(1.0, (it + 1) / max_iters)
 
         # ---- gradient surgery (Component B) --------------------------------
@@ -235,7 +272,7 @@ def _solve_single(
             if sc_lm < best_err:
                 best_err = sc_lm
                 best_q   = q_lm.copy()
-            if lm_conv and lambda_ >= 1.0:
+            if lm_conv:
                 if collect_steps:
                     steps_out.append(SolveStep(
                         iteration=it_offset + it, q=q_lm.tolist(),
@@ -243,7 +280,8 @@ def _solve_single(
                         min_self_distance=self_collision_min_distance(spec, q_lm),
                         phase="cch_lm_endgame", energy=float(lambda_),
                     ))
-                return best_q, best_err, True, it + 1, C_final, lambda_, steps_out
+                difficulty = conflict_integral / max(1, it + 1)
+                return best_q, best_err, True, it + 1, C_final, lambda_, difficulty, steps_out
             q = q_lm  # continue from LM result
 
         # ---- track best solution -------------------------------------------
@@ -268,20 +306,19 @@ def _solve_single(
             ))
 
         # ---- convergence check -----------------------------------------
-        # NOTE: we check convergence at every step, not just when λ=1.
-        # If the arm reaches the target while constraints are only partially
-        # active (low λ) and no constraint is actually violated, that IS
-        # a valid solution — gatekeeping on λ≥1 would reject it.
         if pos_e < pos_tol and ori_e < ori_tol:
-            return best_q, best_err, True, it + 1, C_final, lambda_, steps_out
+            difficulty = conflict_integral / max(1, it + 1)
+            return best_q, best_err, True, it + 1, C_final, lambda_, difficulty, steps_out
 
         # ---- final LM sweep on best_q before giving up (end of budget) -----
         if it == max_iters - 1:
             q_lm, lm_conv = _lm_polish(spec, best_q, T_target, pos_tol, ori_tol, max_steps=30)
             if lm_conv:
-                return q_lm, best_err, True, max_iters, C_final, lambda_, steps_out
+                difficulty = conflict_integral / max(1, max_iters)
+                return q_lm, best_err, True, max_iters, C_final, lambda_, difficulty, steps_out
 
-    return best_q, best_err, False, max_iters, C_final, lambda_, steps_out
+    difficulty = conflict_integral / max(1, max_iters)
+    return best_q, best_err, False, max_iters, C_final, lambda_, difficulty, steps_out
 
 
 # ---------------------------------------------------------------------------
@@ -317,26 +354,32 @@ def solve_protein_homotopy(
     global_best_err = np.inf
     global_C        = 0.0
     global_lambda   = 0.0
+    global_difficulty = 0.0
     success         = False
     total_iters     = 0
     all_steps: list[SolveStep] = []
+    difficulty_sum  = 0.0
+    difficulty_n    = 0
 
     for i, seed in enumerate(seeds):
-        best_q, best_err, conv, iters, C_f, lam_f, steps_i = _solve_single(
+        best_q, best_err, conv, iters, C_f, lam_f, diff_f, steps_i = _solve_single(
             spec, seed, T_target,
             max_iters, pos_tol, orient_tol,
             collect_steps=(collect_steps and i == 0),
             it_offset=total_iters,
         )
-        total_iters += iters
+        total_iters  += iters
+        difficulty_sum += diff_f
+        difficulty_n  += 1
         if steps_i:
             all_steps.extend(steps_i)
 
         if best_err < global_best_err:
-            global_best_err = best_err
-            global_best_q   = best_q.copy()
-            global_C        = C_f
-            global_lambda   = lam_f
+            global_best_err  = best_err
+            global_best_q    = best_q.copy()
+            global_C         = C_f
+            global_lambda    = lam_f
+            global_difficulty = diff_f
 
         if conv:
             success = True
@@ -364,4 +407,5 @@ def solve_protein_homotopy(
         steps=all_steps,
         conflict_index=global_C,
         lambda_final=global_lambda,
+        difficulty_score=difficulty_sum / max(1, difficulty_n),  # mean across restarts
     )

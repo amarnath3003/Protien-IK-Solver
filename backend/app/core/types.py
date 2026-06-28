@@ -46,8 +46,11 @@ class SolveResult:
     restarts: int = 0  # number of restarts/branch-resets used, if applicable
     steps: list = field(default_factory=list)  # list[SolveStep], optional full trace
     # CCH-IK diagnostic outputs (default 0.0 / 1.0 for all other solvers)
-    conflict_index: float = 0.0  # full-vector cosine conflict C ∈ [-1,1] at solution
-    lambda_final:   float = 1.0  # homotopy parameter λ at termination ∈ [0,1]
+    conflict_index:   float = 0.0  # full-vector cosine conflict C ∈ [0,2] at final step
+    lambda_final:     float = 1.0  # homotopy parameter λ at termination ∈ [0,1]
+    difficulty_score: float = 0.0  # mean C over full trajectory — how hard was this solve?
+                                   # 0 = objectives always cooperated, 2 = always opposed
+                                   # valid even when success=False; pure diagnostic output
 
     def to_dict(self, include_steps: bool = True) -> dict:
         d = {
@@ -61,8 +64,9 @@ class SolveResult:
             "min_self_distance": self.min_self_distance,
             "joint_limit_violations": self.joint_limit_violations,
             "restarts": self.restarts,
-            "conflict_index": self.conflict_index,
-            "lambda_final": self.lambda_final,
+            "conflict_index":   self.conflict_index,
+            "lambda_final":     self.lambda_final,
+            "difficulty_score": self.difficulty_score,
         }
         if include_steps:
             d["steps"] = [s.to_dict() if isinstance(s, SolveStep) else s for s in self.steps]
