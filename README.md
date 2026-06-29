@@ -11,7 +11,7 @@
 | Version | Solver ID | Name | Status | Core Idea |
 | :---: | :--- | :--- | :---: | :--- |
 | **V1** | `protein_ik` | ProteinIK | Live | 5-stage biology-mimicking fold (blind relax → collapse → funnel → chaperone → stability gate) |
-| **V4** | `protein_fast` | ProteinIK Fast | Live | V1's exact algorithm, fused FK+Jacobian kernel — same results, fewer allocations, faster per step |
+| **V4** | `protein_fast` | ProteinIK Fast | Live | Barrierless-first folding ensemble (kinetic partitioning): cheap downhill fold first, escalate to the full stochastic fold + chaperone only on frustrated seeds. Fastest of the protein lineup; ties/beats TRAC-IK on the easy regime |
 | **V5** | `protein_homotopy` | CCH-IK | Live | Conflict-Controlled Homotopy: λ advances based on cosine conflict between task and constraint gradients |
 | **V6** | `protein_raw` | ProteinIK Raw Biology | Pending | Physics-truer simulation of real folding kinetics; implementation not yet started |
 
@@ -25,7 +25,7 @@ An honest, research-oriented comparison platform. The core claim is that biology
 
 ### Headline finding
 
-**ProteinIK V1 consistently beats simple classical baselines** (Jacobian DLS, CCD, FABRIK) on success rate. It does **not** beat the two production-style baselines (TRAC-IK-style, Multi-start) on success rate or raw speed in any tested scenario. It does show a modest, consistent edge in self-collision avoidance. CCH-IK (V5) extends this with a theoretically grounded homotopy path and a novel conflict-index diagnostic.
+**ProteinIK V1 consistently beats simple classical baselines** (Jacobian DLS, CCD, FABRIK) on success rate. It does **not** beat the two production-style baselines (TRAC-IK-style, Multi-start) on success rate or raw speed in any tested scenario. It does show a modest, consistent edge in self-collision avoidance. **ProteinIK Fast (V4)** keeps that success/collision edge while closing the speed gap — its barrierless-first ensemble matches or beats TRAC-IK on the easy regime (UR5 open_space) and stays the fastest of the protein family across all three arms. CCH-IK (V5) extends the line with a theoretically grounded homotopy path and a novel conflict-index diagnostic.
 
 *The frontend's footer states this plainly rather than spinning it.*
 
@@ -59,7 +59,7 @@ All three robots are selectable in the frontend via the robot picker. Solvers th
 | Solver | ID | Role |
 | :--- | :--- | :--- |
 | ProteinIK V1 | `protein_ik` | Original staged-fold algorithm |
-| ProteinIK Fast (V4) | `protein_fast` | Speed-optimized V1 — bit-identical results |
+| ProteinIK Fast (V4) | `protein_fast` | Speed-optimized fold — barrierless-first kinetic-partitioning ensemble |
 | CCH-IK (V5) | `protein_homotopy` | Conflict-Controlled Homotopy |
 | Fixed-λ Baseline | `fixed_lambda_ik` | V5 ablation baseline — same energy as CCH-IK but no conflict detection |
 
@@ -85,13 +85,17 @@ The scoped rescue in Stage 4 is the key design difference from TRAC-IK: rather t
 
 ### V4 — ProteinIK Fast
 
-A pure speed pass over V1 (which itself inherited from V3). **No algorithmic changes.** The same staged fold runs, same success rate, same collision behavior, same iteration count — only the per-step arithmetic is faster.
+The goal: be the **fastest of the protein lineup and competitive with TRAC-IK**, using the protein-folding architecture *plus* optimization — not a pivot away from it. V4 reaches it in two layers. (Full writeup: [`fast_optimization.md`](fast_optimization.md).)
 
-Profiling showed time was dominated by two things:
-1. `geometric_jacobian()` calling `np.cross`, which carries per-call normalization overhead on every joint.
-2. Every gradient/LM step computing forward kinematics twice: once for the pose, once inside the Jacobian.
+**Diagnosis — the problem was the tail, not the per-step cost.** An earlier bit-identical micro-pass (fused `_fast_pose_jac`, fewer allocations) already gave V4 a *median* that tied TRAC-IK (~11 ms vs ~10 ms on UR5), but its *mean* was wrecked by a tail: on the ~10% of targets where the barrierless fast-path missed, the solver fell into a full ensemble of stochastic Metropolis folds, and those solves ate ~57% of total wall time. A per-step micro-opt can't move a tail like that (measured: 1.1–1.4× only).
 
-V4 replaces both with a single fused `_fast_pose_jac()` primitive that traverses the FK chain once and derives both the end-effector pose and the full Jacobian with explicit cross products. The output is bit-identical to the reference implementation — verified to zero difference. The result is a genuine speed improvement with no behavioral trade-off.
+**Layer 1 — barrierless-first ensemble (the tail killer).** This is the **kinetic partitioning mechanism** of folding: a population splits into a fast fraction that descends a smooth funnel directly to the native state (barrierless / "downhill" folding) and a slow fraction that is kinetically trapped and needs an activated search with chaperone (GroEL / iterative-annealing) rescue. So each replica **first attempts a cheap barrierless (LM) fold**; only a *frustrated* seed (LM fails to reach a sterically clean native state) escalates to the full stochastic funnel + chaperone. The cheap path resolves the bulk of targets in ~TRAC-IK time; the expensive protein machinery fires only where frustration demands it. Gating the chaperone behind "spontaneous folding failed" is how GroEL actually works, so this order is *more* faithful than always running the full machinery, not less. A single budget (`max_replicas`) governs both phases.
+
+**Layer 2 — allocation-light FK primitives (the per-step floor).** `_fast_chain` builds the DH chain with no per-joint `np.array` literals; `_incremental_chain` rebuilds only the suffix when the Metropolis sweep perturbs one joint; a shared constant identity replaces per-step `np.eye(6)`. All verified **bit-identical** to the reference FK (0.0 difference over 9000 configs across all three arms; locked by tests).
+
+**Result.** Unlike the earlier micro-pass, Layer 1 *changes behavior* — so V4 is validated by the metrics that matter, not bit-identity: success and self-collision rate held at or above the prior staged-fold Fast, with mean/tail latency cut **1.1–4.3× across UR5 / Franka / Planar**. On UR5 open_space it now runs ~9–14 ms mean (p50 ~3 ms), matching or beating TRAC-IK's pure-numerical core while keeping 100% success and a lower self-collision rate.
+
+**Rejected alternative (kept honest):** naive tail-edits — capping replicas / earlier bail / fewer iterations, leaving the order intact — bought little speed and *destroyed the headline win* (Franka success collapsed to 71.7% at `cap replicas=2`), because the cost is the per-fold search, not the fold count. See [`fast_optimization.md`](fast_optimization.md).
 
 ---
 
@@ -247,5 +251,7 @@ If the frontend can't reach the backend it shows a banner with the exact command
 ## Honesty in This Codebase
 
 Several comments in `protein_ik.py`, `protein_homotopy/solver.py`, and `fabrik.py` document mechanisms that were tried, benchmarked, and either kept or reverted based on measured results — including negative results (rotamer bias, vectorial/domain-decomposition folding variants, fixed-λ schedule). These are left in place deliberately so the reasoning is auditable, not just the conclusion.
+
+[`fast_optimization.md`](fast_optimization.md) does the same for V4: it records both the rejected naive tail-edits (capping replicas / iterations collapsed Franka success to 71.7% for almost no speed gain) and the fact that bit-identical micro-optimization alone could not move the latency tail — the measured dead-ends that motivated the barrierless-first redesign.
 
 V5's solver docstring explicitly distinguishes what is claimed (conflict-controlled λ advancement as an algorithmic contribution), what is theoretical grounding (IFT), and what is design intuition only (biological motivation).
