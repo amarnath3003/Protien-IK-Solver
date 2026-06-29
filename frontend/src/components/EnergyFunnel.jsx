@@ -29,6 +29,7 @@ export function EnergyFunnel({ posError = null, orientError = null, phase = '', 
   useEffect(() => {
     if (status !== 'running') return;
 
+    timeRef.current = 0;
     let lastTime = null;
     let reqId = null;
 

@@ -141,10 +141,11 @@ def solve_analytical_planar3dof(
 
     Returns a SolveResult compatible with the unified benchmark runner.
     """
-    assert spec.name == "planar3dof", (
-        f"analytical_planar3dof solver only works on 'planar3dof' spec, "
-        f"got '{spec.name}'"
-    )
+    if spec.name != "planar3dof":
+        raise ValueError(
+            f"analytical_planar3dof solver only works on 'planar3dof' spec, "
+            f"got '{spec.name}'"
+        )
 
     with Timer() as t:
         x_ee, y_ee, theta_ee = _extract_planar_ee(T_target)

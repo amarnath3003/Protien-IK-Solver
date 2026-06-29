@@ -49,7 +49,7 @@ export function SolverCard({ solverId, q, status, phase, step, result, error, ta
           <div className="solver-card__diagnostic" style={{ marginTop: '0.75rem', fontSize: '0.75rem', background: 'rgba(0,0,0,0.1)', padding: '0.5rem', borderRadius: '4px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem', color: '#ccc' }}>
               <span>Conflict (C): {result.conflict_index.toFixed(3)}</span>
-              <span>{result.conflict_index < 0 ? 'cooperative' : (result.conflict_index > 0 ? 'conflicted' : 'orthogonal')}</span>
+              <span>{result.conflict_index < 0.5 ? 'cooperative' : (result.conflict_index > 1.5 ? 'conflicted' : 'orthogonal')}</span>
             </div>
             <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', position: 'relative', marginBottom: '0.75rem' }}>
               <div style={{ position: 'absolute', left: '50%', width: '1px', height: '100%', background: '#fff', opacity: 0.3 }} />
