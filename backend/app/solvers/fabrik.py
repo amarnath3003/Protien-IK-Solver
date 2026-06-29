@@ -94,12 +94,10 @@ def solve_fabrik(
     q = q0.copy()
     target_pos = T_target[:3, 3]
     target_rot = T_target[:3, :3]
-    # Reserve the last 3 joints for orientation on 6+ DOF arms.
-    # For arms with fewer joints, reserve only the last 1 (keeping the rest
-    # free for position-reach passes, which is critical: on a 3-DOF arm the
-    # old formula set n_wrist=3 and excluded ALL joints from position passes,
-    # making FABRIK completely frozen on position).
-    n_wrist = 3 if n >= 6 else (1 if n >= 2 else 0)
+    # Derive wrist count from DOF: min(3, n//2) scales from 1 joint at n=3
+    # to 3 joints at n=6+. Wrist joints handle orientation; the rest do
+    # position-reach — must never be the full arm or position is frozen.
+    n_wrist = min(3, max(1, n // 2)) if n >= 2 else 0
     wrist_joints = set(range(n - n_wrist, n))
 
     steps = []

@@ -243,7 +243,10 @@ def solve_protein_ik(
         # C-terminal domain folding relative to the already-stable
         # N-terminal scaffold.
         from app.core.kinematics import geometric_jacobian
-        n_proximal = max(1, n - 3)
+        # n//2 joints are "distal" (wrist-like), capped at 3 — scales cleanly
+        # for any DOF: 1 wrist for n=3, 2 for n=4-5, 3 for n>=6.
+        n_wrist    = min(3, max(1, n // 2))
+        n_proximal = max(1, n - n_wrist)
         proximal = list(range(0, n_proximal))
         distal = list(range(n_proximal, n))
 
@@ -411,7 +414,14 @@ def solve_protein_ik(
                 # growing with consecutive rescue attempts (resets to 1
                 # whenever a rescue is followed by real progress, tracked
                 # via rescues_used resetting after stage 3 makes headway)
-                scope_sizes = [1, 3, 5, n]
+                # Rescue ladder scales with n: fractions 1/6, 1/2, 5/6, full.
+                # For n=6 this gives exactly [1,3,5,6]; for n=7 → [1,3,5,7].
+                scope_sizes = sorted(set([
+                    max(1, n // 6),
+                    max(1, n // 2),
+                    max(1, 5 * n // 6),
+                    n,
+                ]))
                 scope_idx = min(rescues_used - 1, len(scope_sizes) - 1)
                 scope = scope_sizes[scope_idx]
 

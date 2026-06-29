@@ -48,10 +48,9 @@ def solve_ccd(
     n = spec.n_joints
     target_pos = T_target[:3, 3]
     target_rot = T_target[:3, :3]
-    # Last joints also get an orientation-correction blend (standard CCD extension).
-    # Reserve 3 for 6+ DOF, 1 for short arms — on a 3-DOF arm the old formula
-    # set all 3 as wrist joints, making orientation fight position on every joint.
-    n_wrist = 3 if n >= 6 else (1 if n >= 2 else 0)
+    # Derive wrist count from DOF: min(3, n//2) scales from 1 joint at n=3
+    # to 3 joints at n=6+, matching any arm without hardcoding a threshold.
+    n_wrist = min(3, max(1, n // 2)) if n >= 2 else 0
     wrist_joints = set(range(n - n_wrist, n))
     steps = []
     t0 = time.perf_counter()
