@@ -1,45 +1,53 @@
 """
-ProteinIK V4.1 -- a second pure *speed* optimization pass over V4.
+ProteinIK V4.1 -- making "ProteinIK Fast" actually fast.
 
-V4 already removed np.cross overhead and the double-FK-per-step by fusing
-pose+Jacobian into one chain pass (_fast_pose_jac). Profiling V4 (see
-docs) showed the remaining hot cost has moved into the Stage-3 Metropolis
-funnel sweep, which is what dominates V4's slow *tail* (the 10% of solves
-that need the full ensemble eat ~57% of total time). Two facts stood out:
+GOAL (project motto): ProteinIK Fast should be the fastest of the protein
+lineup and competitive with TRAC-IK, using the protein-folding architecture
+plus optimization -- not a pivot away from it.
 
-  * The sweep perturbs ONE joint at a time and then rebuilds the ENTIRE
-    forward-kinematics chain to score the candidate energy. But changing
-    q[i] leaves frames 0..i untouched -- only frames i+1..n change. V4
-    recomputed all of them, every candidate.
-  * forward_kinematics_chain() builds a fresh 4x4 np.array literal per
-    joint (the single largest allocation site in the whole solver:
-    ~130k np.array calls / 40 solves), and every DLS/LM step allocated a
-    new np.eye(6).
+DIAGNOSIS. V4's *median* already ties TRAC-IK (~11 ms vs ~10 ms on UR5).
+What makes V4 look slow is its *tail*: on the ~10% of targets where the
+barrierless fast-path misses, V4 fires a full ensemble of stochastic
+Metropolis folds, and those solves consume ~57% of total wall time. So the
+lever is the tail, and a per-step micro-opt cannot move it. V4.1 attacks the
+tail on two fronts, both staying inside the folding domain:
 
-V4.1 changes NONE of the folding behavior. It runs V4's exact staged fold
--- same Stage-1-skipped replicas, same coarse collapse, the SAME full-chain
-Metropolis funnel search (same acceptance, same RNG draw order), the SAME
-chaperone rescue ladder, the SAME adaptive ensemble and collision-aware
-native-state selection -- and only swaps the per-candidate math for:
+1. BARRIERLESS-FIRST ENSEMBLE (the tail killer). The folding-funnel /
+   minimal-frustration principle: a smooth, unfrustrated energy landscape
+   folds by downhill diffusion alone -- no stochastic search required. So
+   each replica FIRST attempts a cheap barrierless (Levenberg-Marquardt)
+   fold from its seed; only a seed whose landscape is *frustrated* (LM fails
+   to reach the native state) escalates to the full stochastic Metropolis
+   funnel + chaperone rescue. The cheap downhill path resolves the bulk of
+   targets in ~TRAC-IK time; the expensive protein machinery fires only
+   where frustration actually demands it -- exactly where V4's success and
+   self-collision wins come from. Collision-aware native-state selection is
+   unchanged: a converged-but-clashing barrierless fold is kept only as a
+   fallback and the search continues (cheaply, then via the full fold) for a
+   sterically clean basin, so V4's lowest-collision-rate property is
+   preserved.
 
-  _fast_chain(spec, q):
-      allocation-light forward kinematics. Builds all per-joint DH
-      matrices with vectorized assignment into a preallocated buffer (no
-      np.array literals) and chains them with np.matmul(out=). Returns the
-      chain AND the per-joint local transforms L for reuse.
+2. ALLOCATION-LIGHT FK PRIMITIVES (the per-step floor). Profiling showed the
+   hot loop dominated by forward_kinematics_chain building a fresh 4x4
+   np.array literal per joint (~130k allocs / 40 solves) and every DLS/LM
+   step allocating a new np.eye(6). V4.1 replaces these with:
 
-  _incremental_chain(spec, chain, L, i, cand):
-      recompute the chain when ONLY joint i changes to `cand`: frames
-      0..i are copied from the cached chain, frame i+1 is rebuilt from the
-      one changed local transform, and frames i+2..n reuse the cached L[k]
-      with fresh matmuls. ~2x fewer matmuls and one DH build instead of n.
+     _fast_chain(spec, q): vectorized DH-local build into a preallocated
+       buffer + np.matmul(out=); returns the chain AND per-joint locals L.
+     _incremental_chain(spec, chain, L, i, cand): when only joint i changes,
+       copy frames 0..i and recompute the suffix reusing cached L[k].
+     _I6: the constant 6x6 identity, shared by every solve.
 
-Both primitives are verified BIT-IDENTICAL to core.forward_kinematics_chain
-(0.0 max difference over 9000 random configs across ur5 / franka / planar),
-so V4.1's solve trajectory is identical to V4's -- same iterations, same
-success, same collision rate, same q_final -- just faster per step,
-concentrated exactly where V4's tail lives. This is a genuine optimization
-pass, not an algorithmic pivot.
+   Both FK primitives are verified BIT-IDENTICAL to
+   core.forward_kinematics_chain (0.0 max diff over 9000 configs across
+   ur5 / franka / planar), so the folds they drive are numerically the same
+   fold V4 runs -- only cheaper.
+
+HONESTY. Unlike the V4->V4 micro-pass, point 1 *changes behavior*: V4.1 no
+longer reproduces V4's exact trajectory. It is validated by the metrics that
+matter -- success rate and self-collision rate held at or above V4's, mean
+and tail latency cut -- not by bit-for-bit identity. See the benchmark in
+docs for measured numbers.
 """
 
 from __future__ import annotations
@@ -342,10 +350,14 @@ def solve_protein_fast_v41(
     stuck_window: int = 10,
     stuck_eps: float = 2e-4,
     max_replicas: int = 6,
+    lm_restarts: int = 4,
 ) -> SolveResult:
-    """Adaptive ensemble driver -- identical structure and behavior to V4's
-    solve_protein_fast, using the incremental-FK fold and the allocation-light
-    fast FK/Jacobian primitive throughout."""
+    """Barrierless-first ensemble driver. Phase A tries up to `lm_restarts`
+    cheap barrierless (LM) folds -- the funnel-hypothesis fast path that
+    resolves unfrustrated landscapes in ~TRAC-IK time. Only if no sterically
+    clean native state is found does Phase B escalate to up to `max_replicas`
+    full stochastic Metropolis folds (the collision-aware protein machinery).
+    Uses the allocation-light / incremental FK primitives throughout."""
     n = spec.n_joints
     t0 = time.perf_counter()
     steps: list | None = [] if collect_steps else None
@@ -371,38 +383,63 @@ def solve_protein_fast_v41(
     success = False
     converged_candidates: list[tuple[float, np.ndarray]] = []
 
-    # ---------- FAST PATH: barrierless downhill from the seed ----------
-    fp_q, fp_combined, fp_conv, fp_steps = _lm_polish_fast(
-        spec, q0, T_target, pos_tol, orient_tol, 30, ca, sa)
-    total_iters += fp_steps
-    global_best_combined = fp_combined
-    global_best_q = fp_q.copy()
-    if fp_conv and self_collision_min_distance(spec, fp_q) >= 0.0:
-        success = True
-        converged_candidates.append((self_collision_min_distance(spec, fp_q), fp_q.copy()))
-
     def _have_clean() -> bool:
         return any(d >= 0.0 for d, _ in converged_candidates)
 
-    for replica in range(max_replicas):
-        if success and (_have_clean() or len(converged_candidates) >= 2):
-            break
-        seed = q0.copy() if replica == 0 else spec.random_config(rng)
-        best_q, best_combined, conv, iters, rescues = _fold_once_v41(
-            spec, seed, T_target, rng, max_iters, pos_tol, orient_tol,
-            s2, stuck_window, stuck_eps, steps, total_iters, ca, sa,
-        )
-        total_iters += iters
-        total_rescues += rescues
-        if best_combined < global_best_combined:
-            global_best_combined = best_combined
-            global_best_q = best_q.copy()
+    # ---------- PHASE A: barrierless folding restarts (funnel hypothesis) ----------
+    # A smooth, unfrustrated landscape folds by downhill diffusion alone -- no
+    # stochastic search needed. Try cheap LM folds from q0, then fresh random
+    # seeds; most targets resolve here in ~TRAC-IK time. Stop as soon as one
+    # converges to a sterically CLEAN native state (collision-aware policy,
+    # identical to V4's: a clashing converged pose is kept only as a fallback).
+    for r in range(max(1, lm_restarts)):
+        seed = q0.copy() if r == 0 else spec.random_config(rng)
+        q_lm, e_lm, conv, lm_steps = _lm_polish_fast(
+            spec, seed, T_target, pos_tol, orient_tol, 30, ca, sa)
+        total_iters += lm_steps
+        if e_lm < global_best_combined:
+            global_best_combined = e_lm
+            global_best_q = q_lm.copy()
         if conv:
             success = True
-            d = self_collision_min_distance(spec, best_q)
-            converged_candidates.append((d, best_q.copy()))
+            d = self_collision_min_distance(spec, q_lm)
+            converged_candidates.append((d, q_lm.copy()))
             if d >= 0.0:
+                break  # clean barrierless fold -- done on the fast path
+
+    # ---------- PHASE B: stochastic funnel folding (frustrated landscapes) ----------
+    # Only escalate if no clean barrierless solution exists. This is the full
+    # staged fold -- Metropolis funnel + chaperone rescue + collision energy --
+    # i.e. the protein machinery that wins success + steric quality on the hard
+    # tail. Skipped entirely on the easy bulk, which is where the speedup comes
+    # from.
+    if not _have_clean():
+        # Count only Phase-B (collision-aware) converged folds toward the early
+        # stop -- Phase A's collision-BLIND LM candidates must not short-circuit
+        # the collision-seeking search, or clutter targets keep a clashing pose
+        # the full fold would have cleaned. Mirrors V4's "2 converged candidates"
+        # budget, but measured on the collision-aware folds only.
+        phase_b_converged = 0
+        for replica in range(max_replicas):
+            if _have_clean() or phase_b_converged >= 2:
                 break
+            seed = q0.copy() if replica == 0 else spec.random_config(rng)
+            best_q, best_combined, conv, iters, rescues = _fold_once_v41(
+                spec, seed, T_target, rng, max_iters, pos_tol, orient_tol,
+                s2, stuck_window, stuck_eps, steps, total_iters, ca, sa,
+            )
+            total_iters += iters
+            total_rescues += rescues
+            if best_combined < global_best_combined:
+                global_best_combined = best_combined
+                global_best_q = best_q.copy()
+            if conv:
+                success = True
+                phase_b_converged += 1
+                d = self_collision_min_distance(spec, best_q)
+                converged_candidates.append((d, best_q.copy()))
+                if d >= 0.0:
+                    break
 
     if converged_candidates:
         _, q_best = max(converged_candidates, key=lambda c: c[0])
