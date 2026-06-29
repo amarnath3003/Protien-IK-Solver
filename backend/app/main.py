@@ -107,7 +107,10 @@ def _run_solve_sync(req: SolveRequest) -> dict:
     rng = np.random.default_rng(req.seed)
     q0 = np.array(req.q0) if req.q0 is not None else spec.random_config(rng)
     T_target = pose_to_transform(req.target.position, req.target.quaternion)
-    result = run_solver(req.solver, spec, q0, T_target, rng, collect_steps=req.collect_steps)
+    try:
+        result = run_solver(req.solver, spec, q0, T_target, rng, collect_steps=req.collect_steps)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     return result.to_dict(include_steps=req.collect_steps)
 
 
@@ -115,7 +118,7 @@ def _run_solve_sync(req: SolveRequest) -> dict:
 async def solve(req: SolveRequest):
     if req.solver not in SOLVER_REGISTRY:
         raise HTTPException(400, f"Unknown solver '{req.solver}'. Available: {list(SOLVER_REGISTRY)}")
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     return await loop.run_in_executor(_executor, _run_solve_sync, req)
 
 
@@ -167,7 +170,7 @@ async def benchmark(req: BatchBenchmarkRequest):
     for s in req.solvers:
         if s not in SOLVER_REGISTRY:
             raise HTTPException(400, f"Unknown solver '{s}'. Available: {list(SOLVER_REGISTRY)}")
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     return await loop.run_in_executor(_executor, _run_benchmark_sync, req)
 
 
@@ -181,7 +184,7 @@ async def ws_solve(websocket: WebSocket):
     a live 'replay' feel.
     """
     await websocket.accept()
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     try:
         while True:
             msg = await websocket.receive_json()
