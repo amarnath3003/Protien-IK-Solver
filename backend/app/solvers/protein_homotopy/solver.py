@@ -330,7 +330,7 @@ def solve_protein_homotopy(
     q0: np.ndarray,
     T_target: np.ndarray,
     rng: np.random.Generator,
-    max_iters: int = MAX_ITERS,
+    max_iters: int = 0,  # 0 → auto-scale by DOF
     pos_tol: float = 1e-3,
     orient_tol: float = 1e-2,
     collect_steps: bool = False,
@@ -342,6 +342,10 @@ def solve_protein_homotopy(
     trajectories. Stops at the first converged solution.
     Returns the best-error solution overall.
     """
+    # Scale iter budget with DOF: redundant arms need more landscape exploration
+    if max_iters == 0:
+        max_iters = MAX_ITERS + max(0, spec.n_joints - 6) * 150
+
     t0 = time.perf_counter()
 
     # Component C: geometric warm-start

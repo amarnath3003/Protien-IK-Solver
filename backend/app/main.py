@@ -97,7 +97,7 @@ def get_solvers(robot: str = "ur5"):
 def random_target(req: RandomTargetRequest):
     spec = _get_spec(req.robot)
     rng = np.random.default_rng(req.seed)
-    q_true = rng.uniform(-np.pi, np.pi, spec.n_joints)
+    q_true = spec.random_config(rng)
     T = end_effector_pose(spec, q_true)
     pos, quat = transform_to_pose(T)
     return {"position": pos, "quaternion": quat, "q_reference": q_true.tolist()}

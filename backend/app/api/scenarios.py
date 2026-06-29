@@ -22,7 +22,7 @@ from app.core.kinematics import RobotSpec, end_effector_pose, geometric_jacobian
 
 
 def _random_q(spec: RobotSpec, rng: np.random.Generator) -> np.ndarray:
-    return rng.uniform(-np.pi, np.pi, spec.n_joints)
+    return spec.random_config(rng)
 
 
 def generate_target(spec: RobotSpec, rng: np.random.Generator, scenario: str):
