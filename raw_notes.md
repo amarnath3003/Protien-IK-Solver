@@ -95,11 +95,20 @@ All five terms now pass once the §5 corrections are applied.
 
 ---
 
-## 7. Next step
+## 7. Phase status
 
-`raw_math.md` is written and folding-faithful (incl. §4b last step). Next: **Phase 1** — code
-`E_LJ` + its analytic force and run the attractive-well-vs-repulsion-only experiment
-(measure emergent inter-link spacing and `min_self_distance`).
+- **Phase 1 — `E_LJ` + analytic force — ✅ DONE & validated.**
+  - Code: `backend/app/solvers/protein_raw/energy.py` (`lj_energy`, `lj_energy_and_grad`,
+    analytic force from one FK pass), exported via the package `__init__`.
+  - Tests: `backend/tests/test_raw_energy.py` — 13 pass; analytic force = central-FD to <1e-4 on
+    all 3 robots, both modes; well shape (−ε at 2^(1/6)σ) verified. Full suite 76/76, no regressions.
+  - Experiment: `backend/raw_phase1_experiment.py`. **Attraction proven to do real work:**
+    UR5 spacing std 0.54→0.28, in-well 61% vs 12% (repulsion-only); Planar `E_LJ`→ **negative**
+    (chain bound in wells), 83% in-well vs 0%. Franka: force verified (E descends 2e8→1e4) but
+    constrained geometry frustrates collapse, and its capsule `min_self` is a **degenerate
+    constant −0.15** (proxy issue, flagged — echoes `sim_migration_plan.md` Phase 3).
+- **Next — Phase 2:** directional H-bond `E_HB` with the **triplet-plane-normal** vector
+  (`raw_math.md §3.2`) + its force; verify emergent secondary-structure motifs.
 
 ---
 
@@ -116,3 +125,7 @@ All five terms now pass once the §5 corrections are applied.
 - **Entry 7** — Last-step reconciliation: IK's LM/Newton endgame = the `T→0` limit of the same
   Langevin = native-state consolidation; + Anfinsen stability gate. Added `raw_math.md §4b`.
   "No finisher" decision updated honestly (endgame is the dynamics' physical endpoint).
+- **Entry 8** — **Phase 1 implemented properly:** `E_LJ` + analytic force (`energy.py`), 13 tests
+  (analytic=FD <1e-4, well shape), 76/76 suite. Experiment proves the attractive well creates
+  emergent preferred spacing (UR5/Planar strong; Planar binds to negative E). Found Franka's
+  capsule `min_self` is a degenerate constant −0.15. See §7 for full numbers.

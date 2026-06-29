@@ -32,7 +32,7 @@ from app.core.kinematics import (
     self_collision_min_distance,
 )
 from app.solvers.protein_raw.energy import (
-    bead_positions, lj_energy_and_grad, _bead_radii, _nonadjacent_pairs,
+    bead_positions, lj_energy, lj_energy_and_grad, _bead_radii, _nonadjacent_pairs,
 )
 
 WELL = 2.0 ** (1.0 / 6.0)
@@ -57,7 +57,7 @@ def _calibrate_sigma_scale(spec, rng, n=200):
     return d_med / (WELL * float(np.mean(rad_sum)))
 
 
-def _relax(spec, q0, sigma_scale, attractive, iters=500, lr=1e-2, max_step=0.05):
+def _relax(spec, q0, sigma_scale, attractive, iters=1200, lr=2e-2, max_step=0.05):
     """Gradient descent on E_LJ alone (capped step)."""
     q = q0.copy()
     for _ in range(iters):
@@ -85,15 +85,18 @@ def run_robot(name, spec, n_configs=24, seed=0):
     init_ratios, init_msd = [], []
     full_ratios, full_msd = [], []
     repu_ratios, repu_msd = [], []
+    e_init, e_full = [], []   # full-LJ energy before/after relaxation (descent proof)
 
     for _ in range(n_configs):
         q0 = spec.random_config(rng)
         init_ratios.append(_well_ratios(spec, q0, sigma_scale))
         init_msd.append(self_collision_min_distance(spec, q0))
+        e_init.append(lj_energy(spec, q0, sigma_scale, 1.0, True))
 
         q_full = _relax(spec, q0, sigma_scale, attractive=True)
         full_ratios.append(_well_ratios(spec, q_full, sigma_scale))
         full_msd.append(self_collision_min_distance(spec, q_full))
+        e_full.append(lj_energy(spec, q_full, sigma_scale, 1.0, True))
 
         q_repu = _relax(spec, q0, sigma_scale, attractive=False)
         repu_ratios.append(_well_ratios(spec, q_repu, sigma_scale))
@@ -123,9 +126,14 @@ def run_robot(name, spec, n_configs=24, seed=0):
     repu_mean = rows["repulsion-only"][0]
     full_band = rows["full LJ (attract)"][2]
     repu_band = rows["repulsion-only"][2]
-    print(f"  → attraction concentrates spacing: std {mean_init_std:.3f} (random) "
-          f"→ {full_std:.3f} (full LJ);  in-well {full_band*100:.0f}% vs "
+    print(f"  E_LJ (full) descent: {np.mean(e_init):.3g} -> {np.mean(e_full):.3g}  "
+          f"(mean over {n_configs} relaxations)")
+    print(f"  -> attraction concentrates spacing: std {mean_init_std:.3f} (random) "
+          f"-> {full_std:.3f} (full LJ);  in-well {full_band*100:.0f}% vs "
           f"{repu_band*100:.0f}% repulsion-only;  repulsion mean ratio {repu_mean:.2f} (drifts up).")
+    if np.std(init_msd) < 1e-9:
+        print(f"  NOTE: capsule min_self is constant ({np.mean(init_msd):.4f}) for this arm "
+              f"-> degenerate proxy; rely on spacing/energy, not min_self, here.")
 
 
 if __name__ == "__main__":
