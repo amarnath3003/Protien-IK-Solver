@@ -46,6 +46,30 @@
   color: var(--steel);
 }
 
+.app-header__robot-select {
+  margin: 0 auto 0 2rem;
+  display: flex;
+  align-items: center;
+}
+
+.robot-dropdown {
+  background: var(--panel-bg);
+  color: var(--bone);
+  border: 1px solid var(--panel-border);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.robot-dropdown:hover, .robot-dropdown:focus {
+  border-color: var(--phosphor-dim);
+  color: var(--phosphor);
+}
+
 .api-dot {
   width: 8px;
   height: 8px;

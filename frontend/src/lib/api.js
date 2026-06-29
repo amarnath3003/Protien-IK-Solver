@@ -18,34 +18,48 @@ async function request(path, options = {}) {
   return res.json();
 }
 
-export function getRobotSpec() {
-  return request('/api/robot');
+export function getRobots() {
+  return request('/api/robots');
+}
+
+export async function getRobotSpec(robot) {
+  const url = robot ? `/api/robot?robot=${encodeURIComponent(robot)}` : '/api/robot';
+  const data = await request(url);
+  // Normalize snake_case API fields to camelCase for the frontend kinematics lib
+  return {
+    name: data.name,
+    a: data.a,
+    d: data.d,
+    alpha: data.alpha,
+    linkRadius: data.link_radius,
+    joint_limits: data.joint_limits,
+  };
 }
 
 export function getSolvers() {
   return request('/api/solvers');
 }
 
-export function getRandomTarget(seed) {
+export function getRandomTarget(seed, robot) {
   return request('/api/random-target', {
     method: 'POST',
-    body: JSON.stringify({ seed: seed ?? null }),
+    body: JSON.stringify({ seed: seed ?? null, robot }),
   });
 }
 
-export function solveOnce({ solver, q0, target, seed, collectSteps = true }) {
+export function solveOnce({ solver, robot, q0, target, seed, collectSteps = true }) {
   return request('/api/solve', {
     method: 'POST',
     body: JSON.stringify({
-      solver, q0: q0 ?? null, target, seed: seed ?? null, collect_steps: collectSteps,
+      solver, robot, q0: q0 ?? null, target, seed: seed ?? null, collect_steps: collectSteps,
     }),
   });
 }
 
-export function runBenchmark({ solvers, nTrials = 100, seed = 1, scenario = 'open_space' }) {
+export function runBenchmark({ solvers, robot, nTrials = 100, seed = 1, scenario = 'open_space' }) {
   return request('/api/benchmark', {
     method: 'POST',
-    body: JSON.stringify({ solvers, n_trials: nTrials, seed, scenario }),
+    body: JSON.stringify({ solvers, robot, n_trials: nTrials, seed, scenario }),
   });
 }
 

@@ -20,18 +20,6 @@ import {
   matrixToQuaternion,
 } from '../lib/kinematics';
 
-// ─── constants ───────────────────────────────────────────────────────────────
-const N          = UR5_SPEC.a.length;          // 6 joints
-const IDLE_Q     = [0, -0.7, 0.9, -0.4, 0.6, 0];
-const ALARM      = new THREE.Color('#FF6B5E');
-const BODY_COLOR = '#8A9591';
-const DARK_METAL = '#2A302D';
-
-// Per-joint geometry params (computed once at module level)
-const LINK_R  = UR5_SPEC.linkRadius.map((r) => r * 0.6);  // link cylinder radius
-const JOINT_R = UR5_SPEC.linkRadius.map((r) => r * 0.9);  // motor cylinder radius
-const JOINT_L = JOINT_R.map((r) => r * 2.2);              // motor cylinder length
-
 // Scratch THREE objects — reused every frame to avoid GC
 const _v0   = new THREE.Vector3();
 const _v1   = new THREE.Vector3();
@@ -39,26 +27,51 @@ const _quat = new THREE.Quaternion();
 const _up   = new THREE.Vector3(0, 1, 0);
 const _rc   = new THREE.Color();   // ring colour scratch
 
+// Default idle pose just for safety (will be padded/sliced based on spec N)
+const DEFAULT_IDLE = [0, -0.7, 0.9, -0.4, 0.6, 0];
+
 // ─── component ───────────────────────────────────────────────────────────────
-export function RobotArm({ q, accentColor = '#6FFFB0', glowCollision = true, scale = 3 }) {
+export function RobotArm({ q, spec = UR5_SPEC, accentColor = '#6FFFB0', glowCollision = true, scale = 3 }) {
+
+  // Compute derived constants when spec changes
+  const { N, LINK_R, JOINT_R, JOINT_L, IDLE_Q } = useMemo(() => {
+    const n = spec.a.length;
+    return {
+      N: n,
+      LINK_R: spec.linkRadius.map((r) => r * 0.6),
+      JOINT_R: spec.linkRadius.map((r) => r * 0.9),
+      JOINT_L: spec.linkRadius.map((r) => r * 0.9 * 2.2),
+      IDLE_Q: DEFAULT_IDLE.slice(0, n).concat(Array(Math.max(0, n - 6)).fill(0)),
+    };
+  }, [spec]);
 
   // Keep latest prop values accessible inside useFrame without re-subscribing
   const qRef           = useRef(q);
   const accentRef      = useRef(accentColor);
+  const specRef        = useRef(spec);
   qRef.current         = q;
   accentRef.current    = accentColor;
+  specRef.current      = spec;
 
   // Mutable lerped joint angles (plain array, no React state)
   const lerpedQ = useRef([...IDLE_Q]);
+  // When robot changes, reset lerpedQ length
+  useMemo(() => { lerpedQ.current = [...IDLE_Q]; }, [IDLE_Q]);
 
   // Refs to every Three.js object we'll mutate imperatively
-  const jointRefs   = useRef(Array(N + 1).fill(null));   // N motors + 1 EE
-  const linkRefs    = useRef(Array(N).fill(null));        // N link cylinders
-  const ringRefs    = useRef(Array(N).fill(null));        // N LED rings on motors
-  const baseRingRef = useRef(null);                       // ring on base pedestal
+  const jointRefs   = useRef([]);
+  const linkRefs    = useRef([]);
+  const ringRefs    = useRef([]);
+  const baseRingRef = useRef(null);
+  
+  // ensure ref arrays are long enough
+  if (jointRefs.current.length < N + 1) jointRefs.current = Array(N + 1).fill(null);
+  if (linkRefs.current.length < N) linkRefs.current = Array(N).fill(null);
+  if (ringRefs.current.length < N) ringRefs.current = Array(N).fill(null);
 
   // ── per-frame update ────────────────────────────────────────────────────────
   useFrame((_, delta) => {
+    const activeSpec = specRef.current;
     const target = (qRef.current && qRef.current.length === N)
       ? qRef.current : IDLE_Q;
 
@@ -76,15 +89,15 @@ export function RobotArm({ q, accentColor = '#6FFFB0', glowCollision = true, sca
     if (!moved) return; // arm is at rest — skip all GPU work
 
     // ── forward kinematics ─────────────────────────────────────────────────
-    const chain = forwardKinematicsChain(UR5_SPEC, curr);
+    const chain = forwardKinematicsChain(activeSpec, curr);
 
     // ── collision glow colour ─────────────────────────────────────────────
     _rc.set(accentRef.current);
     if (glowCollision) {
       const positions = chain.map((c) => c.position);
-      const minDist   = selfCollisionMinDistance(UR5_SPEC, positions);
+      const minDist   = selfCollisionMinDistance(activeSpec, positions);
       const t         = THREE.MathUtils.clamp(1 - (minDist + 0.02) / 0.07, 0, 1);
-      _rc.lerp(ALARM, t);
+      _rc.lerp(new THREE.Color('#FF6B5E'), t);
     }
 
     // ── update joint group transforms ─────────────────────────────────────
@@ -142,7 +155,7 @@ export function RobotArm({ q, accentColor = '#6FFFB0', glowCollision = true, sca
   });
 
   // ── initial FK for first-render positions ─────────────────────────────────
-  const initChain = useMemo(() => forwardKinematicsChain(UR5_SPEC, IDLE_Q), []);
+  const initChain = useMemo(() => forwardKinematicsChain(spec, IDLE_Q), [spec, IDLE_Q]);
 
   // ── JSX: static geometry; Three.js takes over via refs ────────────────────
   return (
@@ -151,7 +164,7 @@ export function RobotArm({ q, accentColor = '#6FFFB0', glowCollision = true, sca
       {/* ── Base Pedestal (fully static) ─────────────────────────────────── */}
       <mesh position={[0, -0.04, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.08, 0.09, 0.08, 32]} />
-        <meshPhysicalMaterial color={DARK_METAL} metalness={0.8} roughness={0.5} />
+        <meshPhysicalMaterial color="#2A302D" metalness={0.8} roughness={0.5} />
       </mesh>
       <mesh
         ref={baseRingRef}
@@ -175,7 +188,7 @@ export function RobotArm({ q, accentColor = '#6FFFB0', glowCollision = true, sca
           {/* height=1, radius=1 — scale is set in useFrame */}
           <cylinderGeometry args={[1, 1, 1, 16]} />
           <meshPhysicalMaterial
-            color={BODY_COLOR} metalness={0.5} roughness={0.4} clearcoat={0.3}
+            color="#8A9591" metalness={0.5} roughness={0.4} clearcoat={0.3}
           />
         </mesh>
       ))}
@@ -212,18 +225,18 @@ export function RobotArm({ q, accentColor = '#6FFFB0', glowCollision = true, sca
             <mesh rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
               <cylinderGeometry args={[r, r, l, 32]} />
               <meshPhysicalMaterial
-                color={BODY_COLOR} metalness={0.7} roughness={0.3} clearcoat={0.4}
+                color="#8A9591" metalness={0.7} roughness={0.3} clearcoat={0.4}
               />
             </mesh>
             {/* Front cap */}
             <mesh position={[0, 0, l / 2 + 0.002]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
               <cylinderGeometry args={[r * 0.85, r * 0.85, 0.005, 32]} />
-              <meshPhysicalMaterial color={DARK_METAL} metalness={0.9} roughness={0.4} />
+              <meshPhysicalMaterial color="#2A302D" metalness={0.9} roughness={0.4} />
             </mesh>
             {/* Back cap */}
             <mesh position={[0, 0, -l / 2 - 0.002]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
               <cylinderGeometry args={[r * 0.85, r * 0.85, 0.005, 32]} />
-              <meshPhysicalMaterial color={DARK_METAL} metalness={0.9} roughness={0.4} />
+              <meshPhysicalMaterial color="#2A302D" metalness={0.9} roughness={0.4} />
             </mesh>
             {/* LED ring */}
             <mesh

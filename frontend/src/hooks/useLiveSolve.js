@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { connectSolveStream } from '../lib/api';
 
-const IDLE_Q = [0, -0.7, 0.9, -0.4, 0.6, 0];
+const UR5_IDLE = [0, -0.7, 0.9, -0.4, 0.6, 0];
+
+function makeIdleQ(nJoints) {
+  if (nJoints === 6) return [...UR5_IDLE];
+  // For a planar 3-DOF, a neutral extended pose looks good
+  if (nJoints === 3) return [0, 0, 0];
+  return Array(nJoints).fill(0);
+}
 
 /**
  * Manages a live, streamed solve for one solver. Call `run(target, seed)`
@@ -10,16 +17,18 @@ const IDLE_Q = [0, -0.7, 0.9, -0.4, 0.6, 0];
  * final pose after). Exposes status/phase/metrics for the UI readouts.
  */
 export function useLiveSolve(solverId) {
-  const [q, setQ] = useState(IDLE_Q);
+  const [q, setQ] = useState(UR5_IDLE);
   const [status, setStatus] = useState('idle'); // idle | connecting | running | done | error
   const [phase, setPhase] = useState('');
   const [step, setStep] = useState(null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const controllerRef = useRef(null);
+  const nJointsRef = useRef(6);
 
-  const run = useCallback(async ({ target, q0, seed, stepDelayMs = 35 }) => {
+  const run = useCallback(async ({ target, q0, seed, stepDelayMs = 35, robot = 'ur5', nJoints = 6 }) => {
     controllerRef.current?.close();
+    nJointsRef.current = nJoints;
     setStatus('connecting');
     setError(null);
     setResult(null);
@@ -48,6 +57,7 @@ export function useLiveSolve(solverId) {
       controller.send({
         solver: solverId,
         target,
+        robot,
         q0: q0 ?? null,
         seed: seed ?? null,
         step_delay_ms: stepDelayMs,
@@ -58,9 +68,10 @@ export function useLiveSolve(solverId) {
     }
   }, [solverId]);
 
-  const reset = useCallback(() => {
+  const reset = useCallback((nJoints) => {
     controllerRef.current?.close();
-    setQ(IDLE_Q);
+    const n = nJoints ?? nJointsRef.current;
+    setQ(makeIdleQ(n));
     setStatus('idle');
     setPhase('');
     setStep(null);

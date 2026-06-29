@@ -1,16 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArmScene } from './components/ArmScene';
 import { RobotArm } from './components/RobotArm';
 import { TargetMarker } from './components/TargetMarker';
 import { EnergyFunnel } from './components/EnergyFunnel';
 import { BenchmarkPanel } from './components/BenchmarkPanel';
 import { useLiveSolve } from './hooks/useLiveSolve';
-import { getRandomTarget, runBenchmark, API_BASE } from './lib/api';
+import { getRandomTarget, runBenchmark, getRobots, getRobotSpec, API_BASE } from './lib/api';
 import { SOLVERS, SOLVER_ORDER, phaseLabel } from './lib/solverMeta';
 import './styles/global.css';
 import './styles/app.css';
 
 function App() {
+  const [robots, setRobots] = useState([]);
+  const [selectedRobotId, setSelectedRobotId] = useState('ur5');
+  const [robotSpec, setRobotSpec] = useState(null);
+
   const [target, setTarget] = useState(null);
   // Random seed per page-load so the first solve is immediately unique
   const [seed] = useState(() => Math.floor(Math.random() * 1e9));
@@ -41,9 +45,9 @@ function App() {
 
   const focused = solveHooks[focusedSolver];
 
-  const fetchNewTarget = useCallback(async (newSeed) => {
+  const fetchNewTarget = useCallback(async (newSeed, robotId) => {
     try {
-      const data = await getRandomTarget(newSeed);
+      const data = await getRandomTarget(newSeed, robotId);
       setApiOk(true);
       setTarget({ position: data.position, quaternion: data.quaternion });
       return data;
@@ -53,37 +57,66 @@ function App() {
     }
   }, []);
 
+  // Fetch available robots + initial spec on mount, then solve
   useEffect(() => {
-    // On load: fetch a target then immediately kick off all six solvers
-    // so the arm starts animating toward the goal without needing a button click.
     (async () => {
-      const data = await fetchNewTarget(seed);
+      const robotList = await getRobots().catch(() => []);
+      setRobots(robotList);
+      const firstId = robotList[0]?.id ?? 'ur5';
+      setSelectedRobotId(firstId);
+      const spec = await getRobotSpec(firstId).catch(() => null);
+      if (spec) setRobotSpec(spec);
+      const nJoints = spec?.a?.length ?? 6;
+      const data = await fetchNewTarget(seed, firstId);
       if (!data) return;
       const t = { position: data.position, quaternion: data.quaternion };
       SOLVER_ORDER.forEach((id, i) => {
-        // Small stagger so six WebSocket connections don't all open simultaneously
         setTimeout(() => {
-          solveHooks[id].run({ target: t, seed: 2000 + i, stepDelayMs: 30 });
+          solveHooks[id].run({ target: t, seed: 2000 + i, stepDelayMs: 30, robot: firstId, nJoints });
         }, i * 80);
       });
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // When robot selection changes (after initial mount), fetch new spec and re-solve
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    let active = true;
+    getRobotSpec(selectedRobotId).then(spec => {
+      if (!active) return;
+      setRobotSpec(spec);
+      const nJoints = spec?.a?.length ?? 6;
+      Object.values(solveHooks).forEach(h => h.reset(nJoints));
+      fetchNewTarget(Math.floor(Math.random() * 1e9), selectedRobotId).then(data => {
+        if (!data || !active) return;
+        const t = { position: data.position, quaternion: data.quaternion };
+        SOLVER_ORDER.forEach((id, i) => {
+          setTimeout(() => {
+            solveHooks[id].run({ target: t, seed: 2000 + i, stepDelayMs: 30, robot: selectedRobotId, nJoints });
+          }, i * 80);
+        });
+      });
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [selectedRobotId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const solveAll = useCallback(async () => {
-    const data = await fetchNewTarget(Math.floor(Math.random() * 1e9));
+    const nJoints = robotSpec?.a?.length ?? 6;
+    const data = await fetchNewTarget(Math.floor(Math.random() * 1e9), selectedRobotId);
     if (!data) return;
     const t = { position: data.position, quaternion: data.quaternion };
     SOLVER_ORDER.forEach((id, i) => {
       setTimeout(() => {
-        solveHooks[id].run({ target: t, seed: 2000 + i, stepDelayMs: 30 });
+        solveHooks[id].run({ target: t, seed: 2000 + i, stepDelayMs: 30, robot: selectedRobotId, nJoints });
       }, i * 80);
     });
-  }, [fetchNewTarget, solveHooks]);
+  }, [fetchNewTarget, solveHooks, selectedRobotId, robotSpec]);
 
   const runBench = useCallback(async () => {
     setBenchLoading(true);
     try {
-      const data = await runBenchmark({ solvers: SOLVER_ORDER, nTrials, scenario, seed: 1 });
+      const data = await runBenchmark({ solvers: SOLVER_ORDER, robot: selectedRobotId, nTrials, scenario, seed: 1 });
       setBenchResults(data.results);
       setApiOk(true);
     } catch {
@@ -91,7 +124,7 @@ function App() {
     } finally {
       setBenchLoading(false);
     }
-  }, [scenario]);
+  }, [scenario, selectedRobotId]);
 
   return (
     <div className="app">
@@ -100,6 +133,23 @@ function App() {
           <span className="app-header__eyebrow">folding-inspired inverse kinematics</span>
           <h1>ProteinIK <span className="app-header__lab">/ lab bench</span></h1>
         </div>
+        
+        {robots.length > 0 && (
+          <div className="app-header__robot-select">
+            <select 
+              value={selectedRobotId} 
+              onChange={(e) => setSelectedRobotId(e.target.value)}
+              className="robot-dropdown"
+            >
+              {robots.map(r => (
+                <option key={r.id} value={r.id}>
+                  {r.id === 'ur5' ? 'UR5 (6-DOF)' : r.id === 'planar3dof' ? 'Planar (3-DOF)' : r.id}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div className="app-header__status">
           <span className={`api-dot ${apiOk === true ? 'ok' : apiOk === false ? 'bad' : ''}`} />
           <span>{apiOk === false ? `cannot reach ${API_BASE}` : apiOk === null ? 'connecting…' : 'connected'}</span>
@@ -128,7 +178,7 @@ function App() {
             <ArmScene>
               {target && (
                 <>
-                  <RobotArm q={focused.q} accentColor={SOLVERS[focusedSolver].color} />
+                  <RobotArm q={focused.q} spec={robotSpec || undefined} accentColor={SOLVERS[focusedSolver].color} />
                   <TargetMarker position={target.position} quaternion={target.quaternion} />
                 </>
               )}
@@ -192,7 +242,7 @@ function App() {
                 >
                   <div className="solver-tile__viewport">
                     <ArmScene compact>
-                      <RobotArm q={h.q} accentColor={SOLVERS[id].color} scale={2.4} />
+                      <RobotArm q={h.q} spec={robotSpec || undefined} accentColor={SOLVERS[id].color} scale={2.4} />
                       {target && <TargetMarker position={target.position} quaternion={target.quaternion} scale={2.4} />}
                     </ArmScene>
                   </div>
