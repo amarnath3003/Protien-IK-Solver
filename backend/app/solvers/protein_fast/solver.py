@@ -199,7 +199,12 @@ def _fold_once_v4(
         if len(recent) >= stuck_window:
             if recent[0] - recent[-1] < stuck_eps:
                 rescues += 1
-                scope_sizes = [1, 3, 5, n]
+                scope_sizes = sorted(set([
+                    max(1, n // 6),
+                    max(1, n // 2),
+                    max(1, 5 * n // 6),
+                    n,
+                ]))
                 scope = scope_sizes[min(rescues - 1, len(scope_sizes) - 1)]
                 if scope >= n:
                     q = spec.random_config(rng)
@@ -304,8 +309,10 @@ def solve_protein_fast(
         _, _, base_combined = _combined_err(spec, q, T_target)
         jitter_failures = 0
         n_jit = 5
+        arm_reach = max(0.1, float(np.sum(np.abs(spec.a)) + np.sum(np.abs(spec.d))))
+        jitter_std = float(np.clip(1e-3 / max(1.0, arm_reach), 1e-4, 5e-3))
         for _ in range(n_jit):
-            qj = spec.clip(q + rng.normal(0, 0.001, size=n))
+            qj = spec.clip(q + rng.normal(0, jitter_std, size=n))
             _, _, cj = _combined_err(spec, qj, T_target)
             if cj > base_combined + 10 * (pos_tol + 0.3 * orient_tol):
                 jitter_failures += 1

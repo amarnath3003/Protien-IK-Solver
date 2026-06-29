@@ -482,7 +482,12 @@ def solve_protein_ik(
         # Use a much smaller jitter and a tolerance-relative threshold
         # so the check actually distinguishes unstable knife-edge points
         # from genuinely converged ones, rather than rejecting everything.
-        jitter_std = 0.001
+        # Scale jitter so the expected Cartesian tip displacement is ~1 mm
+        # regardless of arm size: jitter_std × reach ≈ 0.001 m. Without this
+        # a long-reach arm amplifies 0.001 rad into centimetres of tip motion
+        # and the basin check rejects all valid solutions as unstable.
+        arm_reach = max(0.1, float(np.sum(np.abs(spec.a)) + np.sum(np.abs(spec.d))))
+        jitter_std = float(np.clip(1e-3 / max(1.0, arm_reach), 1e-4, 5e-3))
         for _ in range(n_jitter_trials):
             q_jitter = spec.clip(q + rng.normal(0, jitter_std, size=n))
             T_j = end_effector_pose(spec, q_jitter)
