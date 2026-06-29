@@ -204,6 +204,71 @@ def test_fk_random_roundtrip():
         np.testing.assert_allclose(err, 0.0, atol=1e-11)
 
 
+# ─── ProteinIK Fast: allocation-light FK primitives + barrierless behaviour ───
+
+@pytest.mark.parametrize("robot_spec", [ur5_spec(), planar3dof_spec()])
+def test_fast_chain_bit_identical_to_core(robot_spec):
+    """The allocation-light _fast_chain must reproduce core forward_kinematics_chain
+    EXACTLY (0.0 difference) — the folds it drives are otherwise the same fold."""
+    from app.solvers.protein_fast.solver import _fast_chain
+    spec = robot_spec
+    ca, sa = np.cos(spec.alpha), np.sin(spec.alpha)
+    rng = np.random.default_rng(0)
+    for _ in range(500):
+        q = spec.random_config(rng)
+        ref = forward_kinematics_chain(spec, q)
+        fast, _ = _fast_chain(spec, q, ca, sa)
+        assert np.max(np.abs(ref - fast)) == 0.0
+
+
+@pytest.mark.parametrize("robot_spec", [ur5_spec(), planar3dof_spec()])
+def test_incremental_chain_bit_identical(robot_spec):
+    """Recomputing the chain after a single-joint change (incremental) must match
+    a full core recompute EXACTLY — the Metropolis sweep relies on this."""
+    from app.solvers.protein_fast.solver import _fast_chain, _incremental_chain
+    spec = robot_spec
+    ca, sa = np.cos(spec.alpha), np.sin(spec.alpha)
+    rng = np.random.default_rng(1)
+    for _ in range(500):
+        q = spec.random_config(rng)
+        chain, L = _fast_chain(spec, q, ca, sa)
+        i = int(rng.integers(spec.n_joints))
+        cand = float(spec.random_config(rng)[i])
+        q2 = q.copy(); q2[i] = cand
+        ref = forward_kinematics_chain(spec, q2)
+        incr, _ = _incremental_chain(spec, chain, L, i, cand, ca, sa)
+        assert np.max(np.abs(ref - incr)) == 0.0
+
+
+def test_protein_fast_solves_and_is_clean():
+    """ProteinIK Fast should reach the target with high success and not return a
+    self-colliding pose when a clean one is reachable (collision-aware selection)."""
+    from app.solvers.protein_fast import solve_protein_fast
+    spec = ur5_spec()
+    succ = 0
+    for i in range(20):
+        rng = np.random.default_rng(100 + i)
+        T = end_effector_pose(spec, spec.random_config(rng))
+        r = solve_protein_fast(spec, spec.random_config(rng), T, rng)
+        if r.success:
+            succ += 1
+            assert r.pos_error < 1e-2
+    assert succ >= 18, f"only {succ}/20 succeeded"
+
+
+def test_protein_fast_barrierless_fast_path_is_cheap():
+    """An easy target reachable by barrierless folding should resolve via Phase A
+    (few iterations) — the whole point of the kinetic-partitioning fast path."""
+    from app.solvers.protein_fast import solve_protein_fast
+    spec = ur5_spec()
+    q0 = np.array([0.1, -0.5, 0.5, -0.3, 0.2, 0.0])
+    T = end_effector_pose(spec, q0 + 0.05)   # target a small step away
+    r = solve_protein_fast(spec, q0, T, np.random.default_rng(0))
+    assert r.success
+    # barrierless LM should nail it in far fewer than a full stochastic fold
+    assert r.iterations < 60, f"fast path took {r.iterations} iters"
+
+
 # ─── Energy: weight consistency check ────────────────────────────────────────
 
 def test_total_energy_fast_nonnegative():

@@ -9,12 +9,12 @@ export const ROBOT_ORDER = ['planar3dof', 'ur5', 'franka_panda'];
 // Explicit allowlist per robot. analytical_planar3dof is only valid on planar3dof.
 export const ROBOT_SOLVER_COMPAT = {
   planar3dof:   ['jacobian_dls', 'ccd', 'fabrik', 'trac_ik_style', 'multi_start',
-                 'protein_ik', 'protein_fast', 'protein_fast_v41', 'fixed_lambda_ik', 'protein_homotopy',
+                 'protein_ik', 'protein_fast', 'fixed_lambda_ik', 'protein_homotopy',
                  'analytical_planar3dof'],
   ur5:          ['jacobian_dls', 'ccd', 'fabrik', 'trac_ik_style', 'multi_start',
-                 'protein_ik', 'protein_fast', 'protein_fast_v41', 'fixed_lambda_ik', 'protein_homotopy'],
+                 'protein_ik', 'protein_fast', 'fixed_lambda_ik', 'protein_homotopy'],
   franka_panda: ['jacobian_dls', 'ccd', 'fabrik', 'trac_ik_style', 'multi_start',
-                 'protein_ik', 'protein_fast', 'protein_fast_v41', 'fixed_lambda_ik', 'protein_homotopy'],
+                 'protein_ik', 'protein_fast', 'fixed_lambda_ik', 'protein_homotopy'],
 };
 
 export const SOLVERS = {
@@ -42,12 +42,6 @@ export const SOLVERS = {
     color: '#9D00FF',          // purple for speed/fast variants
     family: 'protein',
   },
-  protein_fast_v41: {
-    name: 'ProteinIK Fast (V4.1)',
-    short: 'ProIK Fast+',
-    color: '#C77DFF',          // lighter violet — same family as V4, faster variant
-    family: 'protein',
-  },
   analytical_planar3dof: {
     name: 'Analytical IK (Planar 3-DOF, exact)',
     short: 'Analytical',
@@ -59,7 +53,7 @@ export const SOLVERS = {
 // Default order shown for all robots (analytical_planar3dof added per-robot via ROBOT_SOLVER_COMPAT)
 export const SOLVER_ORDER = [
   'jacobian_dls', 'ccd', 'fabrik', 'trac_ik_style', 'multi_start',
-  'protein_ik', 'protein_fast', 'protein_fast_v41', 'fixed_lambda_ik', 'protein_homotopy',
+  'protein_ik', 'protein_fast', 'fixed_lambda_ik', 'protein_homotopy',
 ];
 
 export const SCENARIOS = {

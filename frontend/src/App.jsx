@@ -42,17 +42,15 @@ function App() {
   const multiStart     = useLiveSolve('multi_start');
   const protein        = useLiveSolve('protein_ik');
   const proteinFast    = useLiveSolve('protein_fast');
-  const proteinFastV41 = useLiveSolve('protein_fast_v41');
   const fixedLambda    = useLiveSolve('fixed_lambda_ik');
   const proteinHomotopy = useLiveSolve('protein_homotopy');
   const analytical     = useLiveSolve('analytical_planar3dof');
 
   const solveHooks = useMemo(() => ({
     jacobian_dls: dls, ccd, fabrik, trac_ik_style: trac, multi_start: multiStart,
-    protein_ik: protein, protein_fast: proteinFast, protein_fast_v41: proteinFastV41,
-    fixed_lambda_ik: fixedLambda,
+    protein_ik: protein, protein_fast: proteinFast, fixed_lambda_ik: fixedLambda,
     protein_homotopy: proteinHomotopy, analytical_planar3dof: analytical,
-  }), [dls, ccd, fabrik, trac, multiStart, protein, proteinFast, proteinFastV41, fixedLambda, proteinHomotopy, analytical]);
+  }), [dls, ccd, fabrik, trac, multiStart, protein, proteinFast, fixedLambda, proteinHomotopy, analytical]);
 
   const focused = solveHooks[focusedSolver] ?? dls;
 
