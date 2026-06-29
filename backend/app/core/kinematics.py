@@ -84,6 +84,63 @@ def ur5_spec() -> RobotSpec:
     )
 
 
+def planar3dof_spec() -> RobotSpec:
+    """Planar 3-DOF arm (RRR) in the XY plane.
+
+    DH parameters for a standard 3-link planar arm:
+        - All joints revolute, rotating about Z.
+        - alpha = 0 everywhere (no twist — stays in the XY plane).
+        - d = 0 everywhere (no Z offset).
+        - Link lengths: L1=0.4m, L2=0.3m, L3=0.2m (total reach 0.9m).
+
+    This arm has a closed-form analytical IK solution, which makes it
+    the ideal ground-truth validator: we can compare any numerical solver's
+    output against the exact answer, not just check 'error < tolerance'.
+
+    End-effector state is (x, y, theta) where theta = q1+q2+q3 is the
+    tip orientation in the plane. The DH FK produces a full 4x4 matrix
+    where the relevant state is in the XY block and Z is always ~0.
+    All existing FK / Jacobian / pose_error / self-collision machinery
+    works without modification since DH is fully general.
+    """
+    L1, L2, L3 = 0.4, 0.3, 0.2
+    a = np.array([L1, L2, L3])
+    d = np.zeros(3)
+    alpha = np.zeros(3)          # planar — no twist
+    theta_offset = np.zeros(3)
+    joint_limits = np.array([[-np.pi, np.pi]] * 3)
+    # link radii for the thin planar arm (used in self-collision checks)
+    link_radius = np.array([0.03, 0.025, 0.02])
+    return RobotSpec(
+        name="planar3dof",
+        a=a, d=d, alpha=alpha, theta_offset=theta_offset,
+        joint_limits=joint_limits, link_radius=link_radius,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Robot registry — maps robot name → spec factory function.
+# Add new arms here; the API will expose them automatically.
+# ---------------------------------------------------------------------------
+ROBOT_REGISTRY: dict[str, callable] = {
+    "ur5":         ur5_spec,
+    "planar3dof":  planar3dof_spec,
+}
+
+
+def get_robot_spec(name: str) -> RobotSpec:
+    """Return a fresh RobotSpec for the named robot.
+
+    Raises ValueError for unknown names so callers get a clean message
+    rather than a KeyError traceback.
+    """
+    if name not in ROBOT_REGISTRY:
+        raise ValueError(
+            f"Unknown robot '{name}'. Available: {list(ROBOT_REGISTRY)}"
+        )
+    return ROBOT_REGISTRY[name]()
+
+
 def _dh_transform(theta: float, d: float, a: float, alpha: float) -> np.ndarray:
     ct, st = np.cos(theta), np.sin(theta)
     ca, sa = np.cos(alpha), np.sin(alpha)

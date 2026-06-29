@@ -47,17 +47,42 @@ def _open_space(spec: RobotSpec, rng: np.random.Generator):
     return q0, T_target
 
 
+def _manipulability(spec: RobotSpec, q: np.ndarray) -> float:
+    """Robot-agnostic manipulability index.
+
+    For a full 6-DOF arm we use the standard Yoshikawa measure:
+        m = sqrt(det(J @ J.T))   where J is 6×N.
+
+    For a planar arm (N < 6) the full 6×N Jacobian is rank-deficient by
+    design (Z-linear velocity and X/Y-angular velocity rows are always
+    near-zero), so det(J @ J.T) is always ≈0 and gives no discriminative
+    signal. Instead we use the 3-row planar sub-Jacobian (rows 0,1,5 —
+    x-linear, y-linear, z-angular), which is the actual task space for a
+    planar arm and gives a well-conditioned 3×3 product.
+    """
+    J = geometric_jacobian(spec, q)
+    if spec.n_joints <= 3:
+        # Planar sub-Jacobian: x-vel (row 0), y-vel (row 1), z-ang-vel (row 5)
+        J_planar = J[[0, 1, 5], :]     # shape (3, N)
+        return float(np.sqrt(max(np.linalg.det(J_planar @ J_planar.T), 0)))
+    return float(np.sqrt(max(np.linalg.det(J @ J.T), 0)))
+
+
 def _near_singular(spec: RobotSpec, rng: np.random.Generator, max_tries: int = 50):
     """Bias target generation toward low-manipulability (near-singular)
-    configurations -- rejection sampling on manipulability index."""
+    configurations -- rejection sampling on manipulability index.
+
+    Uses robot-agnostic _manipulability() so it works correctly for both
+    6-DOF arms and planar 3-DOF arms.
+    """
     best_q, best_m = None, np.inf
+    threshold = 0.001 if spec.n_joints <= 3 else 0.005
     for _ in range(max_tries):
         q = _random_q(spec, rng)
-        J = geometric_jacobian(spec, q)
-        m = np.sqrt(max(np.linalg.det(J @ J.T), 0))
+        m = _manipulability(spec, q)
         if m < best_m:
             best_m, best_q = m, q
-        if m < 0.005:
+        if m < threshold:
             break
     T_target = end_effector_pose(spec, best_q)
     q0 = _random_q(spec, rng)
