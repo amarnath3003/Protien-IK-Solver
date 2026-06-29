@@ -24,6 +24,7 @@ from app.solvers.protein_ik import solve_protein_ik
 from app.solvers.protein_homotopy import solve_protein_homotopy
 from app.solvers.fixed_lambda_ik import solve_fixed_lambda_ik
 from app.solvers.protein_fast import solve_protein_fast
+from app.solvers.protein_fast_v41 import solve_protein_fast_v41
 from app.solvers.analytical_planar3dof import solve_analytical_planar3dof
 
 
@@ -49,6 +50,7 @@ SOLVER_REGISTRY: dict[str, Callable[..., SolveResult]] = {
     "fixed_lambda_ik":    _wrap_rng(solve_fixed_lambda_ik),
     "protein_homotopy":   _wrap_rng(solve_protein_homotopy),
     "protein_fast":       _wrap_rng(solve_protein_fast),
+    "protein_fast_v41":   _wrap_rng(solve_protein_fast_v41),
     # Planar 3-DOF analytical solver — only valid when robot='planar3dof'
     "analytical_planar3dof": _wrap_rng(solve_analytical_planar3dof),
     # protein_raw (V6) — implementation pending
@@ -81,6 +83,7 @@ SOLVER_DISPLAY_NAMES: dict[str, str] = {
     "fixed_lambda_ik":  "Fixed-λ Homotopy (Baseline)",
     "protein_homotopy": "ProteinIK Homotopy (CCH-IK)",
     "protein_fast":     "ProteinIK Fast (V4)",
+    "protein_fast_v41": "ProteinIK Fast (V4.1)",
     "analytical_planar3dof": "Analytical IK (Planar 3-DOF, exact)",
     # "protein_raw":    "ProteinIK Raw Biology (V6)",
 }
