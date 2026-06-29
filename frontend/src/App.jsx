@@ -248,7 +248,7 @@ function App() {
                 >
                   <div className="solver-tile__viewport">
                     <ArmScene compact key={robot}>
-                      <RobotArm q={h.q} spec={robotSpec} accentColor={SOLVERS[id].color} scale={2.4} />
+                      <RobotArm q={h.q} spec={robotSpec} accentColor={SOLVERS[id].color} scale={2.4} quality="low" />
                       {target && <TargetMarker position={target.position} quaternion={target.quaternion} scale={2.4} />}
                     </ArmScene>
                   </div>

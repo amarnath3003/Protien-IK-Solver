@@ -39,7 +39,10 @@ const _rc   = new THREE.Color();   // ring colour scratch
 const DEFAULT_IDLE = [0, -0.7, 0.9, -0.4, 0.6, 0];
 
 // ─── component ───────────────────────────────────────────────────────────────
-export function RobotArm({ q, spec = UR5_SPEC, accentColor = '#6FFFB0', glowCollision = true, scale = 3 }) {
+export function RobotArm({ q, spec = UR5_SPEC, accentColor = '#6FFFB0', glowCollision = true, scale = 3, quality = 'high' }) {
+  // 'high': full 32-segment cylinders; 'low': 12-segment for compact tile thumbnails
+  const segs = quality === 'high' ? 32 : 12;
+  const linkSegs = quality === 'high' ? 16 : 8;
 
   // Compute derived constants when spec changes; IDLE_Q uses per-robot pose from ROBOT_IDLE_Q
   const { N, LINK_R, JOINT_R, JOINT_L, IDLE_Q } = useMemo(() => {
@@ -66,10 +69,13 @@ export function RobotArm({ q, spec = UR5_SPEC, accentColor = '#6FFFB0', glowColl
   useMemo(() => { lerpedQ.current = [...IDLE_Q]; }, [IDLE_Q]);
 
   // Refs to every Three.js object we'll mutate imperatively
-  const jointRefs   = useRef([]);
-  const linkRefs    = useRef([]);
-  const ringRefs    = useRef([]);
-  const baseRingRef = useRef(null);
+  const jointRefs    = useRef([]);
+  const linkRefs     = useRef([]);
+  const ringRefs     = useRef([]);
+  const baseRingRef  = useRef(null);
+  const frameCount   = useRef(0);
+  // Cache the last computed ring colour so we can carry it between throttled frames
+  const cachedRingColor = useRef(new THREE.Color());
   
   // ensure ref arrays are long enough
   if (jointRefs.current.length < N + 1) jointRefs.current = Array(N + 1).fill(null);
@@ -97,16 +103,23 @@ export function RobotArm({ q, spec = UR5_SPEC, accentColor = '#6FFFB0', glowColl
 
     if (!moved) return; // arm is at rest — skip all GPU work
 
+    frameCount.current++;
+
     // ── forward kinematics ─────────────────────────────────────────────
     const chain = forwardKinematicsChain(curSpec, curr);
 
-    // ── collision glow colour ─────────────────────────────────────────
+    // ── collision glow colour (throttled to every 4th frame) ──────────
+    // O(n²) segment-segment distance is expensive; colour barely changes
+    // frame-to-frame so checking at ~15 Hz is imperceptible.
     _rc.set(accentRef.current);
-    if (glowCollision) {
+    if (glowCollision && frameCount.current % 4 === 0) {
       const positions = chain.map((c) => c.position);
       const minDist   = selfCollisionMinDistance(curSpec, positions);
       const t         = THREE.MathUtils.clamp(1 - (minDist + 0.02) / 0.07, 0, 1);
       _rc.lerp(ALARM, t);
+      cachedRingColor.current.copy(_rc);
+    } else if (glowCollision) {
+      _rc.copy(cachedRingColor.current);
     }
 
     // ── update joint group transforms ─────────────────────────────────
@@ -172,7 +185,7 @@ export function RobotArm({ q, spec = UR5_SPEC, accentColor = '#6FFFB0', glowColl
 
       {/* ── Base Pedestal (fully static) ─────────────────────────────────── */}
       <mesh position={[0, -0.04, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.08, 0.09, 0.08, 32]} />
+        <cylinderGeometry args={[0.08, 0.09, 0.08, segs]} />
         <meshPhysicalMaterial color="#2A302D" metalness={0.8} roughness={0.5} />
       </mesh>
       <mesh
@@ -180,7 +193,7 @@ export function RobotArm({ q, spec = UR5_SPEC, accentColor = '#6FFFB0', glowColl
         position={[0, -0.005, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
       >
-        <ringGeometry args={[0.075, 0.085, 32]} />
+        <ringGeometry args={[0.075, 0.085, segs]} />
         <meshStandardMaterial
           color={accentColor} emissive={accentColor}
           emissiveIntensity={1.5} toneMapped={false}
@@ -195,7 +208,7 @@ export function RobotArm({ q, spec = UR5_SPEC, accentColor = '#6FFFB0', glowColl
           castShadow receiveShadow
         >
           {/* height=1, radius=1 — scale is set in useFrame */}
-          <cylinderGeometry args={[1, 1, 1, 16]} />
+          <cylinderGeometry args={[1, 1, 1, linkSegs]} />
           <meshPhysicalMaterial
             color="#8A9591" metalness={0.5} roughness={0.4} clearcoat={0.3}
           />
@@ -232,19 +245,19 @@ export function RobotArm({ q, spec = UR5_SPEC, accentColor = '#6FFFB0', glowColl
           <group key={`joint-${i}`} ref={ref} position={frame.position}>
             {/* Motor body */}
             <mesh rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
-              <cylinderGeometry args={[r, r, l, 32]} />
+              <cylinderGeometry args={[r, r, l, segs]} />
               <meshPhysicalMaterial
                 color="#8A9591" metalness={0.7} roughness={0.3} clearcoat={0.4}
               />
             </mesh>
             {/* Front cap */}
             <mesh position={[0, 0, l / 2 + 0.002]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
-              <cylinderGeometry args={[r * 0.85, r * 0.85, 0.005, 32]} />
+              <cylinderGeometry args={[r * 0.85, r * 0.85, 0.005, segs]} />
               <meshPhysicalMaterial color="#2A302D" metalness={0.9} roughness={0.4} />
             </mesh>
             {/* Back cap */}
             <mesh position={[0, 0, -l / 2 - 0.002]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
-              <cylinderGeometry args={[r * 0.85, r * 0.85, 0.005, 32]} />
+              <cylinderGeometry args={[r * 0.85, r * 0.85, 0.005, segs]} />
               <meshPhysicalMaterial color="#2A302D" metalness={0.9} roughness={0.4} />
             </mesh>
             {/* LED ring */}
@@ -253,7 +266,7 @@ export function RobotArm({ q, spec = UR5_SPEC, accentColor = '#6FFFB0', glowColl
               position={[0, 0, l / 2 - 0.01]}
               rotation={[Math.PI / 2, 0, 0]}
             >
-              <cylinderGeometry args={[r * 1.02, r * 1.02, 0.005, 32]} />
+              <cylinderGeometry args={[r * 1.02, r * 1.02, 0.005, segs]} />
               <meshStandardMaterial
                 color={accentColor} emissive={accentColor}
                 emissiveIntensity={1.5} toneMapped={false}
