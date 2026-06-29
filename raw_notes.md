@@ -2,30 +2,30 @@
 
 > Living document. Updated after **every** prompt to track our evolving thinking on Raw.
 > Companion docs: `raw_design.md` (term filter), `raw_audit.md` (faithfulness×rawness
-> verdict), `research_direction.md` (paper spine). Math derivation lives here until promoted
-> to `raw_math.md`.
+> verdict), `raw_math.md` (locked math spec), `research_direction.md` (paper spine).
+
+---
+
+## 0. Governing principle (locked)
+
+**Exactly follow the protein-folding mechanism.** Rawness is a *consequence*, not a separate
+filter — no IK solver replicates folding, so a faithful replica is automatically novel.
+Where a folding-faithful term happens to coincide with an existing IK technique, that is a
+signal the term is *unfaithful* (wrong quantity), not that folding should be abandoned — fix
+the quantity. Scope of "exact": the **coarse-grained Cα level** (a real, simulated level), not
+all-atom. The single non-folding term is `E_task` (folding is target-blind), kept minimal.
 
 ---
 
 ## 1. What Raw is (the thesis)
 
-Raw is **not** "another IK trick dressed as biology" (that was V1–V5). It is a literal,
-ground-up replica of real protein folding physics, mapped onto a robot arm and then *solved
-as physics*.
+Not "IK dressed as biology" (V1–V5). A literal coarse-grained Cα-bead, implicit-solvent
+**folding simulation** whose polymer is a robot arm (Honeycutt–Thirumalai / Enciso–Rey /
+Clementi–Onuchic lineage). Joint origins `pᵢ` = beads · links = rigid bonds (FK-enforced) ·
+joint angles `q` = torsions (only soft DOF).
 
-- V1 = biology in the **architecture** (renamed staged IK).
-- V4 = same biology, **optimized math**.
-- V5 = **one** folding principle (minimal frustration → conflict-controlled λ).
-- **Raw = biology in the energy function itself** — rebuild what the solver minimizes from
-  actual biophysical forces, each with **no existing IK equivalent**.
-
-Correct reference class (verified science): a **coarse-grained (one-bead-per-residue),
-off-lattice, implicit-solvent folding simulation** — Honeycutt–Thirumalai / Clementi–Onuchic
-/ Enciso–Rey lineage — whose polymer happens to be a manipulator.
-
-Mapping: joint origins `pᵢ` = Cα beads · links = rigid virtual bonds · joint angles `q` =
-backbone torsions (the only soft DOF). Bonds/angles are enforced *exactly* by FK (stiffer
-than MD, not looser).
+Spectrum: V1 = biology in architecture · V4 = optimized math · V5 = one principle (minimal
+frustration) · **Raw = biology in the energy function itself.**
 
 ---
 
@@ -33,89 +33,86 @@ than MD, not looser).
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Solver dynamics | **Pure overdamped Langevin, NO LM/Metropolis finisher** | User: "exact deep-down replica." Native state reached by physics or not at all. |
-| Build sequence | **Bio + math first, then code** | User directive. Get the physics provably right before implementing. |
-| Beads | joint origins from FK chain | Cα-bead correspondence. |
-| LJ ε | **uniform** (non-Gō) | Gō biases toward a known native = "tracking the answer" (rejected). Structure must *emerge*. |
-| Temperature | **single self-consistent `T`** across entropy weight + Langevin noise + cooling | Faithful (fluctuation-dissipation) AND Raw's strongest distinguishing feature. |
-| `E_native` for Σ | cheap warm-start proxy (DLS/geometric seed), stated openly | The one IK-specific circularity; absent in the protein case. |
+| Governing rule | exactly follow folding; rawness follows | user directive |
+| Dynamics | overdamped Langevin; **endgame = its `T→0` limit** (native-state consolidation = LM/Newton), NOT a foreign finisher | resolves the "pure Langevin can't hit tolerance" tension faithfully |
+| Build sequence | bio + math first, then code | user directive |
+| Beads | joint origins from FK chain | Cα correspondence |
+| LJ ε | **uniform** (non-Gō) | structure must emerge, not be planted |
+| Temperature | **single self-consistent `T`** across entropy weight + noise + cooling | faithful (FDT) + the defining feature |
+| Entropy | **`S=log Ω`, target-blind, clash-aware** (NOT manipulability) | the real hydrophobic entropy; faithful AND raw |
+| `E_native` for Σ | cheap warm-start proxy, stated openly | the one IK-specific circularity |
 
 ---
 
-## 3. Current free energy (the thing Raw minimizes via Langevin)
+## 3. The free energy (what Langevin minimizes) — see `raw_math.md` for full forms
 
 ```
-F(q; T) = E_task + E_LJ + E_hbond  −  T · S(q)
+F(q;T) = E_task + E_LJ + E_HB − T·S_conf(q)
 ```
-
-- **E_LJ** (full 6-12, with attraction), non-adjacent bead pairs:
-  `Σ 4εᵢⱼ[(σᵢⱼ/dᵢⱼ)¹² − (σᵢⱼ/dᵢⱼ)⁶]`, `dᵢⱼ=‖pᵢ−pⱼ‖`, `σᵢⱼ=rᵢ+rⱼ` (global scale TBD), uniform ε.
-- **E_hbond** (directional): `−ε_hb · exp(−(dᵢⱼ−d₀)²/2σ_d²) · (angular factor)`.
-  ⚠️ direction vector must be the **normal to the triplet plane** `(p_{i−1},pᵢ,p_{i+1})`,
-  NOT the joint axis `zᵢ` (see §5).
-- **S(q)** entropy: currently `log w(q)=½log det(JJᵀ)` (manipulability) — ⚠️ **flagged as not
-  raw**, see §4/§5.
-- **Dynamics:** `q_{t+1}=clip(q_t − ∇F·Δt + √(2TΔt)·ξ)`, `T_t=max(T_glass, T_start·e^{−t/τ})`.
-- **Σ (pre-solve difficulty):** `Σ=σ_E/ΔE = 1/Z`; `Σ<1` funnelled, `Σ>1` glassy.
-  `T_glass≈σ_E/√(2 ln N)`.
-
-Forces are FK-chain quantities (analytic for E_task via Jacobian; FD for bio terms first).
+- **E_LJ**: full 6-12 with attraction, non-adjacent beads, uniform ε. Role: packing/contacts.
+- **E_HB**: directional; vector = **triplet-plane normal** of `(p_{i−1},pᵢ,p_{i+1})` (NOT joint
+  axis). Role: secondary structure.
+- **S_conf** = `log Ω(q)`, Ω = clash-free, in-limits accessible micro-volume, **target-blind**
+  (MC estimate, common random numbers). Role: hydrophobic collapse / clash+singularity avoidance
+  by thermodynamics.
+- **Dynamics**: `q←clip(q − ∇F·Δt + √(2TΔt)ξ)`, cool `T_t=max(T_glass, T_start e^{−t/τ})`.
+- **Last step (§4b)**: at `T→0`, noise off → damped-Newton/LM = native-state consolidation;
+  then jitter-and-relax stability gate (Anfinsen native check).
+- **Σ** (pre-solve): `σ_E/ΔE = 1/Z`; `<1` funnel, `>1` glassy.
 
 ---
 
-## 4. Rawness audit — current verdict (see `raw_audit.md` for evidence)
+## 4. Rawness audit — verdict (evidence in `raw_audit.md`)
 
-| Term | Faithful? | Raw (no IK equivalent)? |
+| Term | Faithful? | Raw? |
 |---|---|---|
-| LJ attraction (emergent inter-link) | ✅ | **RAW ✓** |
-| Directional H-bond | ✅ (after vector fix) | **RAW ✓** |
-| `−T·log w` entropy | ✅ (hydrophobic PMF) | **NOT RAW ✗** — = manipulability-max singularity avoidance; "manipulability-as-entropy" already exists in robotics |
-| Σ landscape topology | ✅ | **RAW ✓** (with `E_native` proxy caveat) |
-| Langevin on PMF | ✅ | **BORDERLINE** — raw only via free-energy framing |
+| LJ attraction | ✅ | RAW ✓ |
+| Directional H-bond (triplet-plane normal) | ✅ | RAW ✓ |
+| `S=log Ω` entropy (target-blind, clash-aware) | ✅ | **RAW ✓** (resolved — was the failing term) |
+| Σ landscape topology | ✅ | RAW ✓ (E_native proxy caveat) |
+| Langevin + `T→0` consolidation endgame | ✅ | RAW ✓ (endgame is the dynamics' limit, not a bolt-on) |
 
-**Net:** Raw is substantially raw — 3 clearly-raw terms — but the **entropy term fails the
-project's own filter**. It must be fixed or it reintroduces the V1 move Raw exists to avoid.
+All five terms now pass once the §5 corrections are applied.
 
 ---
 
-## 5. Corrections queued before coding
+## 5. Corrections — status
 
-1. **H-bond direction** → triplet-plane normal of `(p_{i−1},pᵢ,p_{i+1})`, not `zᵢ`. *(faithfulness)*
-2. **Entropy term** → replace bare manipulability with a **collision-aware local
-   accessible-volume entropy** `S(q)=log Ω(q)` (Ω = measure of `δq` keeping EE in-tolerance
-   AND collision-free). Genuine Boltzmann `S=k log Ω`, collision-aware (manipulability isn't),
-   no standard IK name. *(rawness — preferred fix, "Option A")*. Alt: reframe claim around the
-   thermodynamic folding **transition** (Option B), or drop the term (Option C).
-3. **Σ native reference** → state warm-start proxy openly.
-4. **Keep** single self-consistent `T`.
+1. **H-bond direction → triplet-plane normal** (not `zᵢ`). ✅ locked into `raw_math.md`.
+2. **Entropy → `S=log Ω`, target-blind, clash-aware** (not manipulability). ✅ locked.
+3. **Σ native reference = warm-start proxy**, stated openly. ✅ locked.
+4. **Keep single self-consistent `T`.** ✅
+5. **Endgame = `T→0` consolidation (LM/Newton) + stability gate.** ✅ locked (`raw_math.md §4b`).
 
 ---
 
 ## 6. Open questions
 
-- Calibration of `σ` (LJ scale), `ε_hb`, `d₀`, `T_start`, `τ` per robot — from geometry, how?
-- How strongly may `E_task` tilt the landscape before Raw is "just IK again"? (the experiment)
-- Does the accessible-volume entropy (Option A) stay cheap enough for many Langevin steps?
-- Success metric: quality (min_self_distance, joint naturalness) over success-rate — confirmed thesis.
+- Per-robot calibration of `s, ε, ε_hb, d₀, σ_d, ρ, m, margin, T_start, τ, Δt, w_task` from geometry.
+- How strongly may `E_task` tilt the landscape before Raw is "just IK"? (the experiment)
+- Entropy MC variance vs. step cost — cheap enough for many Langevin steps?
+- Success metric = quality (min_self_distance, naturalness) over success-rate — confirmed thesis.
 
 ---
 
 ## 7. Next step
 
-Write `raw_math.md` (formal derivation incl. the §5 corrections), then Phase 1: code `E_LJ`
-+ its force and run the attractive-well-vs-repulsion-only experiment.
+`raw_math.md` is written and folding-faithful (incl. §4b last step). Next: **Phase 1** — code
+`E_LJ` + its analytic force and run the attractive-well-vs-repulsion-only experiment
+(measure emergent inter-link spacing and `min_self_distance`).
 
 ---
 
 ## Changelog (per prompt)
 
-- **Entry 1** — Built full project context (read backend core, solvers, registry, frontend
-  meta, scenarios). Established Raw touchpoints.
-- **Entry 2** — User reframed Raw as exact folding replica. Did deep protein-folding physics
-  review (forces, thermodynamics, funnel, kinetics, chaperones).
-- **Entry 3** — Proposed build plan; user chose **pure Langevin** + **bio/math-first**.
-- **Entry 4** — Produced the biology→math derivation (CG bead-chain framing, F(q), forces,
-  PMF/entropy, Σ, Langevin SDE).
-- **Entry 5** — Goal set: research deeply + check if *actually raw*. Literature audit
-  (8+ sources). Verdict: 3 raw terms, entropy term FAILS filter. Wrote `raw_audit.md`.
-  Created this notes file; will update each prompt going forward.
+- **Entry 1** — Built full project context (backend core, solvers, registry, frontend, scenarios).
+- **Entry 2** — User reframed Raw as exact folding replica; deep folding-physics review.
+- **Entry 3** — Build plan; user chose pure Langevin + bio/math-first.
+- **Entry 4** — Biology→math derivation (CG bead-chain, F(q), forces, PMF, Σ, Langevin).
+- **Entry 5** — Goal: research deeply + check if *actually raw*. Literature audit (8+ sources).
+  Verdict: 3 raw terms; entropy term FAILED the filter. Wrote `raw_audit.md`; created this log.
+- **Entry 6** — User principle: "exactly follow folding." Resolved entropy → `S=log Ω` target-blind
+  clash-aware (faithful = raw); locked H-bond triplet-plane normal. Wrote `raw_math.md`.
+- **Entry 7** — Last-step reconciliation: IK's LM/Newton endgame = the `T→0` limit of the same
+  Langevin = native-state consolidation; + Anfinsen stability gate. Added `raw_math.md §4b`.
+  "No finisher" decision updated honestly (endgame is the dynamics' physical endpoint).
