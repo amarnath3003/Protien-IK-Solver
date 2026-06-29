@@ -1,38 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { connectSolveStream } from '../lib/api';
-
-const UR5_IDLE = [0, -0.7, 0.9, -0.4, 0.6, 0];
-
-function makeIdleQ(nJoints) {
-  if (nJoints === 6) return [...UR5_IDLE];
-  // For a planar 3-DOF, a neutral extended pose looks good
-  if (nJoints === 3) return [0, 0, 0];
-  return Array(nJoints).fill(0);
-}
+import { ROBOT_IDLE_Q } from '../lib/kinematics';
 
 /**
- * Manages a live, streamed solve for one solver. Call `run(target, seed)`
+ * Manages a live, streamed solve for one solver. Call `run(target, seed, robot)`
  * to kick off a fresh solve; `q` always reflects the latest joint state
  * (idle pose before any solve, animating through steps during a solve,
  * final pose after). Exposes status/phase/metrics for the UI readouts.
  */
 export function useLiveSolve(solverId) {
-  const [q, setQ] = useState(UR5_IDLE);
+  const [q, setQ] = useState(ROBOT_IDLE_Q.ur5);
   const [status, setStatus] = useState('idle'); // idle | connecting | running | done | error
   const [phase, setPhase] = useState('');
   const [step, setStep] = useState(null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const controllerRef = useRef(null);
-  const nJointsRef = useRef(6);
 
-  const run = useCallback(async ({ target, q0, seed, stepDelayMs = 35, robot = 'ur5', nJoints = 6 }) => {
+  const run = useCallback(async ({ target, q0, seed, stepDelayMs = 35, robot = 'ur5' }) => {
     controllerRef.current?.close();
-    nJointsRef.current = nJoints;
     setStatus('connecting');
     setError(null);
     setResult(null);
     setStep(null);
+    setQ(ROBOT_IDLE_Q[robot] ?? ROBOT_IDLE_Q.ur5);
 
     try {
       const controller = connectSolveStream({
@@ -56,8 +47,8 @@ export function useLiveSolve(solverId) {
       await controller.ready();
       controller.send({
         solver: solverId,
-        target,
         robot,
+        target,
         q0: q0 ?? null,
         seed: seed ?? null,
         step_delay_ms: stepDelayMs,
@@ -68,10 +59,9 @@ export function useLiveSolve(solverId) {
     }
   }, [solverId]);
 
-  const reset = useCallback((nJoints) => {
+  const reset = useCallback((robot = 'ur5') => {
     controllerRef.current?.close();
-    const n = nJoints ?? nJointsRef.current;
-    setQ(makeIdleQ(n));
+    setQ(ROBOT_IDLE_Q[robot] ?? ROBOT_IDLE_Q.ur5);
     setStatus('idle');
     setPhase('');
     setStep(null);

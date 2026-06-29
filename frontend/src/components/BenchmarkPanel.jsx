@@ -1,6 +1,20 @@
-import { SOLVERS, SOLVER_ORDER, SCENARIOS } from '../lib/solverMeta';
+import { useMemo } from 'react';
+import { SOLVERS, SOLVER_ORDER, SCENARIOS, ROBOTS, ROBOT_ORDER, ROBOT_SOLVER_COMPAT } from '../lib/solverMeta';
 
-export function BenchmarkPanel({ results, scenario, onScenarioChange, loading, onRun, nTrials }) {
+export function BenchmarkPanel({
+  results, scenario, onScenarioChange,
+  robot, onRobotChange,
+  loading, onRun, nTrials,
+}) {
+  // Ordered solver list for the current robot, matches App.jsx activeSolverOrder logic
+  const visibleSolvers = useMemo(() => {
+    const compat = ROBOT_SOLVER_COMPAT[robot];
+    if (!compat) return SOLVER_ORDER;
+    const ordered = SOLVER_ORDER.filter((id) => compat.includes(id));
+    const extras = compat.filter((id) => !SOLVER_ORDER.includes(id));
+    return [...ordered, ...extras];
+  }, [robot]);
+
   const maxMean = results
     ? Math.max(...Object.values(results).map((r) => r.mean_time_ms))
     : 1;
@@ -10,6 +24,24 @@ export function BenchmarkPanel({ results, scenario, onScenarioChange, loading, o
       <div className="benchmark-panel__header">
         <h2 className="panel-title">Batch benchmark</h2>
         <div className="benchmark-panel__controls">
+
+          {/* Robot selector */}
+          <div className="robot-tabs robot-tabs--bench" role="tablist" aria-label="Benchmark robot">
+            {ROBOT_ORDER.map((id) => (
+              <button
+                key={id}
+                role="tab"
+                aria-selected={robot === id}
+                className={`robot-tab ${robot === id ? 'is-active' : ''}`}
+                onClick={() => onRobotChange(id)}
+                title={ROBOTS[id].description}
+              >
+                {ROBOTS[id].name}
+              </button>
+            ))}
+          </div>
+
+          {/* Scenario selector */}
           <div className="scenario-tabs" role="tablist" aria-label="Benchmark scenario">
             {Object.entries(SCENARIOS).map(([id, meta]) => (
               <button
@@ -24,6 +56,7 @@ export function BenchmarkPanel({ results, scenario, onScenarioChange, loading, o
               </button>
             ))}
           </div>
+
           <button className="run-button" onClick={onRun} disabled={loading}>
             {loading ? `running ${nTrials} trials…` : `run ${nTrials} trials`}
           </button>
@@ -49,7 +82,7 @@ export function BenchmarkPanel({ results, scenario, onScenarioChange, loading, o
             </div>
           </div>
 
-          {SOLVER_ORDER.map((id) => {
+          {visibleSolvers.map((id) => {
             const r = results[id];
             if (!r) return null;
             const meta = SOLVERS[id];

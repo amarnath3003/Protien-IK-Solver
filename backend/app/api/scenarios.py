@@ -76,7 +76,15 @@ def _near_singular(spec: RobotSpec, rng: np.random.Generator, max_tries: int = 5
     6-DOF arms and planar 3-DOF arms.
     """
     best_q, best_m = None, np.inf
-    threshold = 0.001 if spec.n_joints <= 3 else 0.005
+    # Thresholds tuned per DOF: planar has tiny 3x3 determinant; 7-DOF
+    # redundant arm has higher average Yoshikawa measure so needs looser threshold
+    # to actually bias toward near-singular targets (not just the global average).
+    if spec.n_joints <= 3:
+        threshold = 0.001
+    elif spec.n_joints >= 7:
+        threshold = 0.015
+    else:
+        threshold = 0.005
     for _ in range(max_tries):
         q = _random_q(spec, rng)
         m = _manipulability(spec, q)

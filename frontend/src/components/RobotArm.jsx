@@ -8,6 +8,10 @@
  *     .quaternion / .scale directly on the Three.js objects.
  *
  * Result: buttery 60 fps animation with zero GC pressure and zero React overhead.
+ *
+ * The component accepts a `spec` prop (any RobotSpec from kinematics.js) so it
+ * works identically for 3-DOF planar, 6-DOF UR5, and 7-DOF Franka Panda.
+ * Use key={spec.name} on the parent to force a clean remount when switching robots.
  */
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -16,9 +20,13 @@ import {
   forwardKinematicsChain,
   selfCollisionMinDistance,
   UR5_SPEC,
+  ROBOT_IDLE_Q,
   rotationOf,
   matrixToQuaternion,
 } from '../lib/kinematics';
+
+// Module-level Color constants — avoids `new THREE.Color(...)` allocations every frame
+const ALARM = new THREE.Color('#FF6B5E');
 
 // Scratch THREE objects — reused every frame to avoid GC
 const _v0   = new THREE.Vector3();
@@ -33,29 +41,28 @@ const DEFAULT_IDLE = [0, -0.7, 0.9, -0.4, 0.6, 0];
 // ─── component ───────────────────────────────────────────────────────────────
 export function RobotArm({ q, spec = UR5_SPEC, accentColor = '#6FFFB0', glowCollision = true, scale = 3 }) {
 
-  // Compute derived constants when spec changes
+  // Compute derived constants when spec changes; IDLE_Q uses per-robot pose from ROBOT_IDLE_Q
   const { N, LINK_R, JOINT_R, JOINT_L, IDLE_Q } = useMemo(() => {
     const n = spec.a.length;
     return {
       N: n,
-      LINK_R: spec.linkRadius.map((r) => r * 0.6),
+      LINK_R:  spec.linkRadius.map((r) => r * 0.6),
       JOINT_R: spec.linkRadius.map((r) => r * 0.9),
       JOINT_L: spec.linkRadius.map((r) => r * 0.9 * 2.2),
-      IDLE_Q: DEFAULT_IDLE.slice(0, n).concat(Array(Math.max(0, n - 6)).fill(0)),
+      IDLE_Q:  ROBOT_IDLE_Q[spec.name] ?? Array(n).fill(0),
     };
   }, [spec]);
 
   // Keep latest prop values accessible inside useFrame without re-subscribing
-  const qRef           = useRef(q);
-  const accentRef      = useRef(accentColor);
-  const specRef        = useRef(spec);
-  qRef.current         = q;
-  accentRef.current    = accentColor;
-  specRef.current      = spec;
+  const qRef      = useRef(q);
+  const accentRef = useRef(accentColor);
+  const specRef   = useRef(spec);
+  qRef.current      = q;
+  accentRef.current = accentColor;
+  specRef.current   = spec;
 
-  // Mutable lerped joint angles (plain array, no React state)
+  // Mutable lerped joint angles (plain array, no React state); reset when robot changes
   const lerpedQ = useRef([...IDLE_Q]);
-  // When robot changes, reset lerpedQ length
   useMemo(() => { lerpedQ.current = [...IDLE_Q]; }, [IDLE_Q]);
 
   // Refs to every Three.js object we'll mutate imperatively
@@ -71,16 +78,18 @@ export function RobotArm({ q, spec = UR5_SPEC, accentColor = '#6FFFB0', glowColl
 
   // ── per-frame update ────────────────────────────────────────────────────────
   useFrame((_, delta) => {
-    const activeSpec = specRef.current;
-    const target = (qRef.current && qRef.current.length === N)
-      ? qRef.current : IDLE_Q;
+    const curSpec = specRef.current;
+    const curN    = curSpec.a.length;
+    const target  = (qRef.current && qRef.current.length === curN)
+      ? qRef.current
+      : (ROBOT_IDLE_Q[curSpec.name] ?? Array(curN).fill(0));
 
     // Frame-rate-independent exponential lerp (speed=14 → ~50 ms settle)
     const alpha = 1 - Math.exp(-14 * delta);
     const curr  = lerpedQ.current;
     let moved   = false;
 
-    for (let i = 0; i < N; i++) {
+    for (let i = 0; i < curN; i++) {
       const next = curr[i] + (target[i] - curr[i]) * alpha;
       if (Math.abs(next - curr[i]) > 1e-6) moved = true;
       curr[i] = next;
@@ -88,20 +97,20 @@ export function RobotArm({ q, spec = UR5_SPEC, accentColor = '#6FFFB0', glowColl
 
     if (!moved) return; // arm is at rest — skip all GPU work
 
-    // ── forward kinematics ─────────────────────────────────────────────────
-    const chain = forwardKinematicsChain(activeSpec, curr);
+    // ── forward kinematics ─────────────────────────────────────────────
+    const chain = forwardKinematicsChain(curSpec, curr);
 
-    // ── collision glow colour ─────────────────────────────────────────────
+    // ── collision glow colour ─────────────────────────────────────────
     _rc.set(accentRef.current);
     if (glowCollision) {
       const positions = chain.map((c) => c.position);
-      const minDist   = selfCollisionMinDistance(activeSpec, positions);
+      const minDist   = selfCollisionMinDistance(curSpec, positions);
       const t         = THREE.MathUtils.clamp(1 - (minDist + 0.02) / 0.07, 0, 1);
-      _rc.lerp(new THREE.Color('#FF6B5E'), t);
+      _rc.lerp(ALARM, t);
     }
 
-    // ── update joint group transforms ─────────────────────────────────────
-    for (let i = 0; i <= N; i++) {
+    // ── update joint group transforms ─────────────────────────────────
+    for (let i = 0; i <= curN; i++) {
       const g = jointRefs.current[i];
       if (!g) continue;
       const [px, py, pz] = chain[i].position;
@@ -110,8 +119,8 @@ export function RobotArm({ q, spec = UR5_SPEC, accentColor = '#6FFFB0', glowColl
       g.quaternion.set(qx, qy, qz, qw);
     }
 
-    // ── update LED ring colours ────────────────────────────────────────────
-    for (let i = 0; i < N; i++) {
+    // ── update LED ring colours ────────────────────────────────────────
+    for (let i = 0; i < curN; i++) {
       const m = ringRefs.current[i];
       if (m) {
         m.material.color.copy(_rc);
@@ -123,9 +132,9 @@ export function RobotArm({ q, spec = UR5_SPEC, accentColor = '#6FFFB0', glowColl
       baseRingRef.current.material.emissive.copy(_rc);
     }
 
-    // ── update link cylinders ──────────────────────────────────────────────
+    // ── update link cylinders ──────────────────────────────────────────
     // Geometry is unit height/radius; we set scale=(r, length, r) each frame.
-    for (let i = 0; i < N; i++) {
+    for (let i = 0; i < curN; i++) {
       const mesh = linkRefs.current[i];
       if (!mesh) continue;
 

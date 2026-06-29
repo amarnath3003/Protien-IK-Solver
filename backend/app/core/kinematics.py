@@ -84,6 +84,38 @@ def ur5_spec() -> RobotSpec:
     )
 
 
+def franka_panda_spec() -> RobotSpec:
+    """Franka Emika Panda — 7-DOF robot arm.
+
+    Standard DH parameters (same convention used throughout: T_i = Rot_z * Trans_z * Trans_x * Rot_x).
+    Source: Franka documentation + Gaz et al. 2019.
+
+    Notable: joint 4 is permanently in the negative range [-3.07, -0.07] rad
+    (the 'elbow-down' kinematic constraint). random_config() and clip() already
+    respect this via joint_limits, so all solvers handle it correctly without
+    any solver-specific changes. The total workspace reach is ~0.855m.
+    """
+    a     = np.array([0,       0,       0,       0.0825, -0.0825, 0,      0.088])
+    d     = np.array([0.333,   0,       0.316,   0,       0.384,  0,      0.107])
+    alpha = np.array([0,      -np.pi/2, np.pi/2, np.pi/2,-np.pi/2, np.pi/2, np.pi/2])
+    theta_offset = np.zeros(7)
+    joint_limits = np.array([
+        [-2.8973,  2.8973],   # q1
+        [-1.7628,  1.7628],   # q2
+        [-2.8973,  2.8973],   # q3
+        [-3.0718, -0.0698],   # q4 — always negative (Franka elbow-down constraint)
+        [-2.8973,  2.8973],   # q5
+        [-0.0175,  3.7525],   # q6
+        [-2.8973,  2.8973],   # q7
+    ])
+    link_radius = np.array([0.08, 0.07, 0.07, 0.06, 0.06, 0.05, 0.04])
+    return RobotSpec(
+        name="franka_panda",
+        a=a, d=d, alpha=alpha, theta_offset=theta_offset,
+        joint_limits=joint_limits, link_radius=link_radius,
+    )
+
+
 def planar3dof_spec() -> RobotSpec:
     """Planar 3-DOF arm (RRR) in the XY plane.
 
@@ -123,8 +155,9 @@ def planar3dof_spec() -> RobotSpec:
 # Add new arms here; the API will expose them automatically.
 # ---------------------------------------------------------------------------
 ROBOT_REGISTRY: dict[str, callable] = {
-    "ur5":         ur5_spec,
-    "planar3dof":  planar3dof_spec,
+    "ur5":           ur5_spec,
+    "planar3dof":    planar3dof_spec,
+    "franka_panda":  franka_panda_spec,
 }
 
 

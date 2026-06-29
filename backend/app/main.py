@@ -27,7 +27,7 @@ from app.api.schemas import (
     SolveRequest, RandomTargetRequest, BatchBenchmarkRequest, RobotSpecResponse, TargetPose,
 )
 from app.api.quaternion import pose_to_transform, transform_to_pose
-from app.solvers.registry import run_solver, SOLVER_REGISTRY, SOLVER_DISPLAY_NAMES
+from app.solvers.registry import run_solver, SOLVER_REGISTRY, SOLVER_DISPLAY_NAMES, get_solvers_for_robot
 from app.api.scenarios import generate_target
 
 app = FastAPI(title="ProteinIK API")
@@ -87,8 +87,10 @@ def get_robot(robot: str = "ur5"):
 
 
 @app.get("/api/solvers")
-def get_solvers():
-    return [{"id": k, "name": SOLVER_DISPLAY_NAMES.get(k, k)} for k in SOLVER_REGISTRY]
+def get_solvers(robot: str = "ur5"):
+    valid = get_solvers_for_robot(robot)
+    return [{"id": k, "name": SOLVER_DISPLAY_NAMES.get(k, k)}
+            for k in SOLVER_REGISTRY if k in valid]
 
 
 @app.post("/api/random-target")

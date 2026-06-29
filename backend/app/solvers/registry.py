@@ -55,6 +55,22 @@ SOLVER_REGISTRY: dict[str, Callable[..., SolveResult]] = {
     # "protein_raw":  _wrap_rng(solve_protein_raw),
 }
 
+ROBOT_SOLVER_COMPAT: dict[str, list[str]] = {
+    # analytical_planar3dof is only valid for the 2D planar arm.
+    # Every other solver operates purely on RobotSpec and is DOF-agnostic.
+    "planar3dof":   list(SOLVER_REGISTRY.keys()),
+    "ur5":          [s for s in SOLVER_REGISTRY if s != "analytical_planar3dof"],
+    "franka_panda": [s for s in SOLVER_REGISTRY if s != "analytical_planar3dof"],
+}
+
+
+def get_solvers_for_robot(robot: str) -> list[str]:
+    """Return the ordered list of solver ids valid for the given robot."""
+    return ROBOT_SOLVER_COMPAT.get(
+        robot, [s for s in SOLVER_REGISTRY if s != "analytical_planar3dof"]
+    )
+
+
 SOLVER_DISPLAY_NAMES: dict[str, str] = {
     "jacobian_dls": "Jacobian (DLS)",
     "ccd": "CCD",

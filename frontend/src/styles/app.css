@@ -342,6 +342,52 @@
   flex-wrap: wrap;
 }
 
+/* Robot selector (top-level page + inside benchmark panel) */
+.robot-selector {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0 4px;
+}
+.robot-selector__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--steel);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.robot-tabs {
+  display: flex;
+  border: 1px solid var(--panel-border);
+}
+.robot-tabs--bench {
+  margin-bottom: 6px;
+}
+.robot-tab {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--panel-border);
+  color: var(--steel);
+  padding: 7px 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.robot-tab:last-child { border-right: none; }
+.robot-tab.is-active {
+  color: var(--phosphor);
+  background: rgba(111, 255, 176, 0.08);
+}
+.robot-tab__dof {
+  font-size: 9px;
+  opacity: 0.55;
+  font-family: var(--font-mono);
+}
+
 .scenario-tabs {
   display: flex;
   border: 1px solid var(--panel-border);

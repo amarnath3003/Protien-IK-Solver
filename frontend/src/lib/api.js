@@ -40,7 +40,7 @@ export function getSolvers() {
   return request('/api/solvers');
 }
 
-export function getRandomTarget(seed, robot) {
+export function getRandomTarget(seed, robot = 'ur5') {
   return request('/api/random-target', {
     method: 'POST',
     body: JSON.stringify({ seed: seed ?? null, robot }),
@@ -56,10 +56,10 @@ export function solveOnce({ solver, robot, q0, target, seed, collectSteps = true
   });
 }
 
-export function runBenchmark({ solvers, robot, nTrials = 100, seed = 1, scenario = 'open_space' }) {
+export function runBenchmark({ solvers, nTrials = 100, seed = 1, scenario = 'open_space', robot = 'ur5' }) {
   return request('/api/benchmark', {
     method: 'POST',
-    body: JSON.stringify({ solvers, robot, n_trials: nTrials, seed, scenario }),
+    body: JSON.stringify({ solvers, n_trials: nTrials, seed, scenario, robot }),
   });
 }
 

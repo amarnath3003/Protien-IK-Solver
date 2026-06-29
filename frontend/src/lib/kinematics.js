@@ -1,4 +1,4 @@
-// Forward kinematics for the UR5, mirroring the backend's DH-parameter
+// Forward kinematics for all supported robots, mirroring the backend's DH-parameter
 // math exactly (app/core/kinematics.py) so the 3D arm renders the same
 // joint positions the solver actually computed -- this is purely a
 // rendering helper; all solving happens server-side.
@@ -9,6 +9,35 @@ export const UR5_SPEC = {
   d: [0.089159, 0, 0, 0.10915, 0.09465, 0.0823],
   alpha: [Math.PI / 2, 0, 0, Math.PI / 2, -Math.PI / 2, 0],
   linkRadius: [0.06, 0.05, 0.045, 0.04, 0.04, 0.035],
+};
+
+export const PLANAR3DOF_SPEC = {
+  name: 'planar3dof',
+  a: [0.4, 0.3, 0.2],
+  d: [0, 0, 0],
+  alpha: [0, 0, 0],
+  linkRadius: [0.03, 0.025, 0.02],
+};
+
+export const FRANKA_PANDA_SPEC = {
+  name: 'franka_panda',
+  a: [0, 0, 0, 0.0825, -0.0825, 0, 0.088],
+  d: [0.333, 0, 0.316, 0, 0.384, 0, 0.107],
+  alpha: [0, -Math.PI / 2, Math.PI / 2, Math.PI / 2, -Math.PI / 2, Math.PI / 2, Math.PI / 2],
+  linkRadius: [0.08, 0.07, 0.07, 0.06, 0.06, 0.05, 0.04],
+};
+
+export const ROBOT_SPECS = {
+  planar3dof:   PLANAR3DOF_SPEC,
+  ur5:          UR5_SPEC,
+  franka_panda: FRANKA_PANDA_SPEC,
+};
+
+// Reasonable idle poses per robot (all within joint limits)
+export const ROBOT_IDLE_Q = {
+  planar3dof:   [0, 0, 0],
+  ur5:          [0, -0.7, 0.9, -0.4, 0.6, 0],
+  franka_panda: [0, -0.3, 0, -2.0, 0, 1.8, 0],  // q4 must be negative per Franka limits
 };
 
 function dhTransform(theta, d, a, alpha) {

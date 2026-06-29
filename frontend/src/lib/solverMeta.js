@@ -1,3 +1,22 @@
+export const ROBOTS = {
+  planar3dof:   { name: 'Planar 3-DOF', dof: 3, description: '3-link planar RRR arm with closed-form analytical IK.' },
+  ur5:          { name: 'UR5 (6-DOF)',   dof: 6, description: 'Universal Robots UR5 — standard 6-DOF benchmark arm.' },
+  franka_panda: { name: 'Franka Panda (7-DOF)', dof: 7, description: 'Franka Emika Panda — redundant 7-DOF; null-space enables energy minimization.' },
+};
+
+export const ROBOT_ORDER = ['planar3dof', 'ur5', 'franka_panda'];
+
+// Explicit allowlist per robot. analytical_planar3dof is only valid on planar3dof.
+export const ROBOT_SOLVER_COMPAT = {
+  planar3dof:   ['jacobian_dls', 'ccd', 'fabrik', 'trac_ik_style', 'multi_start',
+                 'protein_ik', 'protein_fast', 'fixed_lambda_ik', 'protein_homotopy',
+                 'analytical_planar3dof'],
+  ur5:          ['jacobian_dls', 'ccd', 'fabrik', 'trac_ik_style', 'multi_start',
+                 'protein_ik', 'protein_fast', 'fixed_lambda_ik', 'protein_homotopy'],
+  franka_panda: ['jacobian_dls', 'ccd', 'fabrik', 'trac_ik_style', 'multi_start',
+                 'protein_ik', 'protein_fast', 'fixed_lambda_ik', 'protein_homotopy'],
+};
+
 export const SOLVERS = {
   jacobian_dls: { name: 'Jacobian (DLS)', short: 'DLS', color: '#5B6B66', family: 'classical' },
   ccd: { name: 'CCD', short: 'CCD', color: '#5B6B66', family: 'classical' },
@@ -23,8 +42,15 @@ export const SOLVERS = {
     color: '#9D00FF',          // purple for speed/fast variants
     family: 'protein',
   },
+  analytical_planar3dof: {
+    name: 'Analytical IK (Planar 3-DOF, exact)',
+    short: 'Analytical',
+    color: '#FFD700',          // gold — exact closed-form, ground truth
+    family: 'classical',
+  },
 };
 
+// Default order shown for all robots (analytical_planar3dof added per-robot via ROBOT_SOLVER_COMPAT)
 export const SOLVER_ORDER = [
   'jacobian_dls', 'ccd', 'fabrik', 'trac_ik_style', 'multi_start',
   'protein_ik', 'protein_fast', 'fixed_lambda_ik', 'protein_homotopy',

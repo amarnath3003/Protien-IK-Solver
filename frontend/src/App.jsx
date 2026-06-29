@@ -5,49 +5,58 @@ import { TargetMarker } from './components/TargetMarker';
 import { EnergyFunnel } from './components/EnergyFunnel';
 import { BenchmarkPanel } from './components/BenchmarkPanel';
 import { useLiveSolve } from './hooks/useLiveSolve';
-import { getRandomTarget, runBenchmark, getRobots, getRobotSpec, API_BASE } from './lib/api';
-import { SOLVERS, SOLVER_ORDER, phaseLabel } from './lib/solverMeta';
+import { getRandomTarget, runBenchmark, API_BASE } from './lib/api';
+import { SOLVERS, SOLVER_ORDER, ROBOTS, ROBOT_ORDER, ROBOT_SOLVER_COMPAT, phaseLabel } from './lib/solverMeta';
+import { ROBOT_SPECS } from './lib/kinematics';
 import './styles/global.css';
 import './styles/app.css';
 
 function App() {
-  const [robots, setRobots] = useState([]);
-  const [selectedRobotId, setSelectedRobotId] = useState('ur5');
-  const [robotSpec, setRobotSpec] = useState(null);
-
   const [target, setTarget] = useState(null);
-  // Random seed per page-load so the first solve is immediately unique
   const [seed] = useState(() => Math.floor(Math.random() * 1e9));
   const [apiOk, setApiOk] = useState(null);
   const [focusedSolver, setFocusedSolver] = useState('protein_ik');
+  const [robot, setRobot] = useState('ur5');
 
   const [scenario, setScenario] = useState('open_space');
   const [benchResults, setBenchResults] = useState(null);
   const [benchLoading, setBenchLoading] = useState(false);
   const nTrials = 60;
 
-  // one live-solve hook instance per solver, so all six can run/animate
-  // independently and simultaneously in the grid
-  const dls = useLiveSolve('jacobian_dls');
-  const ccd = useLiveSolve('ccd');
-  const fabrik = useLiveSolve('fabrik');
-  const trac = useLiveSolve('trac_ik_style');
-  const multiStart = useLiveSolve('multi_start');
-  const protein = useLiveSolve('protein_ik');
-  const proteinFast = useLiveSolve('protein_fast');
-  const fixedLambda = useLiveSolve('fixed_lambda_ik');
+  // Ordered solver list for the current robot. Uses compat list as the source of truth
+  // so analytical_planar3dof appears for planar3dof but not for other robots.
+  const activeSolverOrder = useMemo(() => {
+    const compat = ROBOT_SOLVER_COMPAT[robot];
+    if (!compat) return SOLVER_ORDER;
+    // Preserve SOLVER_ORDER ordering for common solvers, append any extras (e.g. analytical)
+    const ordered = SOLVER_ORDER.filter((id) => compat.includes(id));
+    const extras = compat.filter((id) => !SOLVER_ORDER.includes(id));
+    return [...ordered, ...extras];
+  }, [robot]);
+
+  // One live-solve hook per solver — hooks are always mounted (can't be conditional)
+  const dls            = useLiveSolve('jacobian_dls');
+  const ccd            = useLiveSolve('ccd');
+  const fabrik         = useLiveSolve('fabrik');
+  const trac           = useLiveSolve('trac_ik_style');
+  const multiStart     = useLiveSolve('multi_start');
+  const protein        = useLiveSolve('protein_ik');
+  const proteinFast    = useLiveSolve('protein_fast');
+  const fixedLambda    = useLiveSolve('fixed_lambda_ik');
   const proteinHomotopy = useLiveSolve('protein_homotopy');
+  const analytical     = useLiveSolve('analytical_planar3dof');
 
   const solveHooks = useMemo(() => ({
-    jacobian_dls: dls, ccd, fabrik, trac_ik_style: trac, multi_start: multiStart, protein_ik: protein,
-    protein_fast: proteinFast, fixed_lambda_ik: fixedLambda, protein_homotopy: proteinHomotopy,
-  }), [dls, ccd, fabrik, trac, multiStart, protein, proteinFast, fixedLambda, proteinHomotopy]);
+    jacobian_dls: dls, ccd, fabrik, trac_ik_style: trac, multi_start: multiStart,
+    protein_ik: protein, protein_fast: proteinFast, fixed_lambda_ik: fixedLambda,
+    protein_homotopy: proteinHomotopy, analytical_planar3dof: analytical,
+  }), [dls, ccd, fabrik, trac, multiStart, protein, proteinFast, fixedLambda, proteinHomotopy, analytical]);
 
-  const focused = solveHooks[focusedSolver];
+  const focused = solveHooks[focusedSolver] ?? dls;
 
-  const fetchNewTarget = useCallback(async (newSeed, robotId) => {
+  const fetchNewTarget = useCallback(async (newSeed, currentRobot) => {
     try {
-      const data = await getRandomTarget(newSeed, robotId);
+      const data = await getRandomTarget(newSeed, currentRobot);
       setApiOk(true);
       setTarget({ position: data.position, quaternion: data.quaternion });
       return data;
@@ -57,66 +66,55 @@ function App() {
     }
   }, []);
 
-  // Fetch available robots + initial spec on mount, then solve
+  const solveAll = useCallback(async (currentRobot) => {
+    const r = currentRobot ?? robot;
+    const data = await fetchNewTarget(Math.floor(Math.random() * 1e9), r);
+    if (!data) return;
+    const t = { position: data.position, quaternion: data.quaternion };
+    const compat = ROBOT_SOLVER_COMPAT[r];
+    const base = compat ? SOLVER_ORDER.filter((id) => compat.includes(id)) : SOLVER_ORDER;
+    const extras = compat ? compat.filter((id) => !SOLVER_ORDER.includes(id)) : [];
+    const order = [...base, ...extras];
+    order.forEach((id, i) => {
+      setTimeout(() => {
+        solveHooks[id].run({ target: t, seed: 2000 + i, stepDelayMs: 30, robot: r });
+      }, i * 80);
+    });
+  }, [fetchNewTarget, solveHooks, robot]);
+
   useEffect(() => {
+    // On load: fetch a target and kick off all solvers for the default robot
     (async () => {
-      const robotList = await getRobots().catch(() => []);
-      setRobots(robotList);
-      const firstId = robotList[0]?.id ?? 'ur5';
-      setSelectedRobotId(firstId);
-      const spec = await getRobotSpec(firstId).catch(() => null);
-      if (spec) setRobotSpec(spec);
-      const nJoints = spec?.a?.length ?? 6;
-      const data = await fetchNewTarget(seed, firstId);
+      const data = await fetchNewTarget(seed, 'ur5');
       if (!data) return;
       const t = { position: data.position, quaternion: data.quaternion };
-      SOLVER_ORDER.forEach((id, i) => {
+      SOLVER_ORDER.filter((id) => id !== 'analytical_planar3dof').forEach((id, i) => {
         setTimeout(() => {
-          solveHooks[id].run({ target: t, seed: 2000 + i, stepDelayMs: 30, robot: firstId, nJoints });
+          solveHooks[id].run({ target: t, seed: 2000 + i, stepDelayMs: 30, robot: 'ur5' });
         }, i * 80);
       });
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When robot selection changes (after initial mount), fetch new spec and re-solve
-  const isFirstRender = useRef(true);
-  useEffect(() => {
-    if (isFirstRender.current) { isFirstRender.current = false; return; }
-    let active = true;
-    getRobotSpec(selectedRobotId).then(spec => {
-      if (!active) return;
-      setRobotSpec(spec);
-      const nJoints = spec?.a?.length ?? 6;
-      Object.values(solveHooks).forEach(h => h.reset(nJoints));
-      fetchNewTarget(Math.floor(Math.random() * 1e9), selectedRobotId).then(data => {
-        if (!data || !active) return;
-        const t = { position: data.position, quaternion: data.quaternion };
-        SOLVER_ORDER.forEach((id, i) => {
-          setTimeout(() => {
-            solveHooks[id].run({ target: t, seed: 2000 + i, stepDelayMs: 30, robot: selectedRobotId, nJoints });
-          }, i * 80);
-        });
-      });
-    }).catch(() => {});
-    return () => { active = false; };
-  }, [selectedRobotId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const solveAll = useCallback(async () => {
-    const nJoints = robotSpec?.a?.length ?? 6;
-    const data = await fetchNewTarget(Math.floor(Math.random() * 1e9), selectedRobotId);
-    if (!data) return;
-    const t = { position: data.position, quaternion: data.quaternion };
-    SOLVER_ORDER.forEach((id, i) => {
-      setTimeout(() => {
-        solveHooks[id].run({ target: t, seed: 2000 + i, stepDelayMs: 30, robot: selectedRobotId, nJoints });
-      }, i * 80);
-    });
-  }, [fetchNewTarget, solveHooks, selectedRobotId, robotSpec]);
+  const handleRobotChange = useCallback((newRobot) => {
+    setRobot(newRobot);
+    setBenchResults(null);
+    const compat = ROBOT_SOLVER_COMPAT[newRobot];
+    if (compat && !compat.includes(focusedSolver)) {
+      setFocusedSolver('protein_ik');
+    }
+    SOLVER_ORDER.forEach((id) => solveHooks[id].reset(newRobot));
+    solveAll(newRobot);
+  }, [focusedSolver, solveHooks, solveAll]);
 
   const runBench = useCallback(async () => {
     setBenchLoading(true);
+    const compat = ROBOT_SOLVER_COMPAT[robot];
+    const base = compat ? SOLVER_ORDER.filter((id) => compat.includes(id)) : SOLVER_ORDER;
+    const extras = compat ? compat.filter((id) => !SOLVER_ORDER.includes(id)) : [];
+    const solvers = [...base, ...extras];
     try {
-      const data = await runBenchmark({ solvers: SOLVER_ORDER, robot: selectedRobotId, nTrials, scenario, seed: 1 });
+      const data = await runBenchmark({ solvers, nTrials, scenario, seed: 1, robot });
       setBenchResults(data.results);
       setApiOk(true);
     } catch {
@@ -124,7 +122,9 @@ function App() {
     } finally {
       setBenchLoading(false);
     }
-  }, [scenario, selectedRobotId]);
+  }, [scenario, robot]);
+
+  const robotSpec = ROBOT_SPECS[robot] ?? ROBOT_SPECS.ur5;
 
   return (
     <div className="app">
@@ -134,22 +134,6 @@ function App() {
           <h1>ProteinIK <span className="app-header__lab">/ lab bench</span></h1>
         </div>
         
-        {robots.length > 0 && (
-          <div className="app-header__robot-select">
-            <select 
-              value={selectedRobotId} 
-              onChange={(e) => setSelectedRobotId(e.target.value)}
-              className="robot-dropdown"
-            >
-              {robots.map(r => (
-                <option key={r.id} value={r.id}>
-                  {r.id === 'ur5' ? 'UR5 (6-DOF)' : r.id === 'planar3dof' ? 'Planar (3-DOF)' : r.id}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
         <div className="app-header__status">
           <span className={`api-dot ${apiOk === true ? 'ok' : apiOk === false ? 'bad' : ''}`} />
           <span>{apiOk === false ? `cannot reach ${API_BASE}` : apiOk === null ? 'connecting…' : 'connected'}</span>
@@ -164,8 +148,29 @@ function App() {
       )}
 
       <main className="app-main">
+
+        {/* ── Robot selector ────────────────────────────────────────────────── */}
+        <section className="robot-selector">
+          <span className="robot-selector__label">Robot arm</span>
+          <div className="robot-tabs" role="tablist" aria-label="Robot arm selection">
+            {ROBOT_ORDER.map((id) => (
+              <button
+                key={id}
+                role="tab"
+                aria-selected={robot === id}
+                className={`robot-tab ${robot === id ? 'is-active' : ''}`}
+                onClick={() => handleRobotChange(id)}
+                title={ROBOTS[id].description}
+              >
+                {ROBOTS[id].name}
+                <span className="robot-tab__dof">{ROBOTS[id].dof}-DOF</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
         <section className="solve-controls">
-          <button className="run-button run-button--primary" onClick={solveAll}>
+          <button className="run-button run-button--primary" onClick={() => solveAll()}>
             solve a new target — all solvers
           </button>
           <span className="solve-controls__hint">
@@ -175,10 +180,11 @@ function App() {
 
         <section className="focus-panel">
           <div className="focus-panel__viewport">
-            <ArmScene>
+            {/* key={robot} forces clean remount when DOF count changes */}
+            <ArmScene key={robot}>
               {target && (
                 <>
-                  <RobotArm q={focused.q} spec={robotSpec || undefined} accentColor={SOLVERS[focusedSolver].color} />
+                  <RobotArm q={focused.q} spec={robotSpec} accentColor={SOLVERS[focusedSolver]?.color ?? '#6FFFB0'} />
                   <TargetMarker position={target.position} quaternion={target.quaternion} />
                 </>
               )}
@@ -186,7 +192,7 @@ function App() {
           </div>
           <div className="focus-panel__readout">
             <div className="focus-panel__tabs">
-              {SOLVER_ORDER.map((id) => (
+              {activeSolverOrder.map((id) => (
                 <button
                   key={id}
                   className={`focus-tab ${focusedSolver === id ? 'is-active' : ''}`}
@@ -198,7 +204,7 @@ function App() {
               ))}
             </div>
 
-            <h3 className="focus-panel__name">{SOLVERS[focusedSolver].name}</h3>
+            <h3 className="focus-panel__name">{SOLVERS[focusedSolver]?.name}</h3>
             <div className="focus-panel__phase">{focused.phase ? phaseLabel(focused.phase) : focused.status === 'idle' ? 'awaiting target' : '—'}</div>
 
             <EnergyFunnel
@@ -228,7 +234,7 @@ function App() {
         <section className="grid-section">
           <h2 className="panel-title">All solvers, same target</h2>
           <div className="solver-grid">
-            {SOLVER_ORDER.map((id) => {
+            {activeSolverOrder.map((id) => {
               const h = solveHooks[id];
               const convergenceClass = h.status === 'done'
                 ? (h.result?.success ? 'solver-tile--converged' : 'solver-tile--failed')
@@ -241,8 +247,8 @@ function App() {
                   aria-label={`Focus ${SOLVERS[id].name}`}
                 >
                   <div className="solver-tile__viewport">
-                    <ArmScene compact>
-                      <RobotArm q={h.q} spec={robotSpec || undefined} accentColor={SOLVERS[id].color} scale={2.4} />
+                    <ArmScene compact key={robot}>
+                      <RobotArm q={h.q} spec={robotSpec} accentColor={SOLVERS[id].color} scale={2.4} />
                       {target && <TargetMarker position={target.position} quaternion={target.quaternion} scale={2.4} />}
                     </ArmScene>
                   </div>
@@ -267,6 +273,8 @@ function App() {
           results={benchResults}
           scenario={scenario}
           onScenarioChange={setScenario}
+          robot={robot}
+          onRobotChange={handleRobotChange}
           loading={benchLoading}
           onRun={runBench}
           nTrials={nTrials}
