@@ -122,8 +122,24 @@ All five terms now pass once the §5 corrections are applied.
     are **short polymers (6–10 beads)** and the angular gate is **flat when misaligned**, so
     *emergent* secondary structure is a **Langevin-stage** property (thermal escape), not a GD one.
     The term is correct and ready; emergence will be shown once the solver exists.
-- **Next — Phase 3:** configurational entropy `S=log Ω` (target-blind, clash-aware MC estimate;
-  `raw_math.md §3.3`) — the hydrophobic free-energy term.
+- **Phase 3 — configurational entropy `S = log Ω` — ✅ DONE & validated.**
+  - Research confirmed (both prongs): conformational entropy is the standard *destabilizing*
+    (unfolded-favoring) term and is estimated by the polymer **free-volume** MC method; IK uses
+    *clearance*/*C-free* but never a local accessible-volume entropy → no IK equivalent.
+  - Code: `energy.py` — `config_entropy`, `config_entropy_and_grad` (FD force, **common random
+    numbers** stencil). Soft (sigmoid) feasibility = in-limits × clash-free; **target-blind**,
+    **collision-aware**; Gaussian local cloud.
+  - Tests: `tests/test_raw_entropy.py` — 6 pass (S≤0, deterministic, target-blind signature,
+    lower near limits, collision-aware ranking, FD gradient is an ascent direction). Suite 91/91.
+  - Experiment: `raw_phase3_experiment.py`. **Rawness proven empirically:** corr(clearance, S_conf)
+    = **+0.90 / +0.65 / +0.91** (UR5/Planar/Franka) vs corr(clearance, manipulability)
+    **+0.08 / +0.21 / −0.27** — S tracks self-collision, manipulability is blind → S ≠
+    manipulability. Entropy ascent **opens** configs (UR5 clearance −0.085→+0.020, limit-margin
+    0.42→0.90) — the unfolding drive that competes with LJ collapse.
+  - Corrected `raw_math.md §3.3`: soft/differentiable estimator; entropy **opposes** collapse
+    (chain conformational entropy), avoids clashes/limits — NOT singularities.
+- **Next — Phase 4:** Σ ratio + `T_glass` (`raw_math.md §6`), then the Langevin solver (§4/§4b)
+  assembling `F = E_task + E_LJ + E_HB − T·S_conf`.
 
 ---
 

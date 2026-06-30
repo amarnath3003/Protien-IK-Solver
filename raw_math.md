@@ -94,23 +94,33 @@ Force by finite difference initially (analytic later).
 
 ### 3.3 `S_conf` — configurational entropy (the hydrophobic / free-energy term, corrected)
 
-The real hydrophobic drive is `−TΔS`: the system maximizes accessible microstates (Boltzmann
-`S = k_B log Ω`). The faithful, **target-blind** analog:
+In a coarse-grained chain the favourable **solvent** entropy (the hydrophobic *collapse* drive)
+is already folded into the attractive LJ contacts (§3.1). What remains as an explicit entropy is
+the **chain conformational entropy** — the local accessible-conformation volume, Boltzmann
+`S = k_B log Ω`. The faithful, **target-blind** estimator (the standard polymer free-volume
+method — sample a local cloud, count the excluded-volume-respecting samples):
 
 ```
-Ω(q) ≈ (1/m) Σ_{k=1..m} 𝟙[ q+δq_k within joint limits  AND  min_self_dist(q+δq_k) > margin ]
-δq_k ~ Uniform(ball of radius ρ)          # FIXED stencil per step (common random numbers)
-S_conf(q) = log( max(Ω(q), Ω_floor) )
+Ω(q) ≈ (1/m) Σ_{k=1..m}  w_lim(q+δq_k) · w_clash(q+δq_k)          # soft feasibility ∈ [0,1]
+δq_k ~ 𝒩(0, ρ²I)              # FIXED cloud per step (common random numbers)
+w_lim   = Π_j σ(α(q_j−lo_j))·σ(α(hi_j−q_j))     w_clash = σ(α(min_self_dist(·) − margin))
+S_conf(q) = log( max(Ω(q), Ω_floor) )           # σ = sigmoid; α→∞ recovers the hard indicator
 ```
 
-- **No target/tolerance condition** — folding entropy ignores any external goal. (This is also
-  precisely what separates it from manipulability, which is task/null-space-relative.)
-- **Collision-aware** — counts only clash-free accessible conformations, the analog of solvent
-  freedom released on burial. Manipulability `√det(JJᵀ)` ignores self-collision entirely.
-- **Folding role:** hydrophobic collapse / excluded-volume entropy; thermodynamically avoids
-  both singular *and* clashing configurations without any explicit rule.
-- Gradient `∇S_conf` by FD with **common random numbers** (reuse the same `δq_k` set across the
-  stencil) to keep the stochastic estimate smooth. `ρ, m, margin` are calibration params.
+- **No target/tolerance condition** — folding entropy ignores any external goal. This is exactly
+  what separates it from manipulability, which is task/null-space-relative.
+- **Collision-aware** — counts only clash-free accessible volume (the excluded-volume entropy);
+  manipulability `√det(JJᵀ)` ignores self-collision entirely. *Measured:* corr(clearance, S_conf)
+  ≈ **+0.9** across all three arms, vs corr(clearance, manipulability) ≈ **0** — they are
+  genuinely different quantities.
+- **Folding role:** the **chain conformational entropy** — high for open/extended configs, low
+  for compact / near-collision / near-limit ones. It **opposes** collapse (favours the unfolded
+  ensemble) and competes with `E_LJ`. It thermodynamically avoids **clashing and near-limit
+  (low-freedom)** configurations — it does **not** target singularities (that was the
+  manipulability artifact removed for rawness).
+- Soft (differentiable) relaxation of the hard accessible-volume indicator; gradient `∇S_conf`
+  by FD with **common random numbers** (reuse the same `δq_k` cloud) so the estimate is smooth.
+  `ρ, m, margin, α, Ω_floor` are calibration params.
 
 As `T→0` the `−T·S_conf` term vanishes (enthalpy wins → folded/packed); at high `T` it dominates
 (→ open, high-freedom, unfolded). That crossover **is** the folding transition.
