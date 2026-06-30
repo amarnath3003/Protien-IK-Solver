@@ -1,0 +1,73 @@
+planar3dof   open_space    Jacobian (DLS)              ] succ  46.0%  mean    19.5ms  p95    36.4  collide  36.0%
+[planar3dof   open_space    CCD                         ] succ  49.3%  mean    49.1ms  p95    87.4  collide  22.7%
+[planar3dof   open_space    FABRIK                      ] succ  44.0%  mean    36.5ms  p95    60.0  collide  28.3%
+[planar3dof   open_space    TRAC-IK style               ] succ  99.3%  mean     5.5ms  p95    19.6  collide   9.0%
+[planar3dof   open_space    Multi-start                 ] succ  97.7%  mean    48.5ms  p95    71.3  collide  10.7%
+[planar3dof   open_space    ProteinIK (V1)              ] succ  98.3%  mean    14.7ms  p95    48.2  collide   8.7%
+[planar3dof   open_space    Fixed-λ Homotopy (Baseline) ] succ  92.3%  mean   600.9ms  p95  1383.6  collide   7.3%
+[planar3dof   open_space    ProteinIK Homotopy (CCH-IK) ] succ  92.0%  mean   562.3ms  p95  1299.6  collide   8.7%
+[planar3dof   open_space    ProteinIK Fast (V4)         ] succ 100.0%  mean    10.1ms  p95    32.0  collide   4.0%
+[planar3dof   open_space    Analytical IK (Planar 3-DOF, exact)] succ 100.0%  mean     0.1ms  p95     0.1  collide   9.0%
+
+[planar3dof   near_singular Jacobian (DLS)              ] succ  50.7%  mean    20.1ms  p95    33.4  collide  52.0%
+[planar3dof   near_singular CCD                         ] succ  26.0%  mean    68.0ms  p95    87.3  collide  53.7%
+[planar3dof   near_singular FABRIK                      ] succ  22.7%  mean    48.5ms  p95    58.8  collide  60.3%
+[planar3dof   near_singular TRAC-IK style               ] succ  99.3%  mean     9.7ms  p95    29.7  collide  49.7%
+[planar3dof   near_singular Multi-start                 ] succ  96.0%  mean    59.1ms  p95    77.3  collide  49.7%
+[planar3dof   near_singular ProteinIK (V1)              ] succ  86.3%  mean    35.5ms  p95    83.2  collide  48.7%
+[planar3dof   near_singular Fixed-λ Homotopy (Baseline) ] succ  83.7%  mean   681.3ms  p95  1415.4  collide  32.7%
+[planar3dof   near_singular ProteinIK Homotopy (CCH-IK) ] succ  86.0%  mean   627.0ms  p95  1331.6  collide  37.0%
+[planar3dof   near_singular ProteinIK Fast (V4)         ] succ 100.0%  mean    60.9ms  p95   237.4  collide  49.7%
+[planar3dof   near_singular Analytical IK (Planar 3-DOF, exact)] succ 100.0%  mean     0.1ms  p95     0.1  collide  49.7%
+
+[planar3dof   cluttered     Jacobian (DLS)              ] succ  34.0%  mean    23.2ms  p95    34.5  collide  74.7%
+[planar3dof   cluttered     CCD                         ] succ  21.7%  mean    68.1ms  p95    88.0  collide  86.0%
+[planar3dof   cluttered     FABRIK                      ] succ  24.3%  mean    46.8ms  p95    62.7  collide  85.3%
+[planar3dof   cluttered     TRAC-IK style               ] succ  98.0%  mean    10.7ms  p95    38.1  collide  68.3%
+[planar3dof   cluttered     Multi-start                 ] succ  93.0%  mean    59.8ms  p95    80.3  collide  67.7%
+[planar3dof   cluttered     ProteinIK (V1)              ] succ  91.7%  mean    25.1ms  p95    84.8  collide  64.0%
+[planar3dof   cluttered     Fixed-λ Homotopy (Baseline) ] succ  84.3%  mean   688.5ms  p95  1404.6  collide  47.7%
+[planar3dof   cluttered     ProteinIK Homotopy (CCH-IK) ] succ  86.0%  mean   654.8ms  p95  1335.5  collide  52.0%
+[planar3dof   cluttered     ProteinIK Fast (V4)         ] succ 100.0%  mean    66.9ms  p95   249.6  collide  49.7%
+[planar3dof   cluttered     Analytical IK (Planar 3-DOF, exact)] succ 100.0%  mean     0.2ms  p95     0.3  collide  67.0%
+
+
+[ur5          open_space    Jacobian (DLS)              ] succ  52.3%  mean    30.0ms  p95    60.8  collide  14.0%
+[ur5          open_space    CCD                         ] succ  43.7%  mean   123.6ms  p95   194.2  collide  21.7%
+[ur5          open_space    FABRIK                      ] succ  49.3%  mean    75.2ms  p95   121.6  collide  19.0%
+[ur5          open_space    TRAC-IK style               ] succ  99.0%  mean    10.7ms  p95    37.1  collide  17.3%
+[ur5          open_space    Multi-start                 ] succ  97.0%  mean    78.8ms  p95   119.2  collide  14.7%
+[ur5          open_space    ProteinIK (V1)              ] succ  94.0%  mean    33.2ms  p95   156.4  collide  12.0%
+[ur5          open_space    Fixed-λ Homotopy (Baseline) ] succ  93.3%  mean  1146.6ms  p95  2637.5  collide  14.0%
+[ur5          open_space    ProteinIK Homotopy (CCH-IK) ] succ  92.3%  mean  1146.5ms  p95  2629.6  collide  14.0%
+[ur5          open_space    ProteinIK Fast (V4)         ] succ 100.0%  mean    19.2ms  p95    50.7  collide   3.0%
+
+
+[ur5          near_singular Jacobian (DLS)              ] succ  49.0%  mean    36.5ms  p95    84.7  collide  28.7%
+[ur5          near_singular CCD                         ] succ  32.0%  mean   164.2ms  p95   265.6  collide  36.3%
+[ur5          near_singular FABRIK                      ] succ  34.7%  mean    93.7ms  p95   127.4  collide  31.0%
+[ur5          near_singular TRAC-IK style               ] succ  98.3%  mean    15.9ms  p95    50.2  collide  27.0%
+[ur5          near_singular Multi-start                 ] succ  97.7%  mean    91.1ms  p95   124.3  collide  22.0%
+[ur5          near_singular ProteinIK (V1)              ] succ  90.7%  mean    50.4ms  p95   160.3  collide  18.7%
+[ur5          near_singular Fixed-λ Homotopy (Baseline) ] succ  90.7%  mean  1233.5ms  p95  2777.8  collide  24.0%
+[ur5          near_singular ProteinIK Homotopy (CCH-IK) ] succ  90.7%  mean  1101.2ms  p95  2405.6  collide  24.7%
+[ur5          near_singular ProteinIK Fast (V4)         ] succ 100.0%  mean    22.8ms  p95   154.1  collide   9.7%
+
+
+[ur5          cluttered     Jacobian (DLS)              ] succ  56.3%  mean    26.8ms  p95    53.0  collide  49.7%
+[ur5          cluttered     CCD                         ] succ  41.0%  mean   128.3ms  p95   192.0  collide  56.3%
+[ur5          cluttered     FABRIK                      ] succ  36.7%  mean    86.7ms  p95   125.6  collide  48.3%
+[ur5          cluttered     TRAC-IK style               ] succ  97.7%  mean    13.2ms  p95    44.2  collide  45.7%
+[ur5          cluttered     Multi-start                 ] succ  98.7%  mean    84.0ms  p95   122.0  collide  39.3%
+[ur5          cluttered     Fixed-λ Homotopy (Baseline) ] succ  97.7%  mean  1048.2ms  p95  2443.2  collide  43.0%
+[ur5          cluttered     ProteinIK Homotopy (CCH-IK) ] succ  96.0%  mean  1070.9ms  p95  2396.6  collide  46.0%
+[ur5          cluttered     ProteinIK Fast (V4)         ] succ 100.0%  mean    22.6ms  p95   103.7  collide  19.0%
+
+
+[franka_panda open_space    Jacobian (DLS)              ] succ  24.3%  mean    47.4ms  p95    62.0  collide 100.0%
+[franka_panda open_space    CCD                         ] succ  16.3%  mean   213.2ms  p95   251.0  collide 100.0%
+[franka_panda open_space    FABRIK                      ] succ  16.7%  mean   139.7ms  p95   163.0  collide 100.0%
+[franka_panda open_space    TRAC-IK style               ] succ  95.0%  mean    24.0ms  p95    81.6  collide 100.0%
+[franka_panda open_space    Multi-start                 ] succ  86.3%  mean   116.7ms  p95   141.9  collide 100.0%
+[franka_panda open_space    ProteinIK (V1)              ] succ  81.7%  mean    73.5ms  p95   184.8  collide 100.0%
+

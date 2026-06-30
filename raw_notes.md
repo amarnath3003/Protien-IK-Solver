@@ -107,8 +107,23 @@ All five terms now pass once the §5 corrections are applied.
     (chain bound in wells), 83% in-well vs 0%. Franka: force verified (E descends 2e8→1e4) but
     constrained geometry frustrates collapse, and its capsule `min_self` is a **degenerate
     constant −0.15** (proxy issue, flagged — echoes `sim_migration_plan.md` Phase 3).
-- **Next — Phase 2:** directional H-bond `E_HB` with the **triplet-plane-normal** vector
-  (`raw_math.md §3.2`) + its force; verify emergent secondary-structure motifs.
+- **Phase 2 — directional H-bond `E_HB` — ✅ DONE & validated.**
+  - Code: `energy.py` — `hbond_energy`, `hbond_energy_and_grad` (FD force per §3.2), backbone
+    normal = **triplet-plane normal** of `(p_{i−1},pᵢ,p_{i+1})` (corrected, not joint axis);
+    interior beads only (endpoints/collinear excluded); distance-only ablation flag.
+  - Tests: `tests/test_raw_hbond.py` — 9 pass (distance/angle gates, triplet-normal right-angle
+    & collinear, planar has no pairs, directionality reduces magnitude, FD gradient is a descent
+    direction). Full suite 85/85.
+  - Experiment: `raw_phase2_experiment.py`. **Two-condition gate proven:** ideal H-bond
+    (d₀ + aligned) is **55× stronger** than perpendicular, **4× stronger** than off-distance —
+    requires distance AND orientation, exactly like a real H-bond.
+  - **Honest finding:** gradient descent on `E_HB` alone only modestly orients contacts
+    (UR5 align 0.51→0.53; Franka ~flat — its normals sit perpendicular to contacts). Robot arms
+    are **short polymers (6–10 beads)** and the angular gate is **flat when misaligned**, so
+    *emergent* secondary structure is a **Langevin-stage** property (thermal escape), not a GD one.
+    The term is correct and ready; emergence will be shown once the solver exists.
+- **Next — Phase 3:** configurational entropy `S=log Ω` (target-blind, clash-aware MC estimate;
+  `raw_math.md §3.3`) — the hydrophobic free-energy term.
 
 ---
 
@@ -129,3 +144,7 @@ All five terms now pass once the §5 corrections are applied.
   (analytic=FD <1e-4, well shape), 76/76 suite. Experiment proves the attractive well creates
   emergent preferred spacing (UR5/Planar strong; Planar binds to negative E). Found Franka's
   capsule `min_self` is a degenerate constant −0.15. See §7 for full numbers.
+- **Entry 9** — **Phase 2 implemented properly:** directional `E_HB` + FD force with the
+  triplet-plane-normal vector (`energy.py`), 9 tests, 85/85 suite. Two-condition gate proven
+  (ideal 55× > perpendicular). Honest finding: emergent secondary structure needs the Langevin
+  thermal search, not GD on short arms — term is correct and ready. See §7.

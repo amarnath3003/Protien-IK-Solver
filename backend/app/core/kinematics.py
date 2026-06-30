@@ -108,7 +108,20 @@ def franka_panda_spec() -> RobotSpec:
         [-0.0175,  3.7525],   # q6
         [-2.8973,  2.8973],   # q7
     ])
-    link_radius = np.array([0.08, 0.07, 0.07, 0.06, 0.06, 0.05, 0.04])
+    # Link radii for self-collision detection.
+    # The original values (0.08, 0.07, ...) caused two permanent false-positives:
+    #  1. Pairs (0,2) and (4,6): always-zero distance due to degenerate zero-length
+    #     intermediate segments (fixed separately in the collision check function).
+    #  2. Pair (2,4): the structural maximum separation between upper arm and forearm
+    #     is exactly a[3]=0.0825m (the elbow offset). The old r[2]+r[4]=0.13m >>
+    #     0.0825m, so this pair was in collision at EVERY configuration including
+    #     the factory home position — clearly wrong.
+    #
+    # The home position (q=[0,-π/4,0,-3π/4,0,π/2,π/4]) gives a pair(2,4)
+    # centerline-to-centerline distance of ~0.058m. For physical correctness,
+    # r[2]+r[4] must be < 0.058m so the home position is not flagged as colliding.
+    # Values below are ~25-50mm per link, consistent with a compact 7-DOF arm.
+    link_radius = np.array([0.05, 0.04, 0.025, 0.025, 0.025, 0.02, 0.015])
     return RobotSpec(
         name="franka_panda",
         a=a, d=d, alpha=alpha, theta_offset=theta_offset,
@@ -301,6 +314,17 @@ def self_collision_min_distance_from_chain(spec: RobotSpec, chain: np.ndarray) -
     problem's tiny fixed size -- worth revisiting if this solver is ever
     extended to high-DOF (15+ joint) chains where the pair count grows
     quadratically and vectorization would likely win again.
+
+    Degenerate-segment note: some robots (e.g. Franka Panda) have joints
+    where both d=0 and a=0, making the DH transform a pure rotation with
+    no translation. These produce zero-length link segments whose two
+    endpoint positions are identical for ALL configurations. When a
+    zero-length segment sits between non-adjacent pair (i, j), segments i
+    and j share an endpoint — their segment-segment distance is always 0,
+    so subtracting the combined radius always gives a negative (collision)
+    result regardless of the actual arm pose. These are geometric artifacts,
+    not real clashes. We skip any pair (i, j) that has a degenerate
+    intermediate segment to avoid permanent false-positive collisions.
     """
     pts = chain[:, :3, 3]
     n_links = spec.n_joints
@@ -309,12 +333,26 @@ def self_collision_min_distance_from_chain(spec: RobotSpec, chain: np.ndarray) -
 
     pts_list = pts.tolist()
     radii = spec.link_radius
+
+    _EPS2 = 1e-12  # ~1 micron squared; any real link is orders of magnitude larger
     min_d = float("inf")
     for i in range(n_links - 1):
         p1 = pts_list[i]
         p2 = pts_list[i + 1]
         ri = radii[i]
         for j in range(i + 2, n_links):
+            # Skip if segment i's endpoint coincides with segment j's start.
+            # This happens when all intermediate links between i and j are
+            # zero-length (d=0, a=0 DH joints, e.g. Franka Panda joints 2
+            # and 6). In that case the two segments share a physical point,
+            # their segment-segment distance is always 0, and subtracting the
+            # combined radius always gives a negative value — a permanent
+            # false-positive that must be suppressed.
+            pj = pts_list[j]
+            dx, dy, dz = p2[0] - pj[0], p2[1] - pj[1], p2[2] - pj[2]
+            if dx * dx + dy * dy + dz * dz < _EPS2:
+                continue
+
             d = _segment_segment_distance_scalar(p1, p2, pts_list[j], pts_list[j + 1])
             d -= (ri + radii[j])
             if d < min_d:
