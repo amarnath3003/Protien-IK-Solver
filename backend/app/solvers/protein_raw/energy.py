@@ -95,8 +95,14 @@ def lj_pair(d: float, sigma: float, epsilon: float = 1.0,
 
 def lj_energy(spec: RobotSpec, q: np.ndarray,
               sigma_scale: float = 1.0, epsilon: float = 1.0,
-              attractive: bool = True) -> float:
-    """Total E_LJ over all non-adjacent bead pairs (energy only, no force)."""
+              attractive: bool = True, e_cap: float | None = None) -> float:
+    """Total E_LJ over all non-adjacent bead pairs (energy only, no force).
+
+    e_cap (optional) caps each pair's energy — random configs have beads deep
+    in the r^-12 wall (E ~ 1e13), so for *landscape sampling* (Σ ratio) the
+    repulsion must be bounded; the cap leaves the attractive well untouched.
+    Default None preserves the exact Phase-1 potential.
+    """
     pts = bead_positions(spec, q)
     radii = _bead_radii(spec)
     I, J = _nonadjacent_pairs(pts.shape[0])
@@ -106,7 +112,10 @@ def lj_energy(spec: RobotSpec, q: np.ndarray,
     sigma = sigma_scale * (radii[I] + radii[J])
     sr6 = (sigma / d) ** 6
     s2 = 1.0 if attractive else 0.0
-    return float(np.sum(4.0 * epsilon * (sr6 * sr6 - s2 * sr6)))
+    per_pair = 4.0 * epsilon * (sr6 * sr6 - s2 * sr6)
+    if e_cap is not None:
+        per_pair = np.minimum(per_pair, e_cap)
+    return float(np.sum(per_pair))
 
 
 # ---------------------------------------------------------------------------
