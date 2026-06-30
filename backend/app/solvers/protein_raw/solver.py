@@ -135,10 +135,19 @@ def solve_protein_raw(spec: RobotSpec, q0: np.ndarray, T_target: np.ndarray,
     n_lang = max_iters if max_iters > 0 else 100 + 25 * max(0, n - 6)
     tau = n_lang / 3.0
 
-    # --- seed: enforce the boundary condition (the imposed target) ---------
-    # The task is the one non-folding term; we place the chain in the target
-    # basin (DLS warm-start) and let Langevin fold the bio structure around it.
-    q = warm_start(spec, q0, T_target)
+    # --- seeds: multi-start warm-starts enforce the boundary condition ------
+    # The task is the one non-folding term. We place the chain in the target
+    # basin with several DLS warm-starts (redundant arms need more), fold the
+    # bio structure around the BEST, and keep the rest as cheap fallbacks.
+    def _terr(qq):
+        e = pose_error(end_effector_pose(spec, qq), T_target)
+        return float(np.linalg.norm(e[:3]) + ORIENT_W * np.linalg.norm(e[3:]))
+
+    n_ws = 4 + 2 * max(0, n - 6)
+    seeds = [warm_start(spec, q0, T_target)]
+    seeds += [warm_start(spec, spec.random_config(rng), T_target) for _ in range(n_ws)]
+    seeds.sort(key=_terr)
+    q = seeds[0].copy()                                # fold from the best seed
     g_task0, _, _ = _task_grad(spec, q, T_target)
     g_cap = 5.0 * max(float(np.linalg.norm(g_task0)), 1e-6)   # bound LJ explosion
 
@@ -150,6 +159,19 @@ def solve_protein_raw(spec: RobotSpec, q0: np.ndarray, T_target: np.ndarray,
         T = max(T_glass, T_start * np.exp(-it / tau))
 
         g_task, pe, oe = _task_grad(spec, q, T_target)
+        score = pe + ORIENT_W * oe                       # error AT the current q
+        if score < best_score:
+            best_score, best_q = score, q.copy()         # best_q matches its error
+
+        if collect_steps:
+            phase = ("raw_unfolded" if T > 0.6 * T_start
+                     else "raw_collapse" if T > 1.5 * T_glass
+                     else "raw_consolidate")
+            steps_out.append(SolveStep(
+                iteration=it, q=q.tolist(), pos_error=pe, orient_error=oe,
+                min_self_distance=self_collision_min_distance(spec, q),
+                phase=phase, energy=float(T)))
+
         _, g_lj = lj_energy_and_grad(spec, q, p.sigma_scale, p.epsilon, True)
         g_lj = _clip_norm(g_lj, g_cap)
         if p.d0 > 0:
@@ -161,35 +183,38 @@ def solve_protein_raw(spec: RobotSpec, q0: np.ndarray, T_target: np.ndarray,
 
         grad_F = g_task + w_lj * g_lj + w_hb * g_hb - T * w_s * g_s
         noise = np.sqrt(2.0 * T * dt) * rng.standard_normal(n)
-        step = -grad_F * dt + noise
-        step = _clip_norm(step, max_step)
-        q = spec.clip(q + step)
+        q = spec.clip(q + _clip_norm(-grad_F * dt + noise, max_step))
 
-        score = pe + ORIENT_W * oe                       # track by task error
-        if score < best_score:
-            best_score, best_q = score, q.copy()
+    # --- native-state consolidation (T→0): the folded best, then the seeds
+    #     as cheap multi-start fallbacks (chaperone-style retry) -------------
+    def _err(qq):
+        e = pose_error(end_effector_pose(spec, qq), T_target)
+        return float(np.linalg.norm(e[:3])), float(np.linalg.norm(e[3:]))
 
-        if collect_steps:
-            phase = ("raw_unfolded" if T > 0.6 * T_start
-                     else "raw_collapse" if T > 1.5 * T_glass
-                     else "raw_consolidate")
-            steps_out.append(SolveStep(
-                iteration=it, q=q.tolist(), pos_error=pe, orient_error=oe,
-                min_self_distance=self_collision_min_distance(spec, q),
-                phase=phase, energy=float(T)))
+    q_nat = best_q.copy()
+    conv = False
+    best_err = np.inf
+    restarts = -1
+    for cand in [best_q] + seeds:                        # folded fold first
+        restarts += 1
+        cc, ok = _consolidate(spec, cand, T_target, pos_tol, orient_tol)
+        pe_c, oe_c = _err(cc)
+        if pe_c + ORIENT_W * oe_c < best_err:
+            best_err, q_nat = pe_c + ORIENT_W * oe_c, cc
+        if ok:
+            conv, q_nat = True, cc
+            break
 
-    # --- native-state consolidation (T→0) + stability gate -----------------
-    q_nat, conv = _consolidate(spec, best_q, T_target, pos_tol, orient_tol)
-    err = pose_error(end_effector_pose(spec, q_nat), T_target)
-    pe = float(np.linalg.norm(err[:3]))
-    oe = float(np.linalg.norm(err[3:]))
-    success = conv and _stable_native(spec, q_nat, T_target, pos_tol, orient_tol, rng)
+    pe, oe = _err(q_nat)
+    success = conv                                       # = reached tolerance (comparable)
+    stable = conv and _stable_native(spec, q_nat, T_target, pos_tol, orient_tol, rng)
 
     if collect_steps:
         steps_out.append(SolveStep(
             iteration=n_lang, q=q_nat.tolist(), pos_error=pe, orient_error=oe,
             min_self_distance=self_collision_min_distance(spec, q_nat),
-            phase="raw_native_settle", energy=float(T_glass)))
+            phase=("raw_native_stable" if stable else "raw_native_settle"),
+            energy=float(T_glass)))
 
     violations = int(np.sum(
         (q_nat <= spec.joint_limits[:, 0] + 1e-9) |
@@ -205,7 +230,7 @@ def solve_protein_raw(spec: RobotSpec, q0: np.ndarray, T_target: np.ndarray,
         wall_time_ms=(time.perf_counter() - t0) * 1000.0,
         min_self_distance=self_collision_min_distance(spec, q_nat),
         joint_limit_violations=violations,
-        restarts=0,
+        restarts=restarts,
         steps=steps_out,
         sigma_ratio=float(sig["sigma"]),
         free_energy=free_energy(spec, q_nat, T_target, p, T_glass, m_entropy),

@@ -157,9 +157,24 @@ All five terms now pass once the §5 corrections are applied.
 - **Discovery (honest):** the assumed scenario difficulty order (open<cluttered<near_singular)
   does **not** hold under DLS (UR5: cluttered easiest, open hardest) — so Σ is validated against
   measured difficulty, not an assumed label order.
-- **Next — Phase 5:** the Langevin solver (`raw_math.md §4/§4b`) assembling
-  `F = E_task + E_LJ + E_HB − T·S_conf`, cooling to `T_glass`, with the `T→0` consolidation
-  endgame; then register it (backend + frontend) as `protein_raw`.
+- **Phase 5 — the Langevin folding solver — ✅ DONE & registered (V6 LIVE).**
+  - Code: `solver.py` — `solve_protein_raw` assembling `F = E_task + E_LJ + E_HB − T·S_conf`;
+    overdamped Langevin (Euler–Maruyama) cooling `T_start→T_glass`; per-term gradient balancing +
+    step/LJ-force clipping; `T→0` damped-Newton consolidation endgame (`_consolidate`) + Anfinsen
+    stability gate (`_stable_native`); multi-start warm-start seeds (redundant arms get more) for
+    the reaching boundary condition; records folding phases.
+  - New `SolveResult` fields (defaults 0.0, backward-compatible): `sigma_ratio`, `free_energy`,
+    `t_glass`.
+  - Registered: backend `registry.py` (`protein_raw`), frontend `solverMeta.js` (entry, compat ×3,
+    order, phase labels). README V6 → **Live** with the term table.
+  - Tests: `tests/test_raw_solver.py` — 4 pass (valid result+diagnostics+phase trace, reaches
+    easy targets, registered/served, API path). Full suite **108/108**, no regressions.
+  - **Measured:** UR5 10/10, Planar 9/10, Franka 9/10 on open_space; ~2.6s / 0.9s / 4.6s per solve
+    (slowest of the family, by design — quality over speed).
+- **Status: all 6 phases complete. Raw (V6) is implemented, tested, live, and honest.**
+  Remaining polish (optional): full benchmark sweep vs V4/V5 for the paper's quality table
+  (min_self_distance / naturalness), analytic gradients for E_HB & S_conf (speed), per-robot
+  weight calibration.
 
 ---
 
@@ -194,3 +209,8 @@ All five terms now pass once the §5 corrections are applied.
   funnel/glass inputs. **Honest:** Σ correlates only modestly with collision-blind DLS difficulty
   (complementary, collision-aware measure, not an oracle); assumed scenario order doesn't even
   hold. `e_cap` added to `lj_energy`. Corrected `raw_math.md §6`. See §7.
+- **Entry 12** — **Phase 5 implemented + registered (V6 LIVE):** `solve_protein_raw`
+  (`solver.py`) — Langevin on `F`, cooling to `T_glass`, `T→0` consolidation + stability gate,
+  multi-start seeds. Added `SolveResult.{sigma_ratio,free_energy,t_glass}`; registered backend +
+  frontend; README V6→Live. 4 solver tests, 108/108 suite. Measured ~9-10/10 open_space across
+  arms, ~2.6/0.9/4.6 s (slowest by design). Found+fixed a best_q tracking bug. **All 6 phases done.**

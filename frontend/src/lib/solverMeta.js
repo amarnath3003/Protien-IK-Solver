@@ -10,11 +10,13 @@ export const ROBOT_ORDER = ['planar3dof', 'ur5', 'franka_panda'];
 export const ROBOT_SOLVER_COMPAT = {
   planar3dof:   ['jacobian_dls', 'ccd', 'fabrik', 'trac_ik_style', 'multi_start',
                  'protein_ik', 'protein_fast', 'fixed_lambda_ik', 'protein_homotopy',
-                 'analytical_planar3dof'],
+                 'protein_raw', 'analytical_planar3dof'],
   ur5:          ['jacobian_dls', 'ccd', 'fabrik', 'trac_ik_style', 'multi_start',
-                 'protein_ik', 'protein_fast', 'fixed_lambda_ik', 'protein_homotopy'],
+                 'protein_ik', 'protein_fast', 'fixed_lambda_ik', 'protein_homotopy',
+                 'protein_raw'],
   franka_panda: ['jacobian_dls', 'ccd', 'fabrik', 'trac_ik_style', 'multi_start',
-                 'protein_ik', 'protein_fast', 'fixed_lambda_ik', 'protein_homotopy'],
+                 'protein_ik', 'protein_fast', 'fixed_lambda_ik', 'protein_homotopy',
+                 'protein_raw'],
 };
 
 export const SOLVERS = {
@@ -42,6 +44,12 @@ export const SOLVERS = {
     color: '#9D00FF',          // purple for speed/fast variants
     family: 'protein',
   },
+  protein_raw: {
+    name: 'ProteinIK Raw Biology (V6)',
+    short: 'ProIK Raw',
+    color: '#D35400',          // burnt orange — raw biophysical folding
+    family: 'protein',
+  },
   analytical_planar3dof: {
     name: 'Analytical IK (Planar 3-DOF, exact)',
     short: 'Analytical',
@@ -53,7 +61,7 @@ export const SOLVERS = {
 // Default order shown for all robots (analytical_planar3dof added per-robot via ROBOT_SOLVER_COMPAT)
 export const SOLVER_ORDER = [
   'jacobian_dls', 'ccd', 'fabrik', 'trac_ik_style', 'multi_start',
-  'protein_ik', 'protein_fast', 'fixed_lambda_ik', 'protein_homotopy',
+  'protein_ik', 'protein_fast', 'fixed_lambda_ik', 'protein_homotopy', 'protein_raw',
 ];
 
 export const SCENARIOS = {
@@ -81,6 +89,12 @@ export const PHASE_LABELS = {
   // CCH-IK phases
   cch_lambda_advance: 'λ advancing — low conflict',
   cch_lambda_hold:    'λ held — conflict detected',
+  // Raw Biology (V6) folding phases
+  raw_unfolded:       'unfolded (hot Langevin)',
+  raw_collapse:       'hydrophobic collapse',
+  raw_consolidate:    'tertiary consolidation',
+  raw_native_settle:  'native-state settling (T→0)',
+  raw_native_stable:  'native state — stable',
 };
 
 export function phaseLabel(phase) {

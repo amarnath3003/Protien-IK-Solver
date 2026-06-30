@@ -13,7 +13,7 @@
 | **V1** | `protein_ik` | ProteinIK | Live | 5-stage biology-mimicking fold (blind relax → collapse → funnel → chaperone → stability gate) |
 | **V4** | `protein_fast` | ProteinIK Fast | Live | Barrierless-first folding ensemble (kinetic partitioning): cheap downhill fold first, escalate to the full stochastic fold + chaperone only on frustrated seeds. Fastest of the protein lineup; ties/beats TRAC-IK on the easy regime |
 | **V5** | `protein_homotopy` | CCH-IK | Live | Conflict-Controlled Homotopy: λ advances based on cosine conflict between task and constraint gradients |
-| **V6** | `protein_raw` | ProteinIK Raw Biology | Pending | Physics-truer simulation of real folding kinetics; implementation not yet started |
+| **V6** | `protein_raw` | ProteinIK Raw Biology | Live | Coarse-grained protein-folding *simulation*: overdamped Langevin on a free energy `F = E_task + E_LJ + E_HB − T·S_conf`, cooling to the glass transition, with a `T→0` native-state consolidation endgame |
 
 All three live versions run simultaneously on the same target in the frontend dashboard so you can compare them head-to-head in real time.
 
@@ -62,6 +62,7 @@ All three robots are selectable in the frontend via the robot picker. Solvers th
 | ProteinIK Fast (V4) | `protein_fast` | Speed-optimized fold — barrierless-first kinetic-partitioning ensemble |
 | CCH-IK (V5) | `protein_homotopy` | Conflict-Controlled Homotopy |
 | Fixed-λ Baseline | `fixed_lambda_ik` | V5 ablation baseline — same energy as CCH-IK but no conflict detection |
+| ProteinIK Raw Biology (V6) | `protein_raw` | Coarse-grained folding simulation — Langevin on a biophysical free energy |
 
 ---
 
@@ -120,9 +121,32 @@ The `fixed_lambda_ik` solver uses the same energy function but advances λ linea
 
 ---
 
-### V6 — Raw Biology (Pending)
+### V6 — Raw Biology
 
-Not yet started. The intent is a physics-truer simulation of actual folding kinetics: Langevin dynamics, realistic energy landscape topology, and less engineering compromise. No timeline.
+The deepest level of the spectrum: biology in the **energy function itself**. Rather than
+sequencing standard IK operations (V1) or extracting one principle (V5), V6 is an actual
+**coarse-grained, off-lattice, implicit-solvent protein-folding simulation** (the Honeycutt–
+Thirumalai / Enciso–Rey lineage) whose polymer happens to be the robot arm — the joint origins
+are the Cα beads, the links are rigid virtual bonds, the joint angles are the backbone torsions.
+
+It minimises a biophysical **free energy** by overdamped **Langevin dynamics**, cooling from an
+unfolded high temperature toward the REM glass temperature, and reaches the native state by the
+dynamics' own `T→0` limit (a damped-Newton consolidation — the physical endpoint of the same
+equation, not a bolted-on solver). Each term was filtered to have **no existing IK equivalent**:
+
+| Term | What it is | Why it has no IK equivalent |
+| :--- | :--- | :--- |
+| `E_LJ` | Full Lennard-Jones 6-12 between link pairs, **with attraction** | Every IK self-collision model keeps only the repulsive wall; the attractive well gives emergent inter-link spacing |
+| `E_HB` | Directional hydrogen-bond coupling (distance **and** axis orientation, via the triplet-plane normal) | The Jacobian captures influence, not preferred geometry; an ideal H-bond is 55× stronger than a misoriented contact |
+| `−T·S_conf` | Configurational entropy `S = log Ω` (clash-free accessible volume), **target-blind & collision-aware** | It is *not* manipulability (measured: corr(clearance, S)≈+0.9 vs manipulability≈0); the hydrophobic free-energy term, opposing collapse |
+| `Σ` | Bryngelson–Wolynes landscape funnel/glass diagnostic, measured **before** solving | Reported as a diagnostic (sets the cooling target `T_glass`); complementary to V5's during-solve conflict |
+
+**Honest scope.** Everything except `E_task` (the imposed EE target — folding is target-blind)
+follows the folding mechanism exactly. Raw is the **slowest** of the family by design — its
+thesis is solution quality and physical faithfulness, not speed. Each term is independently
+unit-tested, and its contribution is validated by a standalone experiment
+(`backend/raw_phase{1..4}_experiment.py`); the design rationale and a faithfulness×rawness audit
+are in `raw_design.md`, `raw_math.md`, and `raw_audit.md`.
 
 ---
 
