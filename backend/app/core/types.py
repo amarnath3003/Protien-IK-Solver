@@ -51,6 +51,10 @@ class SolveResult:
     difficulty_score: float = 0.0  # mean C over full trajectory — how hard was this solve?
                                    # 0 = objectives always cooperated, 2 = always opposed
                                    # valid even when success=False; pure diagnostic output
+    # ProteinIK Raw (V6) diagnostic outputs (default 0.0 for all other solvers)
+    sigma_ratio:  float = 0.0  # landscape funnel quality Σ=σ_E/ΔE; <1 funnelled, >1 glassy
+    free_energy:  float = 0.0  # F(q,T)=E_task+E_LJ+E_HB−T·S_conf at the returned config
+    t_glass:      float = 0.0  # REM glass temperature — the Langevin cooling target
 
     def to_dict(self, include_steps: bool = True) -> dict:
         d = {
@@ -67,6 +71,9 @@ class SolveResult:
             "conflict_index":   self.conflict_index,
             "lambda_final":     self.lambda_final,
             "difficulty_score": self.difficulty_score,
+            "sigma_ratio":      self.sigma_ratio,
+            "free_energy":      self.free_energy,
+            "t_glass":          self.t_glass,
         }
         if include_steps:
             d["steps"] = [s.to_dict() if isinstance(s, SolveStep) else s for s in self.steps]

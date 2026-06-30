@@ -13,6 +13,7 @@ from .landscape import (
     RawParams, bio_energy, warm_start, sigma_ratio,
     configurational_entropy_scale, glass_temperature,
 )
+from .solver import solve_protein_raw
 
 __all__ = [
     "bead_positions", "lj_energy", "lj_energy_and_grad", "lj_pair",
@@ -20,4 +21,5 @@ __all__ = [
     "config_entropy", "config_entropy_and_grad", "entropy_stencil",
     "RawParams", "bio_energy", "warm_start", "sigma_ratio",
     "configurational_entropy_scale", "glass_temperature",
+    "solve_protein_raw",
 ]
