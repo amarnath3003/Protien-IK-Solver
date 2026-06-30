@@ -138,8 +138,28 @@ All five terms now pass once the §5 corrections are applied.
     0.42→0.90) — the unfolding drive that competes with LJ collapse.
   - Corrected `raw_math.md §3.3`: soft/differentiable estimator; entropy **opposes** collapse
     (chain conformational entropy), avoids clashes/limits — NOT singularities.
-- **Next — Phase 4:** Σ ratio + `T_glass` (`raw_math.md §6`), then the Langevin solver (§4/§4b)
-  assembling `F = E_task + E_LJ + E_HB − T·S_conf`.
+- **Phase 4 — Σ ratio + `T_glass` (landscape topology) — ✅ DONE & validated.**
+  - Code: `landscape.py` — `RawParams.calibrate` (per-robot scales), `bio_energy` (capped LJ +
+    H-bond), `warm_start` (DLS native proxy), `sigma_ratio` (BW **compact ensemble** of warm-start
+    solutions; balanced task+bio; native = best), `_sigma_from_energies`,
+    `configurational_entropy_scale` (S₀), `glass_temperature`. Added backward-compatible `e_cap`
+    to `lj_energy` (random configs sit in the 1e13 r⁻¹² wall).
+  - Tests: `tests/test_raw_landscape.py` — 13 pass (Σ measure validated on controlled inputs:
+    funnel < glass, Σ>1 achievable, Σ<1 achievable; sigma_ratio positive/finite; T_glass formula
+    & monotonic; S₀>0; DLS warm-start reduces error). Suite 104/104.
+  - Experiment: `raw_phase4_experiment.py`. **Honest result:** Σ spans the BW threshold
+    meaningfully (UR5 ~0.77–0.87 funnelled; Franka/Planar ~1.0 glassy); correlation with
+    collision-blind DLS difficulty is modest/mixed (−0.24/+0.16/−0.12) — Σ is a **collision-aware**
+    landscape measure, **complementary** to V5's conflict (per `raw_design.md`), NOT a strong
+    oracle. Reported transparently. Operational use: sets `T_glass` (cooling target).
+  - Corrected `raw_math.md §6`: compact-ensemble Σ (not random sampling), balanced potential,
+    LJ cap, honest scope.
+- **Discovery (honest):** the assumed scenario difficulty order (open<cluttered<near_singular)
+  does **not** hold under DLS (UR5: cluttered easiest, open hardest) — so Σ is validated against
+  measured difficulty, not an assumed label order.
+- **Next — Phase 5:** the Langevin solver (`raw_math.md §4/§4b`) assembling
+  `F = E_task + E_LJ + E_HB − T·S_conf`, cooling to `T_glass`, with the `T→0` consolidation
+  endgame; then register it (backend + frontend) as `protein_raw`.
 
 ---
 
@@ -169,3 +189,8 @@ All five terms now pass once the §5 corrections are applied.
   (free-volume MC, opposing conformational entropy) + rawness (no IK accessible-volume entropy).
   Experiment refutes the audit's worry empirically: corr(clearance, S_conf)≈+0.9 vs
   manipulability≈0 → S ≠ manipulability. Corrected `raw_math.md §3.3`. See §7.
+- **Entry 11** — **Phase 4 implemented:** Σ ratio + `T_glass` (`landscape.py`, `RawParams`),
+  13 tests, 104/104 suite. Σ over BW compact ensemble; validated the measure on controlled
+  funnel/glass inputs. **Honest:** Σ correlates only modestly with collision-blind DLS difficulty
+  (complementary, collision-aware measure, not an oracle); assumed scenario order doesn't even
+  hold. `e_cap` added to `lj_energy`. Corrected `raw_math.md §6`. See §7.

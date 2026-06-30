@@ -63,6 +63,27 @@ planar3dof   open_space    Jacobian (DLS)              ] succ  46.0%  mean    19
 [ur5          cluttered     ProteinIK Homotopy (CCH-IK) ] succ  96.0%  mean  1070.9ms  p95  2396.6  collide  46.0%
 [ur5          cluttered     ProteinIK Fast (V4)         ] succ 100.0%  mean    22.6ms  p95   103.7  collide  19.0%
 
+[franka_panda open_space    Jacobian (DLS)              ] succ  24.3%  mean    58.0ms  p95   103.4  collide  65.7%
+[franka_panda open_space    CCD                         ] succ  16.3%  mean   233.1ms  p95   301.3  collide  69.0%
+[franka_panda open_space    FABRIK                      ] succ  16.7%  mean   152.1ms  p95   195.1  collide  70.3%
+[franka_panda open_space    TRAC-IK style               ] succ  95.0%  mean    26.1ms  p95    86.1  collide  75.3%
+[franka_panda open_space    Multi-start                 ] succ  86.3%  mean   127.5ms  p95   159.3  collide  75.7%
+[franka_panda open_space    ProteinIK (V1)              ] succ  81.0%  mean    85.2ms  p95   205.2  collide  72.3%
+[franka_panda open_space    ProteinIK Fast (V4)         ] succ  99.7%  mean   193.6ms  p95   632.9  collide  72.0%
 
+[franka_panda near_singular Jacobian (DLS)              ] succ  27.7%  mean    48.8ms  p95    68.5  collide  63.3%
+[franka_panda near_singular CCD                         ] succ  18.0%  mean   226.6ms  p95   276.1  collide  67.7%
+[franka_panda near_singular FABRIK                      ] succ  18.0%  mean   159.1ms  p95   222.3  collide  70.3%
+[franka_panda near_singular TRAC-IK style               ] succ  91.3%  mean    30.2ms  p95    95.7  collide  68.3%
+[franka_panda near_singular Multi-start                 ] succ  82.3%  mean   128.5ms  p95   154.1  collide  67.7%
+[franka_panda near_singular ProteinIK (V1)              ] succ  72.0%  mean   101.2ms  p95   202.2  collide  68.0%
+[franka_panda near_singular ProteinIK Fast (V4)         ] succ  98.0%  mean   219.7ms  p95   845.3  collide  65.7%
 
+[franka_panda cluttered     Jacobian (DLS)              ] succ  25.0%  mean    54.8ms  p95    85.6  collide  83.3%
+[franka_panda cluttered     CCD                         ] succ  19.7%  mean   238.5ms  p95   411.3  collide  89.0%
+[franka_panda cluttered     FABRIK                      ] succ  20.3%  mean   138.9ms  p95   174.9  collide  85.3%
+[franka_panda cluttered     TRAC-IK style               ] succ  91.0%  mean    27.2ms  p95    92.7  collide  99.0%
+[franka_panda cluttered     Multi-start                 ] succ  83.3%  mean   124.2ms  p95   156.5  collide  98.7%
+[franka_panda cluttered     ProteinIK (V1)              ] succ  74.7%  mean   106.0ms  p95   255.5  collide  95.7%
+[franka_panda cluttered     ProteinIK Fast (V4)         ] succ  98.3%  mean   319.7ms  p95   834.6  collide  98.7%
 

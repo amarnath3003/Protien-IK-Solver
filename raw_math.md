@@ -196,17 +196,31 @@ T_glass ≈ σ_E / √(2 ln Ω̄)            # REM (Bryngelson); Ω̄ = effectiv
 
 ---
 
-## 6. Σ — pre-solve foldability (landscape topology)
+## 6. Σ — pre-solve landscape diagnostic (topology)
+
+Measured over the Bryngelson–Wolynes **compact ensemble** — *not* arbitrary random configs
+(those are dominated by target-independent task-error variance and do not discriminate). The
+compact ensemble is the set of approximate solutions reached by warm-starting (DLS) from many
+random seeds — the IK analog of the molten-globule ensemble:
 
 ```
-sample M random configs q_m;  E_m = E_LJ(q_m) + E_HB(q_m)
-σ_E = std(E_m);  ΔE = mean(E_m) − E_native_proxy;  Σ = σ_E/ΔE  ( = 1/Z )
-Σ < 1 → funnelled (good folder);  Σ > 1 → glassy
+seeds → DLS warm-starts → solutions q_1..q_K          (the compact / molten ensemble)
+E_k = E_task(q_k) + w·E_bio(q_k),  w = std(E_task)/std(E_bio)   (balance so steric frustration shows)
+E_native = min_k E_k                                  (best solution = native proxy)
+σ_E = std(E_k);  ΔE = mean(E_k) − E_native;  Σ = σ_E/ΔE  ( = 1/Z )
+Σ < 1 → funnelled;  Σ > 1 → glassy
+E_bio uses a per-pair LJ cap (random/seed configs sit in the r^-12 wall, ~1e13 uncapped)
 ```
 
-`E_native_proxy` = energy at a cheap warm-start (a few DLS/geometric-seed steps), computed once
-up front. **This is the one IK-specific departure** (a protein knows its native energy; we do
-not). Stated openly. Σ is reported as a novel difficulty diagnostic, measured *before* solving.
+`E_native` proxy is **the one IK-specific departure** (a protein knows its native energy; we do
+not). Stated openly.
+
+**Honest scope (measured, Phase-4 experiment).** Σ characterises the funnel quality of the
+**collision-aware** landscape. It is *not* a strong per-target difficulty oracle: its correlation
+with a collision-blind solver's difficulty (DLS pos-error) is modest and mixed (≈ −0.24 / +0.16 /
+−0.12 on UR5 / Franka / Planar) — expected, because Σ sees steric glassiness a collision-blind
+solver ignores. It is **complementary** to V5's during-solve `conflict_index` (as `raw_design.md`
+states), reported as a diagnostic, and its operational use is to set the cooling target `T_glass`.
 
 ---
 
