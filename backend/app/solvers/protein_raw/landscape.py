@@ -85,36 +85,54 @@ def bio_energy(spec: RobotSpec, q: np.ndarray, p: RawParams) -> float:
 
 
 def warm_start(spec: RobotSpec, q0: np.ndarray, T_target: np.ndarray,
-               steps: int = 40, lr: float = 0.05) -> np.ndarray:
-    """Cheap native-energy proxy: a few Jacobian-transpose steps toward the
-    target. Converges fast on easy targets, stalls near singular ones — which
-    correctly RAISES Σ (smaller gap) for hard targets."""
+               steps: int = 40, damping: float = 0.1) -> np.ndarray:
+    """Cheap native-energy proxy: a few damped-least-squares (DLS) steps toward
+    the target. DLS is stable through singularities (the λ²I term), so it
+    reliably reduces task error; it still converges to a worse residual on
+    genuinely hard targets, which correctly raises Σ there."""
     q = q0.copy()
+    eye = np.eye(6)
     for _ in range(steps):
         err = pose_error(end_effector_pose(spec, q), T_target)
-        q = spec.clip(q + lr * (geometric_jacobian(spec, q).T @ err))
+        J = geometric_jacobian(spec, q)
+        dq = J.T @ np.linalg.solve(J @ J.T + (damping ** 2) * eye, err)
+        q = spec.clip(q + dq)
     return q
 
 
-def sigma_ratio(spec: RobotSpec, T_target: np.ndarray, p: RawParams,
-                rng: np.random.Generator, n_samples: int = 400) -> dict:
-    """Σ = σ_E/ΔE for this target. Task and bio are balanced to equal variance
-    (per target) so the diagnostic is comparable across targets, then E_native
-    is the warm-start energy under the SAME balanced potential."""
-    qs = [spec.random_config(rng) for _ in range(n_samples)]
-    task = np.array([target_energy(spec, q, T_target) for q in qs])
-    bio = np.array([bio_energy(spec, q, p) for q in qs])
-    w = float(np.std(task) / max(np.std(bio), 1e-9))      # balance bio ↔ task
-
-    E = task + w * bio
-    q_nat = warm_start(spec, qs[int(np.argmin(task))], T_target)
-    E_nat = float(target_energy(spec, q_nat, T_target) + w * bio_energy(spec, q_nat, p))
-
+def _sigma_from_energies(E: np.ndarray) -> dict:
+    """Σ = σ_E / ΔE from an energy ensemble; native = the ensemble minimum.
+    Funnelled (one deep minimum well below the rest) → ΔE large → Σ small.
+    Glassy (many states near the minimum) → ΔE small → Σ large."""
+    E = np.asarray(E, dtype=float)
+    e_native = float(np.min(E))
     sigma_E = float(np.std(E))
-    delta_E = float(np.mean(E) - E_nat)
-    sigma = sigma_E / max(delta_E, 1e-8)
-    return {"sigma": sigma, "sigma_E": sigma_E, "delta_E": delta_E,
-            "E_native": E_nat, "w_bio": w}
+    delta_E = float(np.mean(E) - e_native)
+    return {"sigma": sigma_E / max(delta_E, 1e-8),
+            "sigma_E": sigma_E, "delta_E": delta_E, "E_native": e_native}
+
+
+def sigma_ratio(spec: RobotSpec, T_target: np.ndarray, p: RawParams,
+                rng: np.random.Generator, n_seeds: int = 24,
+                ws_steps: int = 60) -> dict:
+    """Σ over the Bryngelson–Wolynes COMPACT ENSEMBLE — the set of approximate
+    solutions reached by warm-starting from many random seeds (the IK analog of
+    the molten-globule ensemble). Native = the best (lowest-energy) solution
+    found. Task and bio are balanced to equal variance so the steric (bio)
+    frustration is not swamped by the task term.
+
+    Honest scope: Σ characterises the funnel quality of the COLLISION-AWARE
+    landscape. It is complementary to V5's during-solve conflict diagnostic and
+    to a collision-blind solver's notion of difficulty — see the Phase-4
+    experiment for the measured (modest) correlation."""
+    sols = [warm_start(spec, spec.random_config(rng), T_target, steps=ws_steps)
+            for _ in range(n_seeds)]
+    task = np.array([target_energy(spec, q, T_target) for q in sols])
+    bio = np.array([bio_energy(spec, q, p) for q in sols])
+    w = float(np.std(task) / max(np.std(bio), 1e-9))
+    out = _sigma_from_energies(task + w * bio)
+    out["w_bio"] = w
+    return out
 
 
 # ---------------------------------------------------------------------------
