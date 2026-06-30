@@ -164,3 +164,8 @@ All five terms now pass once the §5 corrections are applied.
   triplet-plane-normal vector (`energy.py`), 9 tests, 85/85 suite. Two-condition gate proven
   (ideal 55× > perpendicular). Honest finding: emergent secondary structure needs the Langevin
   thermal search, not GD on short arms — term is correct and ready. See §7.
+- **Entry 10** — **Phase 3 researched + implemented:** configurational entropy `S=log Ω`
+  (`energy.py`, FD force, CRN stencil), 6 tests, 91/91 suite. Research confirmed faithfulness
+  (free-volume MC, opposing conformational entropy) + rawness (no IK accessible-volume entropy).
+  Experiment refutes the audit's worry empirically: corr(clearance, S_conf)≈+0.9 vs
+  manipulability≈0 → S ≠ manipulability. Corrected `raw_math.md §3.3`. See §7.

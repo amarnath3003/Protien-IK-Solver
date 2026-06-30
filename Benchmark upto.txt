@@ -64,10 +64,5 @@ planar3dof   open_space    Jacobian (DLS)              ] succ  46.0%  mean    19
 [ur5          cluttered     ProteinIK Fast (V4)         ] succ 100.0%  mean    22.6ms  p95   103.7  collide  19.0%
 
 
-[franka_panda open_space    Jacobian (DLS)              ] succ  24.3%  mean    47.4ms  p95    62.0  collide 100.0%
-[franka_panda open_space    CCD                         ] succ  16.3%  mean   213.2ms  p95   251.0  collide 100.0%
-[franka_panda open_space    FABRIK                      ] succ  16.7%  mean   139.7ms  p95   163.0  collide 100.0%
-[franka_panda open_space    TRAC-IK style               ] succ  95.0%  mean    24.0ms  p95    81.6  collide 100.0%
-[franka_panda open_space    Multi-start                 ] succ  86.3%  mean   116.7ms  p95   141.9  collide 100.0%
-[franka_panda open_space    ProteinIK (V1)              ] succ  81.7%  mean    73.5ms  p95   184.8  collide 100.0%
+
 
