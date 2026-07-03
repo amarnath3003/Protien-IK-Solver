@@ -69,6 +69,8 @@ from app.solvers.protein_homotopy.core import (
 COMPONENT_A = True   # conflict-controlled λ advancement          [the contribution]
 COMPONENT_B = True   # gradient surgery (PCGrad projection)       [reduces interference]
 COMPONENT_C = True   # geometric warm-start seed                  [standard practice]
+COMPONENT_D = True   # null-space constraint-aware endgame        [constraints reach the OUTPUT]
+COMPONENT_E = True   # monotonic predictor-corrector continuation [λ never retreats → path completes]
 
 # ---------------------------------------------------------------------------
 # Hyperparameters
@@ -87,9 +89,10 @@ LAMBDA_BETA         = 3.84  # exponential decay rate for λ step vs. conflict
 # Conflict retreat (Upgrade B):
 # When stuck for CONFLICT_RETREAT_AFTER iters, take a deterministic constraint-
 # descent step on the most conflicted joints, then retract λ slightly.
-CONFLICT_RETREAT_AFTER  = 20    # iters before triggering retreat
+CONFLICT_RETREAT_AFTER  = 20    # iters before triggering retreat / progress-force
 RETREAT_ALPHA           = 0.15  # step size for the constraint retreat move
 LAMBDA_RETRACT_FACTOR   = 0.90  # λ *= this on retreat (homotopy back-off)
+MIN_LAMBDA_PROGRESS     = 0.05  # Component E: forced monotonic λ step when stuck
 
 ORIENT_WEIGHT       = 0.3   # orientation weight in combined error
 MAX_ITERS           = 400   # per-trajectory iteration budget
@@ -118,12 +121,52 @@ def _fast_pose_jac(spec: RobotSpec, q: np.ndarray):
     return pose, J
 
 
+def _null_space_declash(spec: RobotSpec, q: np.ndarray, T_target: np.ndarray,
+                        pos_tol: float, ori_tol: float,
+                        steps: int = 8, alpha: float = 0.1) -> np.ndarray:
+    """Component D — redundancy-resolution refinement of the converged solution.
+
+    Descends the constraint energy (self-collision + joint-limit) in the task
+    NULL SPACE, so the end-effector stays on target while the configuration
+    moves away from clashes. This is what carries the homotopy's constraint
+    handling into the OUTPUT instead of letting the task-only endgame wash it
+    out. On a non-redundant arm the null-space projector is ~0 → safe no-op; on
+    a redundant arm (e.g. Franka) it actively declashes the returned pose.
+    """
+    n = spec.n_joints
+    eye6 = np.eye(6)
+    eyen = np.eye(n)
+    d_best = self_collision_min_distance(spec, q)
+    for _ in range(steps):
+        _, J = _fast_pose_jac(spec, q)
+        J_pinv = J.T @ np.linalg.inv(J @ J.T + 1e-6 * eye6)   # damped pseudoinverse
+        N = eyen - J_pinv @ J                                 # null-space projector
+        g_c = fd_constraint_gradient(spec, q)                 # uphill grad of e_constraints
+        q_try = spec.clip(q - alpha * (N @ g_c))
+        err = pose_error(end_effector_pose(spec, q_try), T_target)
+        if np.linalg.norm(err[:3]) < pos_tol and np.linalg.norm(err[3:]) < ori_tol:
+            d_new = self_collision_min_distance(spec, q_try)
+            if d_new > d_best:
+                q, d_best = q_try, d_new
+            else:
+                break                     # no further constraint improvement
+        else:
+            alpha *= 0.5                  # step left the target basin — shrink
+            if alpha < 1e-3:
+                break
+    return q
+
+
 def _lm_polish(spec: RobotSpec, q0: np.ndarray, T_target: np.ndarray,
                pos_tol: float, ori_tol: float,
                max_steps: int = 20, lam0: float = 0.05):
     """Levenberg-Marquardt endgame: fast convergence once we're close.
     Identical in structure to V4's LM polish; runs after homotopy places
     us in the basin of attraction.  Returns (q, converged).
+
+    With COMPONENT_D, once the target tolerance is met the solution is refined
+    in the task null space (see `_null_space_declash`) so the constraint
+    handling reaches the returned configuration, not just the trajectory.
     """
     q = q0.copy()
     pose, J = _fast_pose_jac(spec, q)
@@ -133,7 +176,7 @@ def _lm_polish(spec: RobotSpec, q0: np.ndarray, T_target: np.ndarray,
         pos_e = float(np.linalg.norm(err[:3]))
         ori_e = float(np.linalg.norm(err[3:]))
         if pos_e < pos_tol and ori_e < ori_tol:
-            return q, True
+            break
         dq = J.T @ np.linalg.solve(J @ J.T + (lam ** 2) * np.eye(6), err)
         q_try = spec.clip(q + dq)
         pose_t, J_t = _fast_pose_jac(spec, q_try)
@@ -147,7 +190,10 @@ def _lm_polish(spec: RobotSpec, q0: np.ndarray, T_target: np.ndarray,
                 break
     pos_e = float(np.linalg.norm(err[:3]))
     ori_e = float(np.linalg.norm(err[3:]))
-    return q, (pos_e < pos_tol and ori_e < ori_tol)
+    converged = pos_e < pos_tol and ori_e < ori_tol
+    if COMPONENT_D and converged:
+        q = _null_space_declash(spec, q, T_target, pos_tol, ori_tol)
+    return q, converged
 
 
 # ---------------------------------------------------------------------------
@@ -230,16 +276,27 @@ def _solve_single(
                 # Filter: joints where per-element product < 0 means those
                 # two gradients directly oppose each other in that dimension.
                 if iters_at_same_lambda >= CONFLICT_RETREAT_AFTER and lambda_ > 0.0:
+                    # Corrector step (both branches): reduce constraint violation
+                    # on the joints where task and constraint forces most oppose.
                     per_joint_conflict = g_target * g_constr  # ∈ ℝⁿ, elementwise
                     conflict_mask = per_joint_conflict < 0    # dimensions where forces oppose
                     if conflict_mask.any():
-                        # Descend on constraint energy for conflicted joints only.
                         # g_constr is the true (uphill) gradient of E_constraints,
                         # so q -= alpha * g_constr is constraint descent.
                         q_retreat = q.copy()
                         q_retreat[conflict_mask] -= RETREAT_ALPHA * g_constr[conflict_mask]
                         q = spec.clip(q_retreat)  # clip full array after update
-                    lambda_ = max(0.0, lambda_ * LAMBDA_RETRACT_FACTOR)
+                    if COMPONENT_E:
+                        # Predictor-corrector: NEVER retreat — retracting λ stalls
+                        # the continuation so it never reaches λ≈1 and the LM
+                        # endgame never fires (the cluttered-regime failure mode).
+                        # Force a small MONOTONIC forward step: the path always
+                        # completes, the corrector above having reduced the local
+                        # conflict first.
+                        lambda_ = min(1.0, lambda_ + MIN_LAMBDA_PROGRESS)
+                    else:
+                        # Original conflict-retreat: retract λ (homotopy back-off).
+                        lambda_ = max(0.0, lambda_ * LAMBDA_RETRACT_FACTOR)
                     iters_at_same_lambda = 0
         else:
             # Component A off: fixed linear schedule (ablation baseline)

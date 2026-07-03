@@ -143,7 +143,7 @@ def solve_protein_raw(spec: RobotSpec, q0: np.ndarray, T_target: np.ndarray,
         e = pose_error(end_effector_pose(spec, qq), T_target)
         return float(np.linalg.norm(e[:3]) + ORIENT_W * np.linalg.norm(e[3:]))
 
-    n_ws = 4 + 2 * max(0, n - 6)
+    n_ws = 10 + 2 * max(0, n - 6)
     seeds = [warm_start(spec, q0, T_target)]
     seeds += [warm_start(spec, spec.random_config(rng), T_target) for _ in range(n_ws)]
     seeds.sort(key=_terr)
@@ -153,6 +153,8 @@ def solve_protein_raw(spec: RobotSpec, q0: np.ndarray, T_target: np.ndarray,
 
     best_q = q.copy()
     best_score = np.inf
+    best_clean_q = None
+    best_clean_clear = -np.inf
     steps_out: list[SolveStep] = []
 
     for it in range(n_lang):
@@ -162,6 +164,14 @@ def solve_protein_raw(spec: RobotSpec, q0: np.ndarray, T_target: np.ndarray,
         score = pe + ORIENT_W * oe                       # error AT the current q
         if score < best_score:
             best_score, best_q = score, q.copy()         # best_q matches its error
+        # among near-target configs, remember the most clash-free one — the
+        # fold's clean basin — so the native state can be quality-selected.
+        # Window is generous: the entropy term (S_conf) is what opens the chain
+        # to clash-free geometry, so this is where the fold earns its keep.
+        if pe < 0.08 and oe < 0.3:
+            d_self = self_collision_min_distance(spec, q)
+            if d_self > best_clean_clear:
+                best_clean_clear, best_clean_q = d_self, q.copy()
 
         if collect_steps:
             phase = ("raw_unfolded" if T > 0.6 * T_start
@@ -185,25 +195,45 @@ def solve_protein_raw(spec: RobotSpec, q0: np.ndarray, T_target: np.ndarray,
         noise = np.sqrt(2.0 * T * dt) * rng.standard_normal(n)
         q = spec.clip(q + _clip_norm(-grad_F * dt + noise, max_step))
 
-    # --- native-state consolidation (T→0): the folded best, then the seeds
-    #     as cheap multi-start fallbacks (chaperone-style retry) -------------
+    # --- native-state selection (T→0). Consolidate every target-reaching
+    #     candidate (the fold's clean basin, the fold's task-best, and the
+    #     multi-start seeds); the native state is the one with LOWEST FREE
+    #     ENERGY (Anfinsen) — so E_LJ/E_HB/S_conf actually pick the solution,
+    #     the best-packed / most clash-free one, not just the first to reach. -
     def _err(qq):
         e = pose_error(end_effector_pose(spec, qq), T_target)
         return float(np.linalg.norm(e[:3])), float(np.linalg.norm(e[3:]))
 
-    q_nat = best_q.copy()
-    conv = False
-    best_err = np.inf
-    restarts = -1
-    for cand in [best_q] + seeds:                        # folded fold first
-        restarts += 1
+    cands = ([best_clean_q] if best_clean_q is not None else []) + [best_q] + seeds
+    converged = []                                       # (enthalpy, clearance, cc)
+    fallback_q, fallback_err = best_q, np.inf
+    for cand in cands:
         cc, ok = _consolidate(spec, cand, T_target, pos_tol, orient_tol)
-        pe_c, oe_c = _err(cc)
-        if pe_c + ORIENT_W * oe_c < best_err:
-            best_err, q_nat = pe_c + ORIENT_W * oe_c, cc
         if ok:
-            conv, q_nat = True, cc
-            break
+            # Native-state selection over the target-reaching (converged) basins.
+            # Excluded volume is a HARD steric constraint (Pauli exclusion — a
+            # real native state has NO clash), NOT a soft energy: the LJ well is
+            # on the joint-origin BEADS, but a capsule self-collision happens
+            # mid-span, so bead-enthalpy is decoupled from capsule clearance and
+            # cannot be trusted to avoid clashes. So we first require clash-free
+            # (min_self > 0); the enthalpy E = E_task+E_LJ+E_HB (the T→0 native
+            # limit, entropy term gone) only breaks ties among clash-free basins.
+            converged.append((free_energy(spec, cc, T_target, p, 0.0, m_entropy),
+                              self_collision_min_distance(spec, cc), cc))
+        e = sum(_err(cc)[k] * w for k, w in ((0, 1.0), (1, ORIENT_W)))
+        if e < fallback_err:
+            fallback_err, fallback_q = e, cc
+
+    if converged:
+        clashfree = [c for c in converged if c[1] > 0.0]
+        if clashfree:
+            q_nat = min(clashfree, key=lambda c: c[0])[2]  # min-enthalpy clash-free
+        else:
+            q_nat = max(converged, key=lambda c: c[1])[2]  # least-bad clearance
+        conv = True
+    else:
+        q_nat, conv = fallback_q, False
+    restarts = len(cands) - 1
 
     pe, oe = _err(q_nat)
     success = conv                                       # = reached tolerance (comparable)

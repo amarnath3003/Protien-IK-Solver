@@ -214,3 +214,41 @@ All five terms now pass once the §5 corrections are applied.
   multi-start seeds. Added `SolveResult.{sigma_ratio,free_energy,t_glass}`; registered backend +
   frontend; README V6→Live. 4 solver tests, 108/108 suite. Measured ~9-10/10 open_space across
   arms, ~2.6/0.9/4.6 s (slowest by design). Found+fixed a best_q tracking bug. **All 6 phases done.**
+- **Entry 14** — **Fair-shot quality sweep (UR5 cluttered, N=24; `raw_quality_sweep.py`).**
+  Verdict: **Raw does NOT beat V4 on collision quality** (V4 +0.0061 min_self / 0% win-baseline;
+  Raw −0.016…−0.023 / 27-32% win). Two mechanistic root causes, both important:
+  (1) **weights are inert** — Raw selected the returned solution by task error only, so the fold's
+  LJ/H-bond/entropy shaped the trajectory but not the OUTPUT. Fixed the architecture: native =
+  **min free energy** among target-reaching candidates (`solver.py`, faithful Anfinsen). But
+  calibration STILL inert + slightly worse, because (2) the candidate pool is dominated by the
+  shared multi-start DLS seeds, AND — the deeper one — **Raw's `E_LJ` uses joint-ORIGIN distances
+  while `min_self` uses capsule SURFACE distances** (the audit's flagged geometry mismatch): min-F
+  ≠ max-measured-clearance, so optimizing F doesn't optimize the scored metric. Plus UR5 is
+  **non-redundant** (no null-space to exploit; collision = discrete-basin choice). Conclusion: on
+  the current proxy + non-redundant arms, Raw's physics can't win, for understood structural
+  reasons. Raw's true best case (redundant Franka + an energy-consistent collision oracle) needs
+  the sim migration. **Honest null, well explained.**
+- **Entry 15** — **Fixed the null → Raw now clash-free & on par with V4** (UR5 cluttered, N=24).
+  Root cause found by instrumenting the native-state candidate pool (`raw_diag.py`, since removed):
+  the pool routinely **contained** a clean branch (e.g. +0.0196) but Raw returned a *colliding* one
+  (−0.10, worse than every seed) because selection ranked by **bead-based enthalpy/free energy**,
+  which is **decoupled from capsule clearance** — a capsule collides mid-span while its origin beads
+  stay far apart, so low E_LJ ≠ clash-free. Fix (`solver.py` endgame): **excluded volume is a HARD
+  steric constraint (Pauli), not a soft energy** — native state = the **clash-free** converged
+  candidate (min_self>0) with **min enthalpy** (T→0, entropy term gone) as tiebreak; least-bad
+  clearance only if none clash-free. Plus widened the molten-globule ensemble (`n_ws` 4→10 seeds)
+  so a clean branch is usually present. **Result: Raw −0.0228 → +0.0039 min_self (clash-free),
+  success 92%→100%, win-vs-V4 32%→42%; V4 +0.0061.** Now a tie, not a loss. 109/109 suite green;
+  timing 2.1/0.68/3.2 s (UR5/Planar/Franka), not degraded. **Honest limitation:** the three weight
+  configs stay byte-identical — on non-redundant UR5 the continuous Langevin *fold* still adds
+  nothing over multi-start + clash-free selection; the win's active ingredients (excluded-volume
+  native selection + multi-start ensemble) are biophysically principled but not the dynamics. The
+  fold's real arena remains redundant arms + an energy-consistent collision oracle (sim migration).
+- **Entry 13** — **Benchmark (10 solvers × 3 arms × {open,cluttered}, N=6-10).** Honest verdict:
+  the protein family's collision edge over collision-blind baselines is REAL (UR5 cluttered:
+  protein −0.010…+0.013 min_self / 20-40% collide, vs baselines −0.03…−0.05 / 60-80%). But **Raw
+  (V6) does NOT beat V1/V4 on quality** — on UR5 cluttered, V4 edges Raw on collision (−0.0036/30%
+  vs −0.0097/40%) AND is ~200× faster. This answers `research_direction.md`'s open question
+  ("biophysical energy > V4 quality?") as **not clearly** — staging captures most of the benefit.
+  Caveat: judged by the capsule proxy, which is **degenerate on Franka** (can't measure Raw's
+  best case = redundant null-space collision-min). The quality verdict rests on a weak oracle.
