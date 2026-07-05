@@ -37,7 +37,7 @@ An honest, research-oriented comparison platform. The core claim is that biology
 | :--- | :---: | :--- |
 | **Planar 3-DOF** | 3 | 3-link planar RRR arm. Includes a gold-standard closed-form analytical solver for ground-truth comparison. |
 | **UR5** | 6 | Universal Robots UR5. The primary benchmark arm; all five stages of the biology analogy were developed and tuned here. |
-| **Franka Panda** | 7 | Redundant 7-DOF arm. Null-space degrees of freedom allow ProteinIK's energy terms to act beyond target-reaching, enabling active self-collision minimization and joint-limit avoidance in the redundant direction. |
+| **Franka Panda** | 7 | Redundant 7-DOF arm. The null space is exploited for joint-limit avoidance in the redundant direction. *(Measured caveat: under the capsule self-collision proxy, the 7th DOF gives **no** self-collision-clearance headroom — clearance is structurally pinned by the elbow pair, so null-space motion cannot reduce it. A real mesh-collision model is needed to test redundant self-collision avoidance fairly; see `sim_migration_plan.md`.)* |
 
 All three robots are selectable in the frontend via the robot picker. Solvers that are robot-specific (e.g., the analytical solver is only valid on Planar 3-DOF) are filtered automatically.
 

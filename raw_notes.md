@@ -105,8 +105,9 @@ All five terms now pass once the §5 corrections are applied.
   - Experiment: `backend/raw_phase1_experiment.py`. **Attraction proven to do real work:**
     UR5 spacing std 0.54→0.28, in-well 61% vs 12% (repulsion-only); Planar `E_LJ`→ **negative**
     (chain bound in wells), 83% in-well vs 0%. Franka: force verified (E descends 2e8→1e4) but
-    constrained geometry frustrates collapse, and its capsule `min_self` is a **degenerate
-    constant −0.15** (proxy issue, flagged — echoes `sim_migration_plan.md` Phase 3).
+    constrained geometry frustrates collapse. ⚠️ *(The "capsule `min_self` is a degenerate constant
+    −0.15" claim here is **STALE / corrected in Entry 17** — that was the old-radii era; current
+    Franka `min_self` varies, std 0.029. The real issue is structural elbow-pinning, not degeneracy.)*
 - **Phase 2 — directional H-bond `E_HB` — ✅ DONE & validated.**
   - Code: `energy.py` — `hbond_energy`, `hbond_energy_and_grad` (FD force per §3.2), backbone
     normal = **triplet-plane normal** of `(p_{i−1},pᵢ,p_{i+1})` (corrected, not joint axis);
@@ -193,8 +194,8 @@ All five terms now pass once the §5 corrections are applied.
   "No finisher" decision updated honestly (endgame is the dynamics' physical endpoint).
 - **Entry 8** — **Phase 1 implemented properly:** `E_LJ` + analytic force (`energy.py`), 13 tests
   (analytic=FD <1e-4, well shape), 76/76 suite. Experiment proves the attractive well creates
-  emergent preferred spacing (UR5/Planar strong; Planar binds to negative E). Found Franka's
-  capsule `min_self` is a degenerate constant −0.15. See §7 for full numbers.
+  emergent preferred spacing (UR5/Planar strong; Planar binds to negative E). ⚠️ *(The "Franka
+  `min_self` degenerate constant −0.15" finding is STALE — corrected in Entry 17.)* See §7.
 - **Entry 9** — **Phase 2 implemented properly:** directional `E_HB` + FD force with the
   triplet-plane-normal vector (`energy.py`), 9 tests, 85/85 suite. Two-condition gate proven
   (ideal 55× > perpendicular). Honest finding: emergent secondary structure needs the Langevin
@@ -259,6 +260,67 @@ All five terms now pass once the §5 corrections are applied.
   energy give better *quality*?") **cannot be answered on the current proxy.** `sim_migration_plan.md`
   (PyBullet→MuJoCo oracle, ~1 wk) is the gating next step. Also uncommitted: **both worktree agents
   independently wrote the same V4 change** (`_collision_free_seed`) — a quick win to measure & land.
+  **[SUPERSEDED by Entry 17 — both premises in this entry are now falsified by data.]**
+- **Entry 17** — **Diagnostic session: the two premises Entry 16 rested on are BOTH FALSIFIED with
+  data** (scripts in scratchpad; no code change).
+  1. **"Franka `min_self` = degenerate constant −0.15" is STALE.** 3000 random Franka configs:
+     min −0.075 / max +0.032 / **std 0.029 / 809 unique values** — comparable to UR5 (std 0.025).
+     −0.15 was the *old* link-radii era; radii were already cut (0.08→0.05…, see `franka_panda_spec`
+     docstring). The phase-1 "degenerate" print only fires on `std<1e-9`, no longer true. **NOT
+     degenerate.** (Fix#1 = correct the record, done here + README.)
+  2. **The "Raw's arena = redundant Franka null-space" thesis is DEAD — self-collision is
+     STRUCTURALLY PINNED.** Elbow pair (2,4) is the argmin **88%** of the time (clearance set by q4).
+     For a fixed target, 30 distinct IK solutions (**3.2 rad** mean pairwise) have `min_self` spread
+     of only **0.004**, and **projected null-space ascent on `min_self` = +0.000 gain**. UR5
+     (non-redundant) has **0.057** spread — but from *discrete branches* (multi-start), not null
+     space. ⇒ **the 7th DOF buys ZERO clearance headroom under the capsule proxy.** Likely cause:
+     thin-capsule (r≈15–50 mm) → collision is elbow-dominated. A real mesh (sim) is the only fair
+     redundancy test, but under the metric we score on there is **no Franka win to unlock.**
+  3. **Both worktree V4 variants measured (UR5+Franka cluttered, N=40, identical targets) → DUDS.**
+     `aa1e92` (`_collision_free_seed`): UR5 +0.0110→+0.0096 (worse tail), Franka succ 100→98% (lost
+     one), clash-free unchanged. `ae33b6` (`_null_space_collision_resolve`, 58 lines): UR5
+     byte-identical, Franka −0.0418→−0.0417 = **no-op**, independently re-confirming (2). Headline:
+     **0% clash-free on Franka cluttered for ALL builds** (near-collision targets + pinned geometry).
+     **Land neither.**
+  4. **Fix#2** (bead-origin `E_LJ` vs capsule-surface `min_self`) is real but already handled at
+     *selection* (Entry 15); given (2) it cannot manufacture a Franka win. Deprioritized.
+     **Upshot: the v5/raw decision is now evidence-based — the phantom "redundant Franka" hope that
+     kept Raw's thesis alive is gone. Raw's measured quality edge (UR5 cluttered tie) comes from
+     multi-start branch enumeration + hard clash-free selection, NOT the Langevin fold.**
+- **Entry 18** — **Paper-framing pivot: V6 reclassified as a documented negative result (no code
+  change).** User confirmed V5 & Raw "don't truly work" as positive results → paper leads with
+  **V1/V4 (positive)** and treats **V5/V6 as negative/side results.** Key strategic move: our
+  *original* spectrum thesis in `research_direction.md` ("deeper biological grounding → more
+  measurable benefit") is **falsified by our own data** — benefit *saturates* at the shallow
+  architectural level. Recommended reframe → **"Staging, not physics":** bio-inspiration transfers
+  to IK at the *search-architecture/sequencing* level (metric-agnostic), but deeper *physics*
+  transplants (V5 conflict-homotopy, V6 Langevin energy) give diminishing/negative returns under
+  standard IK metrics. V6's role in the paper is TWO separable findings, kept distinct:
+  (1) **redundancy** — the measured collision "win" traces to multi-start branch enumeration + hard
+  clash-free (Pauli) selection, NOT the Langevin dynamics (fold shapes trajectory, not output;
+  Entries 14–15); (2) **measurement-boundary** — the central "biophysical energy → better *quality*"
+  claim is **not demonstrable** on the capsule proxy (min-F ≠ max-clearance) and the only redundant
+  arm is structurally elbow-pinned (Entry 17), so the honest verdict is *"untestable under this
+  proxy,"* not *"useless"* → fair test needs the mesh-collision oracle (`sim_migration_plan.md`).
+  Both negatives are *mechanistically explained* → publishable as negative results, not
+  embarrassments; they are the load-bearing evidence for the saturation claim, not an appendix.
+  Retire the "From Structure to Physics: A Spectrum" title (now oversells). Open fork surfaced to
+  user: **(A)** V1/V4 solver paper + compact "what didn't work" coda, vs **(B)** depth-vs-benefit as
+  the central thesis with V5/V6 negatives as main evidence — recommended **(B)**. Awaiting choice.
+- **Entry 19** — **Deliverables split LOCKED — TWO documents (no code change).** User chose: (1) a
+  **research paper on V1 + V4** (positive artifact: folding-staged fold + kinetic-partitioning
+  ensemble; honestly competitive w/ TRAC-IK on the easy regime + collision edge vs a strong field),
+  with **V5/V6 only as a short "glimpse" subsection** pointing to (2) a **full technical report of
+  the whole project** that goes deep on V5/V6 and houses all negatives + mechanism. **Consequence
+  named:** the paper's thesis is now the *artifact*, NOT the "staging-not-physics" depth-vs-benefit
+  inversion — that inversion needs the negatives central, so it lives in the REPORT, not the paper.
+  V6 therefore appears twice: one honest paragraph in the paper (glimpse), a full chapter in the
+  report (5-term energy, phase experiments, the two negatives — fold-redundant-with-selection +
+  measurement-boundary, pinned redundancy, sim-migration). **Boundary rule to prevent redundancy:**
+  paper = claim + evidence for V1/V4; report = complete arc + every negative + all mechanism. Report
+  is ~80% assembly of existing docs (research_direction / fast_optimization / raw_* / v5 reports /
+  this changelog) under a coherent spine. Recommended draft order: paper first (forces the crisp
+  claim). Awaiting user: paper format/venue + which doc to draft first.
 - **Entry 13** — **Benchmark (10 solvers × 3 arms × {open,cluttered}, N=6-10).** Honest verdict:
   the protein family's collision edge over collision-blind baselines is REAL (UR5 cluttered:
   protein −0.010…+0.013 min_self / 20-40% collide, vs baselines −0.03…−0.05 / 60-80%). But **Raw
