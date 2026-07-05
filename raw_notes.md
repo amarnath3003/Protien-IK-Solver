@@ -244,6 +244,21 @@ All five terms now pass once the §5 corrections are applied.
   nothing over multi-start + clash-free selection; the win's active ingredients (excluded-volume
   native selection + multi-start ensemble) are biophysically principled but not the dynamics. The
   fold's real arena remains redundant arms + an energy-consistent collision oracle (sim migration).
+- **Entry 16** — **Full-project gather / state snapshot (no code change).** Re-read every doc +
+  result set to decide "what next." Current state: all 6 versions live & registered; **108/108
+  suite green**; frontend registered ×3. Result corpus: (a) master benchmark = Franka, 10 solvers,
+  N=300/cell — V4 wins success (98–99.7%) + accuracy (0.6–0.7 mm) but slow mean (194–320 ms);
+  TRAC-IK fast (26 ms) but 91–95% & high collide%; (b) `v5_verify_n100` = UR5, N=100 — **honest
+  wash for V5's headline: conflict-control (A) does NOT beat fixed-λ; cluttered A0B0C0 98% vs full
+  V5 92%.** V5's real contribution is the *diagnostic* (difficulty score, conflict index), not a
+  success win, at ~100× protein_fast's cost; (c) Raw quality = honest null → tied V4 via
+  excluded-volume native selection (Entries 14–15). **Two strategic blockers identified, both point
+  to the same unlock:** (1) capsule `min_self` is degenerate on Franka (−0.15 const) — the one
+  redundant arm where Raw should win can't be measured; (2) Raw's bead-origin `E_LJ` ≠ capsule
+  surface `min_self` (min-F ≠ max-clearance). ⇒ the central research question ("does biophysical
+  energy give better *quality*?") **cannot be answered on the current proxy.** `sim_migration_plan.md`
+  (PyBullet→MuJoCo oracle, ~1 wk) is the gating next step. Also uncommitted: **both worktree agents
+  independently wrote the same V4 change** (`_collision_free_seed`) — a quick win to measure & land.
 - **Entry 13** — **Benchmark (10 solvers × 3 arms × {open,cluttered}, N=6-10).** Honest verdict:
   the protein family's collision edge over collision-blind baselines is REAL (UR5 cluttered:
   protein −0.010…+0.013 min_self / 20-40% collide, vs baselines −0.03…−0.05 / 60-80%). But **Raw
