@@ -1,6 +1,6 @@
 # Migrating the IK Solvers to Real Robotics Simulators
 
-**Status:** Plan / design document (no code written yet)
+**Status:** ACTIVE next task as of 2026-07-06 (no code written yet — read the Kickoff section first)
 **Author:** Engineering
 **Goal:** Validate and benchmark the ProteinIK solver family inside real robotics
 simulators (PyBullet, MuJoCo, optionally Isaac Sim) instead of only our own
@@ -22,6 +22,23 @@ proxy disagree with a real robot model. The only way to know is to run the same
 solves inside an independent, widely-trusted simulator and re-score them there.
 
 This document is the plan to do exactly that.
+
+---
+
+## Kickoff — START HERE (updated 2026-07-06, post-benchmark)
+
+**This is the active next task.** A fresh chat should read this section, then §1–§9 below.
+
+**Why this matters *now* (concrete, from the latest benchmarks — `backend/v1v4_full_benchmark.md`, `backend/opt2_full.md`, N=300):**
+- **V4 (base) is the paper's star:** beats TRAC-IK on success in all 9 (arm × scenario) cells (98–100%); competitive speed; and a **real self-collision edge on planar + UR5** — e.g. UR5 open_space V4 collides **3%** vs TRAC-IK **17%**; on UR5/planar cluttered V4's mean clearance is **positive (clash-free)** where TRAC-IK's is negative (colliding).
+- **BUT that collision edge is measured only against our own capsule proxy** (`self_collision_min_distance` in `kinematics.py`), and that proxy is **degenerate on Franka** — *every* solver, TRAC-IK included, "collides" 65–99% because the elbow link-pair (2,4) pins the metric (clearance set by the fixed offset `a[3]=0.0825` + joint q4; radii were hand-tuned, not from CAD). So on the one redundant arm we **cannot measure the collision edge at all**, and we can't fully trust it on the others.
+- ⇒ **The single most important open validation for the paper is: is V4's collision edge REAL under true mesh collision, or an artifact of the capsule proxy?** Only a real simulator answers that. It is **Phase 3 below (the headline)**, and it is why this migration is worth more to the paper than any further latency optimization.
+
+**Paper story arc this feeds (confirmed with the user, 2026-07-06):** V1 (the origin — staged fold) → **V4 base (the star)** → **o2** (kept to *one light, honest paragraph*: we pushed V4 for speed via warm-starting the fold; found a real **~25%-faster-for-~1–2 pp-collision** tradeoff, and even the *biologically-faithful* GroEL/IAM version (o2) couldn't beat it — an honest speed/quality tradeoff, not a headline) → **V5/V6 kept minimal** (mechanistically-explained negatives, full detail in the companion technical report). A real collision oracle would also let V6's "biophysical energy → better *quality*" thesis finally be **tested or definitively closed**.
+
+**The one first step (do this before anything else):** `pip install pybullet`, then write the **Phase-1 FK-parity test for UR5** — compare our DH `end_effector_pose(spec, q)` against PyBullet's `getLinkState` over ~10k random configs and report the max position/orientation deviation. That single number decides whether the rest is "wire up an oracle" (easy) or "reconcile the robot model" (more work). Everything downstream is gated on it. See §3 and §5-Phase-1.
+
+**Context a fresh chat needs:** deep per-solver code + finding notes are in `research_notes/` (files 00–07); full chronological history is in `raw_notes.md`; the V4 speed-opt experiment (o1/o2) lives in git branch `v4-speed-opt` (at `C:/Users/subik/v4opt`) with **base V4 untouched and nothing landed**. The solvers are already decoupled from our sim (uniform `RobotSpec` signature), so this is an **adapter + oracle** effort, not a solver rewrite (see §1, §4).
 
 ---
 

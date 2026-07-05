@@ -321,6 +321,147 @@ All five terms now pass once the §5 corrections are applied.
   is ~80% assembly of existing docs (research_direction / fast_optimization / raw_* / v5 reports /
   this changelog) under a coherent spine. Recommended draft order: paper first (forces the crisp
   claim). Awaiting user: paper format/venue + which doc to draft first.
+- **Entry 20** — **Deep-research pass COMPLETE → `research_notes/` written (6 parallel agents).**
+  Consolidated exact mechanism + numbers + `file:line` for V1, V4, V5, V6, results-CSVs, and shared
+  core/baselines/collision-proxy. **CRITICAL data finding that gates the V1/V4 paper:** the only
+  committed results file `backend/master_benchmark_results.csv` has **ONLY Franka Panda**, 7 solvers
+  (no UR5, no Planar, no V5/V6), N=300. Under that data — (a) **V1 does NOT beat production baselines**
+  (V1 72–81% vs TRAC-IK 91–95%, Multi-start 82–86%; V1 only beats the simple Jacobian/CCD/FABRIK at
+  16–28%); (b) **V4 leads success (98–99.7%) but is 7–12× SLOWER than TRAC-IK** (194–320 ms vs
+  26–30 ms) — the "competitive on speed / ~9–14 ms" claim is `fast_optimization.md` **UR5** numbers
+  that are **not in any committed CSV**; (c) **the self-collision edge is UNSUPPORTED by the master
+  CSV** — every solver collides 65–99%, V4 ≈ or worse than simple baselines. ⇒ the paper's two
+  intended positives (speed-competitive + collision edge) rest on UR5 numbers with no committed
+  result file. **ACTION before drafting: re-run master benchmark on UR5+Planar (+V5/V6), commit the
+  CSV — OR scope the paper's claims to what the Franka data actually supports.** Also logged a stack
+  of doc/code drift (V5 README energy has a spurious `(1−λ)`; conflict range is [0,2] not [−1,1];
+  V4 bit-identity only *tested* on UR5+Planar×500, not "9000 configs/3 arms"; V1 Stage-4 escalates to
+  a full global reseed; V1 Stage-3 is greedy accept-if-better, NOT Metropolis; V1 `q_neutral=0` is
+  outside Franka's q4 range). Full inventory → `research_notes/07_discrepancies.md`.
+- **Entry 21** — **Paper claim set LOCKED by user + fresh full benchmark launched (V1/V4 only).** Honest
+  claims for the paper: **V1 beats ONLY the simple baselines** (Jacobian/CCD/FABRIK); **V4 is on par with
+  TRAC-IK on speed with an EDGE on success rate + self-collision rate** — that is the headline. User also
+  wants a **V4 speed micro-opt before writing** (after benchmarks). Smoke + early bg results confirm the
+  story is **robot-dependent**: UR5 open_space (N=2, warm) V4 = **3.2 ms vs TRAC-IK 4.5 ms** both 100%;
+  Planar open_space (N=300) V4 = **100% / 4.0% collide** vs TRAC-IK **99.3% / 9.0%** at 12.3 vs 6.7 ms —
+  V4's edge on success + collision is real; the committed **Franka-only** CSV was V4's WORST arm (194–320 ms),
+  which is why the earlier data looked bad. Launched deep full sweep `master_benchmark.py` N=300
+  (trials=100 × seeds{1,2,3}) across **planar3dof+ur5+franka × {open,near_singular,cluttered}**, solvers =
+  6 baselines + V1 + V4 + analytical(planar), **EXCLUDING V5/V6** → `backend/v1v4_full_benchmark.{csv,md}`
+  (bg task bjzoe38yy). Env: python 3.13.14 / numpy 2.5.0 (no `py` launcher — use `python`). Also wrote full
+  research notes `research_notes/` (00–07). Next: review full numbers with user → then V4 speed opt.
+- **Entry 22** — **Two research forks run to rescue V5/Raw *beyond* IK → BOTH NULL** (new subfolder
+  `research_forks/`; scripts in `scratchpad/forkA,forkB/`; no tracked code changed). User asked "what
+  else can the novel tech do." Ran two falsifiable forks in parallel (2 subagents):
+  **Fork A — redundant-robot arena:** does the folding physics do real work on a *genuinely*
+  redundant arm (high-DOF planar), where Franka's 1 spare DOF couldn't? **NULL.** Clearance headroom
+  *shrinks* with redundancy (planar chains are space-filling: clash-free-solution fraction 22%→0% as
+  n=6→20; null-space climb gain +0.000 for all n≥9). Raw beats V4 intramurally but **loses to plain
+  multi-start+clash-free selection at every DOF**, and at equal wall-time loses decisively (Raw
+  10–100× slower: 2.0 s→19.6 s→129.9 s at n=6/12/20). Both ends of the redundancy spectrum
+  (Franka too-few-DOF; planar-20 space-filling) hit the same null.
+  **Fork B — difficulty diagnostics:** do V5's conflict-integral and Raw's Σ predict per-instance
+  hardness label-free? **NULL** (UR5, n=42; Franka never finished). Spearman vs measured difficulty
+  (K=40-restart failure fraction + iters): V5 difficulty ρ=+0.12 (p=.45), V5 conflict +0.05, Raw Σ
+  +0.06 (p=.7) — all indistinguishable from 0, within-scenario ≈0 too; **manipulability baseline
+  (ρ=−0.27) beats both** at ⅕ the compute. V5-difficulty ⟂ Σ (ρ=−0.015, genuinely orthogonal) but
+  both predict nothing → hollow complementarity; V5's own two diagnostics redundant (+0.65).
+  **Significance:** closes the **last two escape hatches** for V5/V6 (redundant-arm arena +
+  difficulty-instrument reframe). Consistent with & reinforces Entry 18's *saturation* thesis and
+  Entry 19's plan — these forks are **load-bearing negative evidence for the technical report**, not
+  the paper. Docs: `research_forks/{README,forkA_redundant_robots,forkB_difficulty_diagnostics,
+  what_can_be_done}.md`. Net project verdict unchanged and now over-determined: **V1/V4 are the
+  positives; V5/V6 are mechanistically-explained negatives.**
+- **Entry 23** — **Full 3-arm benchmark COMPLETE** (`backend/v1v4_full_benchmark.{csv,md}`, N=300, V5/V6
+  excluded). Confirms the claim set. **Success: V4 beats TRAC-IK in ALL 9 cells** (98–100% vs 91–99%).
+  **Collision edge REAL on planar+UR5**, marginal on Franka (proxy elbow-pinned, everyone 65–99%): UR5 open
+  collide 3.0% vs 17.3%; UR5 cluttered 19.0% vs 45.7% with V4 clearance **+0.0077 (clash-free)** vs TRAC
+  **−0.0127 (colliding)**; planar cluttered V4 **+0.0196** vs −0.0056. **Speed: V4 median (p50) is ~2×
+  FASTER than TRAC-IK on UR5** (3.0/4.2/4.8 vs 7.2/9.8/7.1 ms); the MEAN is on-par-to-1.7×-slower due to a
+  TAIL (p95 38–151, p99 215–278). **Franka is the problem arm** — V4 7–10× slower even at p50 (122/109/192
+  ms). **V1 confirmed beats ONLY simple baselines** (UR5 open 94% vs Jac/CCD/FABRIK 44–52%; trails TRAC 99%
+  + Multi 97%). ⇒ **V4 speed-opt target = the LATENCY TAIL (p95/p99), esp. Franka** — matches
+  `fast_optimization.md`'s "tail, not per-step" diagnosis; must NOT lose 98–100% success or the collision
+  edge (the trap that collapsed Franka to 71.7% when replicas were capped).
+- **Entry 24** — **Franka-collision diagnosis + V4 speed-opt fork** (branch `v4-speed-opt` @
+  `C:/Users/subik/v4opt`). **Franka's high collision rate = OUR capsule proxy, NOT the arm, NOT V4.**
+  Evidence: EVERY solver collides 65–99% on Franka incl. TRAC-IK (75% open / 99% cluttered, negative mean
+  clearance) — a production solver doesn't really self-collide on ¾ of random poses; the same proxy
+  discriminates fine on UR5 (V4 3% vs TRAC 17%). Root: elbow pair (2,4) is argmin 88%, clearance set by
+  fixed `a[3]=0.0825`+q4; radii hand-tuned 0.08→0.05 (not CAD). The SAME defect also makes V4 slow on
+  Franka (fast-path exit needs clash-free `d≥0`, structurally unreachable → V4 burns full budget hunting).
+  **Decision: do NOT "fix" Franka for the paper** (retuning a metric to get prettier numbers is dishonest) —
+  scope the collision-edge claim to planar+UR5, report Franka as a measurement limitation; the real fix is
+  the mesh oracle (`sim_migration_plan.md`). **V4-opt experiment:** new registered solver
+  `protein_fast_opt` = **warm-start Phase B from Phase A's best converged (clashing) candidate + shortened
+  coarse collapse** (the tail fold escapes the clash instead of re-reaching the target); random-seed folds
+  kept for collision diversity. **Quick N=40 (ur5+franka): opt faster mean in all 6 cells, tail cut** (ur5
+  near p95 118→47, cluttered 43→20; franka cluttered mean 226→159, −30%), **success identical**, collision
+  within N=40 noise (slight near-singular wiggle to confirm). Launched **N=300 all-3-arm validation**
+  (bg `b2kj1xkxr` → `backend/opt_full.{csv,md}`). Gate to land: opt must keep base's success AND collision
+  while cutting latency. Only report a "+" to the user if it clears that gate.
+- **Entry 25** — **Faithfulness principle for V4 opt + N=300 verdict on warm-start.** User's key question:
+  V1→V4 was math-opt or biologically-faithful, and V4→V4-new must be faithful (not a gimmick). Framing
+  logged: **V1→V4 = TWO layers, honestly split** — Layer 1 (barrierless-first / kinetic partitioning +
+  GroEL-gated rescue) is biologically FAITHFUL and delivered the real wins (behavior-changing, 1.1–4.3×);
+  Layer 2 (allocation-light FK) is pure ENGINEERING, bit-identical, labeled as such (alone only 1.1–1.4×).
+  **Principle for V4→V4-new: two legitimate lanes — (A) faithful mechanism change, or (B) bit-identical
+  engineering speedup — NEVER a behavior-changing trick that trades away success/collision** (that's the
+  rejected naive tail-edit). **N=300 verdict on the warm-start opt (planar+ur5 done, the collision-relevant
+  arms):** real SPEED win — p95 tail cut 25–40% (ur5 near 155→51, ur5 cluttered 101→43, planar near 231→173,
+  cluttered 240→159), faster mean in ~all cells, **success identical**. BUT **collision is consistently
+  ~1–2 pp WORSE in ALL cells** (ur5 open 3.0→3.3, near 9.7→12.0, cluttered 19→21; planar open 4→5,
+  cluttered 49.7→51.3; franka open 72→73) — 6/6 same direction ⇒ **real erosion, not noise** (p≈0.016).
+  Cause = warm-starting Phase B from the trapped/clashing intermediate shrinks the multi-basin chaperone
+  search, which IS the biological source of the collision edge. So warm-start-in-place = real speed but
+  **drifts toward a trick; fails the "keep the wins" bar → do NOT land as-is.** Two honest paths instead:
+  **(B)** bit-identical speedup of the fold's hot loop (self-collision distance recomputed per Metropolis
+  candidate = the dominant cost) — provably can't change success/collision; **(A)** redo warm-start as a
+  proper iterative-annealing **partial unfold** (stochastic kick up the funnel + re-anneal, as GroEL/IAM
+  actually works) to preserve re-exploration/diversity. Recommend (B) first (safe), then (A) as the
+  paper-worthy faithful mechanism.
+- **Entry 26** — **N=300 3-way verdict (base V4 vs o1 warm-start vs o2 IAM partial-unfold)** →
+  `backend/opt2_full.{csv,md}`. **Both warm-start variants trade ~1–2 pp collision for ~20–35% speed,
+  and the FAITHFUL o2 did NOT fix the erosion** — o2's collision ≈ o1's, worse-or-equal to base in every
+  cell, never better (ur5 near 9.7→12.0→12.3; ur5 cluttered 19→21→20; planar open 4→5→5.7). Success
+  identical all three (100% planar/ur5; 99.7/98.0/98.3 franka). Speed: o1/o2 both ~20–35% faster + big
+  tail cuts (o1 generally fastest; franka cluttered base 248→o1 176→o2 197). **Root cause confirmed
+  FUNDAMENTAL:** the speed idea (skip from-scratch Phase-B restarts) and the collision edge (multiple
+  independent from-scratch routes) are the SAME lever pulled opposite ways — any warm-start cuts basin
+  diversity. Profile (base V4 franka cluttered): cost is SPREAD (pose_error ~17%, FK prims ~20%,
+  self-collision ~15%, joint_limit ~5%) → a bit-identical micro-opt would net only ~1.1–1.3×. Gave user a
+  4-option menu: (1) keep base V4 (collision pristine) + report o1/o2 as honest speed/quality tradeoff;
+  (2) ship warm-start as a disclosed "fast mode"; (3) collision-SAFE lane = bit-identical + Phase-A bail
+  (smaller, zero cost); (4) **sim migration (real mesh collision) = highest value** — measures collision
+  honestly on all arms, tests if V4's edge is real or a proxy artifact. Recommended (1)+(4). Base V4
+  untouched; variants live only in fork `v4-speed-opt`. **Awaiting user decision.**
+- **Entry 27** — **Story arc LOCKED + pivot to sim migration (user continuing in a NEW chat).**
+  Paper story arc confirmed: **V1 (origin) → V4 base (star) → o2 (ONE light honest paragraph: speed/quality
+  tradeoff, faithful IAM couldn't beat it) → V5/V6 minimal.** V4-opt decision: **do NOT land o1/o2** as the
+  default — collision edge > 25% speed; base V4 stays the paper's star (fork `v4-speed-opt` kept for the
+  record). **Next active task = the sim migration.** Updated `sim_migration_plan.md` with a
+  "Kickoff — START HERE (2026-07-06)" section tying it to our findings: the collision edge is measured only
+  vs our capsule proxy, which is **degenerate/elbow-pinned on Franka**, so real mesh collision
+  (PyBullet → MuJoCo) is the paper's **most important open validation** — is V4's edge real or a proxy
+  artifact (Phase 3, the headline)? First step = **Phase-1 UR5 FK-parity test in PyBullet**. For cross-chat
+  continuity, wrote project memory `proteinik-paper-and-sim-migration` + added it to `MEMORY.md` so a fresh
+  session picks up the state. Base V4 untouched; nothing landed.
+- **Entry 28** — **Reconsidering the V4 + o2 merge** (user: "the collision diff is only a little — is it
+  better to merge?"). Correct, and stronger than "little": the ~1–2 pp erosion is only vs BASE V4 — **o2
+  keeps essentially the FULL collision edge over the actual competitor TRAC-IK** (ur5 cluttered o2 20.0% vs
+  TRAC 45.7%; ur5 near 12.3 vs 27.0; ur5 open 3.3 vs 17.3 — o2 collides at ~½ TRAC's rate; planar cluttered
+  51.3 vs 68.3). o2 is also biologically faithful (IAM), success-identical, ~25% faster + tails cut. ⇒
+  **merging V4+o2 is DEFENSIBLE and honest, not a gimmick.** ONE caveat: we'd be finalizing a 1–2 pp call
+  against the capsule proxy we're about to replace with real mesh collision — so ideally **decide POST-SIM**
+  (does the edge survive real collision?). If moving now, merge **o2 (faithful), not o1**. Recommendation:
+  hold ~1 wk for the sim if willing (free certainty); else merging o2 now is acceptable. **Not landed —
+  user deciding (likely in the new chat).** [Supersedes Entry 27's "do NOT land o1/o2" as the firm default:
+  o2 is now a live merge candidate, pending the post-sim vs merge-now choice.]
+- **Entry 29** — **Decision LOCKED: build the sim FIRST, then decide the o2 merge on real-collision data.**
+  User committed to the sequencing (sim → then the merge call). **No merge now; base V4 stays until the sim
+  adjudicates** whether the collision edge is real under mesh collision. Next chat = start the sim migration
+  at **Phase 1 (UR5 FK-parity in PyBullet)**. Continuity in place: `sim_migration_plan.md` Kickoff section +
+  project memory `proteinik-paper-and-sim-migration` + `research_notes/` + this log.
 - **Entry 13** — **Benchmark (10 solvers × 3 arms × {open,cluttered}, N=6-10).** Honest verdict:
   the protein family's collision edge over collision-blind baselines is REAL (UR5 cluttered:
   protein −0.010…+0.013 min_self / 20-40% collide, vs baselines −0.03…−0.05 / 60-80%). But **Raw
