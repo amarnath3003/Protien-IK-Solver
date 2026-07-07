@@ -1,0 +1,9 @@
+pybullet build time: Jul  6 2026 03:26:29
+C:\Users\subik\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: FutureWarning: robot_descriptions.ur5_description is deprecated and will switch to the official UR5 model in robot_descriptions.py v2. Use robot_descriptions.ur5_official_description now to migrate early.
+  return _bootstrap._gcd_import(name[level:], package, level)
+[ur5] oracle ready (tool0, base)
+  [protein_fast  open_space   ] single_col  32.5  clean_col   5.8  mean_cand 16.0  ms/solve    238
+  [protein_fast  near_singular] single_col  42.0  clean_col  24.2  mean_cand 16.0  ms/solve    434
+  [protein_fast  cluttered    ] single_col  60.0  clean_col  40.8  mean_cand 16.0  ms/solve    486
+
+Wrote clean_ur5.md

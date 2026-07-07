@@ -1,6 +1,15 @@
 # Migrating the IK Solvers to Real Robotics Simulators
 
-**Status:** ACTIVE next task as of 2026-07-06 (no code written yet — read the Kickoff section first)
+**Status:** ✅ COMPLETE (Phases 0–4) as of 2026-07-07. Phase 1 FK parity validated
+both arms (incl. the corrected modified-DH Panda); Phase 2 PyBullet oracle + sweep;
+Phase 3 collision proxy reconciled (`backend/collision_parity.md`) with per-link-pair
+mechanism; Phase 4 MuJoCo second oracle three-way-agrees on FK and cross-checks
+collision (`backend/sim_crosscheck.md`). Deliverables in `backend/app/sim/` +
+`backend/bench/`; findings in `backend/sim_oracle_findings.md`. Phase 5 (frontend
+overlay/video) and Phase 6 (Isaac) remain optional/deferred. Original plan preserved
+below.
+
+**(historical) Status:** ACTIVE next task as of 2026-07-06 (no code written yet — read the Kickoff section first)
 **Author:** Engineering
 **Goal:** Validate and benchmark the ProteinIK solver family inside real robotics
 simulators (PyBullet, MuJoCo, optionally Isaac Sim) instead of only our own
@@ -221,7 +230,7 @@ boundary approach.
   success rate*, *our capsule collision-rate* vs *sim real-collision-rate*, plus
   PyBullet's native IK as a baseline column.
 
-### Phase 3 — Reconcile the collision metric  *(1–2 days) — HEADLINE RESULT*
+### Phase 3 — Reconcile the collision metric  *(1–2 days) — HEADLINE RESULT* ✅ DONE
 - Our capsule proxy (`self_collision_min_distance`) is geometric and approximate.
   Compare its `min_self_distance` against PyBullet's real `getClosestPoints` across
   many configs. Quantify the divergence.
@@ -230,11 +239,31 @@ boundary approach.
   (`collision_energy`, `frustration_index` in `protein_energy.py`). Those terms
   optimize *against the capsule proxy*. This phase tests whether that advantage is
   **real** or an **artifact of an approximate collision signal**.
+- **RESULT** (`backend/bench/collision_parity.py` → `backend/collision_parity.md`,
+  `sim_oracle_findings.md` §2–3): the proxy is **systematically optimistic** (UR5
+  real 36% vs proxy 17%, ~20% dangerous false-clear; Franka real 10% vs proxy 0.5%).
+  The optimism **localizes** to the tight forearm↔wrist cluster (73% of UR5
+  false-clears are `forearm_link|wrist_2_link`; 73% of Franka's are
+  `panda_link5|panda_link7`). No safety margin `δ ≤ 0.15 m` rescues it. **Verdict:
+  proxy collision *rates* can't be trusted; V4's collision *edge* (ordering vs
+  baselines) survives but shrinks** — and the "improve V4 by giving it a better fast
+  collision signal" idea (V7) was tried and scrapped for exactly this reason
+  (`raw_notes.md` Entry 37).
 
-### Phase 4 — MuJoCo backend  *(~2 days)*
-- Implement `mujoco_backend.py` to the same `SimBackend` protocol (Menagerie
-  UR5e / Panda).
+### Phase 4 — MuJoCo backend  *(~2 days)* ✅ DONE
+- Implement `mujoco_backend.py` to the same `SimBackend` protocol. **Decision that
+  matters:** load the **identical** URDF PyBullet uses (classic `ur5_robot.urdf` /
+  franka_ros `panda.urdf`), *not* Menagerie's ur5e/panda — so the cross-check
+  isolates *engine* differences from *model* differences.
 - Cross-check: PyBullet vs MuJoCo vs our DH. Three-way agreement = high confidence.
+- **RESULT** (`backend/bench/sim_crosscheck.py` → `backend/sim_crosscheck.md`):
+  **(A) FK** — DH ≡ PyBullet ≡ MuJoCo to float noise (UR5 same base Rz(180°),
+  residual 8.9e-12 m; Franka identity, 8.5e-16 m) — an independent second engine
+  re-confirms the corrected modified-DH Panda. **(B) Collision** — both real-mesh
+  engines agree the proxy is optimistic (UR5 PB 38% ≈ MJ 36%, sign-agree ~98%,
+  corr ~0.99), so Phase 3 is engine-independent. **(C) Solver edge** — V4's
+  `V4 < TRAC < Multi < V1` collision ordering on UR5 replicates identically on
+  MuJoCo. Guarded by `tests/test_sim_parity.py` (Phase-4 tests).
 
 ### Phase 5 — Reporting / visualization  *(optional, 1–2 days)*
 - Either record solved trajectories as PyBullet/MuJoCo videos, or add a

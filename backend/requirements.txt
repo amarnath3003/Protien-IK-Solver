@@ -6,3 +6,19 @@ pydantic>=2.13,<3.0
 httpx>=0.27,<1.0
 pytest>=8.0,<9.0
 pytest-asyncio>=0.23,<1.0
+
+# --- Sim migration (sim_migration_plan.md) ---
+# PyBullet is the primary validation oracle (Phase 0-3): ships UR5/Panda URDFs,
+# built-in FK (getLinkState), real self-collision (getClosestPoints), and a
+# native IK baseline. Pure pip, runs headless on Windows. Optional at import
+# time — the sim/ package degrades gracefully and its pytest skips if absent.
+pybullet>=3.2,<4.0 ; python_version < "3.13"
+# NOTE: pybullet has no cp313 Windows wheel as of 2026-07; on Python 3.13 it
+# must be built from source (needs MSVC) or run under a 3.11/3.12 venv. See
+# backend/app/sim/README.md for the fallback. The marker above keeps a clean
+# `pip install -r requirements.txt` from failing on 3.13 where no wheel exists.
+#
+# MuJoCo is the Phase-4 second oracle (cross-checks PyBullet FK + collision on the
+# identical URDF). It ships prebuilt Windows wheels (no compiler), but is pinned to
+# the same 3.13 marker so it lives in the .venv-sim alongside pybullet.
+mujoco>=3.2,<4.0 ; python_version < "3.13"

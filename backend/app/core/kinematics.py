@@ -26,20 +26,34 @@ from dataclasses import dataclass, field
 
 @dataclass(frozen=True)
 class RobotSpec:
-    """Defines a serial revolute manipulator via standard DH parameters.
+    """Defines a serial revolute manipulator via DH parameters.
 
-    DH convention used (standard/Denavit, not modified):
-        T_i = Rot_z(theta_i) * Trans_z(d_i) * Trans_x(a_i) * Rot_x(alpha_i)
+    Two DH conventions are supported (selected per-robot via ``dh_convention``),
+    because different canonical robot tables are published in different ones:
+
+      * ``"standard"`` (Denavit-Hartenberg, the default — used by UR5, planar):
+            T_i = Rot_z(theta_i) Trans_z(d_i) Trans_x(a_i) Rot_x(alpha_i)
+        Here (a_i, alpha_i) are the *current* link's length/twist.
+      * ``"modified"`` (Craig — used by Franka Panda, whose official table is
+        published in modified DH):
+            T_i = Rot_x(alpha_i) Trans_x(a_i) Rot_z(theta_i) Trans_z(d_i)
+        Here (a_i, alpha_i) are the *previous* link's params (a_{i-1}, alpha_{i-1}).
+
+    Feeding a modified-DH table to a standard-DH FK (or vice versa) yields a
+    DIFFERENT robot — the Panda parity failure in sim_migration_plan.md Phase 1
+    was exactly this. Both FK, the joint-origin chain, and the geometric
+    Jacobian below honor ``dh_convention`` so the model stays physically correct.
 
     Attributes:
         name: human readable id, e.g. "ur5"
-        a: link lengths (n,)
+        a: link lengths (n,)  [modified DH: a_{i-1}]
         d: link offsets (n,)
-        alpha: link twists (n,)
+        alpha: link twists (n,)  [modified DH: alpha_{i-1}]
         theta_offset: fixed offset added to each joint variable (n,)
         joint_limits: (n, 2) array of [lower, upper] radians per joint
         link_radius: approximate cylindrical radius per link, used for
             cheap self-collision / "steric clash" distance checks (n,)
+        dh_convention: "standard" (default) or "modified" (Craig).
     """
 
     name: str
@@ -49,6 +63,7 @@ class RobotSpec:
     theta_offset: np.ndarray
     joint_limits: np.ndarray
     link_radius: np.ndarray
+    dh_convention: str = "standard"
 
     @property
     def n_joints(self) -> int:
@@ -87,8 +102,14 @@ def ur5_spec() -> RobotSpec:
 def franka_panda_spec() -> RobotSpec:
     """Franka Emika Panda — 7-DOF robot arm.
 
-    Standard DH parameters (same convention used throughout: T_i = Rot_z * Trans_z * Trans_x * Rot_x).
-    Source: Franka documentation + Gaz et al. 2019.
+    **Modified (Craig) DH parameters** — this is how Franka publishes the official
+    table (Franka documentation + Gaz et al. 2019), so the arrays below are the
+    modified-DH (a_{i-1}, alpha_{i-1}, d_i) sequence and MUST be evaluated with
+    the modified-DH transform (``dh_convention="modified"`` on the returned spec).
+    Verified against the franka_ros URDF via PyBullet in sim_migration_plan.md
+    Phase 1: our EE pose matches panda_link8 to ~1e-7 with identity offset. (An
+    earlier version evaluated these with the standard-DH transform, which put the
+    EE ~1.4 m off the real robot — see backend/app/sim/parity.py.)
 
     Notable: joint 4 is permanently in the negative range [-3.07, -0.07] rad
     (the 'elbow-down' kinematic constraint). random_config() and clip() already
@@ -126,6 +147,7 @@ def franka_panda_spec() -> RobotSpec:
         name="franka_panda",
         a=a, d=d, alpha=alpha, theta_offset=theta_offset,
         joint_limits=joint_limits, link_radius=link_radius,
+        dh_convention="modified",
     )
 
 
@@ -188,6 +210,8 @@ def get_robot_spec(name: str) -> RobotSpec:
 
 
 def _dh_transform(theta: float, d: float, a: float, alpha: float) -> np.ndarray:
+    """Standard (Denavit-Hartenberg) link transform:
+        Rot_z(theta) Trans_z(d) Trans_x(a) Rot_x(alpha)."""
     ct, st = np.cos(theta), np.sin(theta)
     ca, sa = np.cos(alpha), np.sin(alpha)
     return np.array([
@@ -196,6 +220,52 @@ def _dh_transform(theta: float, d: float, a: float, alpha: float) -> np.ndarray:
         [0.0,      sa,       ca,      d],
         [0.0,     0.0,      0.0,    1.0],
     ])
+
+
+def _mdh_transform(theta: float, d: float, a: float, alpha: float) -> np.ndarray:
+    """Modified (Craig) DH link transform:
+        Rot_x(alpha) Trans_x(a) Rot_z(theta) Trans_z(d),
+    where (a, alpha) are the *previous* link's params (a_{i-1}, alpha_{i-1}).
+    Same call signature as ``_dh_transform`` so the FK loop is convention-agnostic.
+    """
+    ct, st = np.cos(theta), np.sin(theta)
+    ca, sa = np.cos(alpha), np.sin(alpha)
+    return np.array([
+        [ct,        -st,      0.0,     a],
+        [st * ca,  ct * ca,  -sa,  -sa * d],
+        [st * sa,  ct * sa,   ca,   ca * d],
+        [0.0,         0.0,   0.0,    1.0],
+    ])
+
+
+def _link_transform_fn(spec: RobotSpec):
+    """Return the per-link DH transform matching ``spec.dh_convention``."""
+    return _mdh_transform if spec.dh_convention == "modified" else _dh_transform
+
+
+def _joint_frame_offset(spec: RobotSpec) -> int:
+    """Index shift from the FK chain to the frame carrying joint i's axis.
+
+    Single source of truth for the standard-vs-modified DH difference used by the
+    Jacobian and every solver that extracts joint axes from the FK chain:
+      * standard DH applies Rot_z(theta_i) first, so joint i's axis is the
+        pre-joint frame ``chain[i]``  -> offset 0.
+      * modified (Craig) DH applies it after the fixed Rot_x/Trans_x part, so
+        joint i's axis is the post-fixed-part frame ``chain[i+1]`` -> offset 1.
+    """
+    return 1 if spec.dh_convention == "modified" else 0
+
+
+def joint_axis_frames(spec: RobotSpec, chain: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """From an FK ``chain`` (as returned by ``forward_kinematics_chain``), return
+    ``(z, p)``: the per-joint rotation-axis unit vectors ``z`` (n, 3) and points on
+    each axis ``p`` (n, 3), in base frame, honoring ``spec.dh_convention``. Joint i
+    rotates about ``z[i]`` through ``p[i]``. Use this instead of ``chain[:n, :3, 2]``
+    (which silently assumes standard DH) anywhere joint axes are needed."""
+    n = spec.n_joints
+    off = _joint_frame_offset(spec)
+    fr = chain[off:off + n]
+    return fr[:, :3, 2], fr[:, :3, 3]
 
 
 def forward_kinematics_chain(spec: RobotSpec, q: np.ndarray) -> np.ndarray:
@@ -212,10 +282,11 @@ def forward_kinematics_chain(spec: RobotSpec, q: np.ndarray) -> np.ndarray:
     """
     n = spec.n_joints
     thetas = q + spec.theta_offset
+    transform = _link_transform_fn(spec)
     T = np.empty((n + 1, 4, 4))
     T[0] = np.eye(4)
     for i in range(n):
-        Ti = _dh_transform(thetas[i], spec.d[i], spec.a[i], spec.alpha[i])
+        Ti = transform(thetas[i], spec.d[i], spec.a[i], spec.alpha[i])
         T[i + 1] = T[i] @ Ti
     return T
 
@@ -224,9 +295,10 @@ def end_effector_pose(spec: RobotSpec, q: np.ndarray) -> np.ndarray:
     """Returns the 4x4 end-effector transform only (cheaper than full chain)."""
     n = spec.n_joints
     thetas = q + spec.theta_offset
+    transform = _link_transform_fn(spec)
     T = np.eye(4)
     for i in range(n):
-        T = T @ _dh_transform(thetas[i], spec.d[i], spec.a[i], spec.alpha[i])
+        T = T @ transform(thetas[i], spec.d[i], spec.a[i], spec.alpha[i])
     return T
 
 
@@ -243,16 +315,22 @@ def geometric_jacobian(spec: RobotSpec, q: np.ndarray) -> np.ndarray:
     J_v_i = z_i x (p_end - p_i)
     J_w_i = z_i
     where z_i is the joint i rotation axis in base frame and p_i its origin.
+
+    Which chain frame carries joint i's axis depends on the DH convention:
+      * standard DH applies Rot_z(theta_i) FIRST in the link transform, so joint
+        i's axis is the z-axis of the pre-joint frame ``chain[i]``.
+      * modified (Craig) DH applies Rot_z(theta_i) AFTER the fixed Rot_x/Trans_x
+        part, so joint i's axis is the z-axis of the post-fixed-part frame, which
+        equals the z-axis (and a point on the axis, the origin) of ``chain[i+1]``.
     """
     n = spec.n_joints
     chain = forward_kinematics_chain(spec, q)
     p_end = chain[n, :3, 3]
+    z, p = joint_axis_frames(spec, chain)
     J = np.zeros((6, n))
     for i in range(n):
-        z_i = chain[i, :3, 2]
-        p_i = chain[i, :3, 3]
-        J[:3, i] = np.cross(z_i, p_end - p_i)
-        J[3:, i] = z_i
+        J[:3, i] = np.cross(z[i], p_end - p[i])
+        J[3:, i] = z[i]
     return J
 
 

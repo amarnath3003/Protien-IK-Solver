@@ -106,12 +106,11 @@ LM_ENDGAME_THRESH   = 0.05  # switch to LM polish when pos_err < this (metres)
 
 def _fast_pose_jac(spec: RobotSpec, q: np.ndarray):
     """Returns (end_effector_4x4, geometric_Jacobian_6xN) from one FK pass."""
-    from app.core.kinematics import forward_kinematics_chain
+    from app.core.kinematics import forward_kinematics_chain, joint_axis_frames
     chain = forward_kinematics_chain(spec, q)
     n = spec.n_joints
     pose = chain[n]
-    z = chain[:n, :3, 2]          # rotation axes
-    p = chain[:n, :3, 3]          # joint origins
+    z, p = joint_axis_frames(spec, chain)   # rotation axes + points (DH-aware)
     d = chain[n, :3, 3] - p       # lever arms to end-effector
     J = np.empty((6, n))
     J[0, :] = z[:, 1] * d[:, 2] - z[:, 2] * d[:, 1]

@@ -1,0 +1,28 @@
+pybullet build time: Jul  6 2026 03:26:29
+[franka_panda] oracle ready: ee=panda_link8 offset=tool residual=6.60e-07
+[franka_panda open_space    Jacobian (DLS)              ] our_succ  49.3  sim_succ  49.3  our_col   0.7  sim_col  12.7  mean    55.7ms
+[franka_panda open_space    CCD                         ] our_succ  24.0  sim_succ  24.0  our_col   0.7  sim_col  18.0  mean   299.9ms
+[franka_panda open_space    FABRIK                      ] our_succ  22.7  sim_succ  22.7  our_col   0.0  sim_col  22.0  mean   204.5ms
+[franka_panda open_space    TRAC-IK style               ] our_succ  99.3  sim_succ  99.3  our_col   0.0  sim_col   7.3  mean    21.6ms
+[franka_panda open_space    Multi-start                 ] our_succ  99.3  sim_succ  99.3  our_col   0.0  sim_col   6.0  mean   150.5ms
+[franka_panda open_space    ProteinIK (V1)              ] our_succ  96.7  sim_succ  96.7  our_col   0.0  sim_col  11.3  mean    78.7ms
+[franka_panda open_space    ProteinIK Fast (V4)         ] our_succ 100.0  sim_succ 100.0  our_col   0.7  sim_col   8.7  mean    30.6ms
+[franka_panda open_space    PyBullet native IK          ] our_succ   -    sim_succ  81.3  our_col   -    sim_col  28.0  mean    11.0ms
+[franka_panda near_singular Jacobian (DLS)              ] our_succ  50.0  sim_succ  50.0  our_col   2.0  sim_col  12.7  mean    51.8ms
+[franka_panda near_singular CCD                         ] our_succ  12.7  sim_succ  12.7  our_col   0.0  sim_col  18.7  mean   318.0ms
+[franka_panda near_singular FABRIK                      ] our_succ  13.3  sim_succ  13.3  our_col   0.7  sim_col  22.0  mean   223.3ms
+[franka_panda near_singular TRAC-IK style               ] our_succ  99.3  sim_succ  99.3  our_col   0.0  sim_col  11.3  mean    25.6ms
+[franka_panda near_singular Multi-start                 ] our_succ  97.3  sim_succ  97.3  our_col   0.0  sim_col  10.7  mean   160.8ms
+[franka_panda near_singular ProteinIK (V1)              ] our_succ  90.0  sim_succ  90.0  our_col   0.7  sim_col   8.7  mean   100.4ms
+[franka_panda near_singular ProteinIK Fast (V4)         ] our_succ 100.0  sim_succ 100.0  our_col   0.0  sim_col  10.7  mean    38.2ms
+[franka_panda near_singular PyBullet native IK          ] our_succ   -    sim_succ  64.7  our_col   -    sim_col  24.0  mean    17.7ms
+[franka_panda cluttered     Jacobian (DLS)              ] our_succ  32.7  sim_succ  32.7  our_col  37.3  sim_col  68.7  mean    67.8ms
+[franka_panda cluttered     CCD                         ] our_succ  11.3  sim_succ  11.3  our_col  46.7  sim_col  81.3  mean   318.2ms
+[franka_panda cluttered     FABRIK                      ] our_succ  20.7  sim_succ  20.7  our_col  31.3  sim_col  74.7  mean   204.0ms
+[franka_panda cluttered     TRAC-IK style               ] our_succ  91.3  sim_succ  91.3  our_col  40.0  sim_col  78.0  mean    37.1ms
+[franka_panda cluttered     Multi-start                 ] our_succ  85.3  sim_succ  85.3  our_col  36.0  sim_col  78.0  mean   167.7ms
+[franka_panda cluttered     ProteinIK (V1)              ] our_succ  83.3  sim_succ  83.3  our_col  31.3  sim_col  72.0  mean   114.0ms
+[franka_panda cluttered     ProteinIK Fast (V4)         ] our_succ  98.7  sim_succ  98.0  our_col  30.7  sim_col  78.7  mean   144.7ms
+[franka_panda cluttered     PyBullet native IK          ] our_succ   -    sim_succ  89.3  our_col   -    sim_col  85.3  mean     8.1ms
+
+Wrote sim_oracle_franka_fast.csv and sim_oracle_franka_fast.md  (24 cells).

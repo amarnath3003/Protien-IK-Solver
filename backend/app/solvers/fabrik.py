@@ -42,7 +42,7 @@ import time
 
 from app.core.kinematics import (
     RobotSpec, forward_kinematics_chain, pose_error,
-    end_effector_pose, self_collision_min_distance,
+    end_effector_pose, self_collision_min_distance, joint_axis_frames,
 )
 from app.core.types import SolveResult, SolveStep
 
@@ -60,8 +60,9 @@ def _reach_joint_toward(spec: RobotSpec, q: np.ndarray, i: int, desired_dir_poin
         return q
     n = spec.n_joints
     chain = forward_kinematics_chain(spec, q)
-    p_i = chain[i, :3, 3]
-    z_i = chain[i, :3, 2]
+    z_all, p_all = joint_axis_frames(spec, chain)  # DH-convention-aware axes
+    p_i = p_all[i]
+    z_i = z_all[i]
     p_end = chain[n, :3, 3]
 
     v_end = p_end - p_i
@@ -124,7 +125,8 @@ def solve_fabrik(
                     R_err[0, 2] - R_err[2, 0],
                     R_err[1, 0] - R_err[0, 1],
                 ]) / (2.0 * np.sin(theta))
-                z_i = chain[i, :3, 2]
+                z_all, _ = joint_axis_frames(spec, chain)
+                z_i = z_all[i]
                 orient_angle = np.dot(axis, z_i) * theta
                 q[i] = np.clip(q[i] + 0.6 * orient_angle, spec.joint_limits[i, 0], spec.joint_limits[i, 1])
 

@@ -1,0 +1,450 @@
+{
+  "A": [
+    {
+      "exp": "A",
+      "robot": "ur5",
+      "solver": "protein_fast",
+      "n": 360,
+      "success": 100.0,
+      "p50_ms": 0.9491000091657043,
+      "p99_ms": 5.3078420175007,
+      "max_ms": 29.1150999837555,
+      "over_10ms": 0.5555555555555556,
+      "over_50ms": 0.0
+    },
+    {
+      "exp": "A",
+      "robot": "ur5",
+      "solver": "trac_ik_style",
+      "n": 360,
+      "success": 100.0,
+      "p50_ms": 0.6965499778743833,
+      "p99_ms": 1.397514999844134,
+      "max_ms": 1.5285999979823828,
+      "over_10ms": 0.0,
+      "over_50ms": 0.0
+    },
+    {
+      "exp": "A",
+      "robot": "ur5",
+      "solver": "jacobian_dls",
+      "n": 360,
+      "success": 100.0,
+      "p50_ms": 0.6581500056199729,
+      "p99_ms": 1.1853979772422474,
+      "max_ms": 1.6314999666064978,
+      "over_10ms": 0.0,
+      "over_50ms": 0.0
+    },
+    {
+      "exp": "A",
+      "robot": "franka_panda",
+      "solver": "protein_fast",
+      "n": 360,
+      "success": 99.44444444444444,
+      "p50_ms": 36.952200025552884,
+      "p99_ms": 928.1811800133472,
+      "max_ms": 2457.872899947688,
+      "over_10ms": 74.44444444444444,
+      "over_50ms": 41.66666666666667
+    },
+    {
+      "exp": "A",
+      "robot": "franka_panda",
+      "solver": "trac_ik_style",
+      "n": 360,
+      "success": 100.0,
+      "p50_ms": 1.0244999721180648,
+      "p99_ms": 2.4536649585934374,
+      "max_ms": 3.302800003439188,
+      "over_10ms": 0.0,
+      "over_50ms": 0.0
+    },
+    {
+      "exp": "A",
+      "robot": "franka_panda",
+      "solver": "jacobian_dls",
+      "n": 360,
+      "success": 100.0,
+      "p50_ms": 0.8932999917306006,
+      "p99_ms": 2.2339519870001836,
+      "max_ms": 9.660499985329807,
+      "over_10ms": 0.0,
+      "over_50ms": 0.0
+    }
+  ],
+  "B": [
+    {
+      "exp": "B",
+      "robot": "ur5",
+      "solver": "protein_fast",
+      "n_targets": 40,
+      "K": 8,
+      "atleast1_pct": 87.5,
+      "mean_usable_frac": 83.4375,
+      "diversity_rad": 3.1086996673327896
+    },
+    {
+      "exp": "B",
+      "robot": "ur5",
+      "solver": "trac_ik_style",
+      "n_targets": 40,
+      "K": 8,
+      "atleast1_pct": 85.0,
+      "mean_usable_frac": 56.875,
+      "diversity_rad": 3.1564357099925626
+    },
+    {
+      "exp": "B",
+      "robot": "ur5",
+      "solver": "multi_start",
+      "n_targets": 40,
+      "K": 8,
+      "atleast1_pct": 87.5,
+      "mean_usable_frac": 65.3125,
+      "diversity_rad": 2.9612604088225742
+    }
+  ],
+  "C": [
+    {
+      "exp": "C",
+      "robot": "ur5",
+      "scenario": "open_space",
+      "solver": "protein_fast",
+      "n": 200,
+      "solved_pct": 100.0,
+      "clean_pct": 96.5
+    },
+    {
+      "exp": "C",
+      "robot": "ur5",
+      "scenario": "open_space",
+      "solver": "trac_ik_style",
+      "n": 200,
+      "solved_pct": 98.5,
+      "clean_pct": 78.5
+    },
+    {
+      "exp": "C",
+      "robot": "ur5",
+      "scenario": "open_space",
+      "solver": "jacobian_dls",
+      "n": 200,
+      "solved_pct": 51.5,
+      "clean_pct": 41.5
+    },
+    {
+      "exp": "C",
+      "robot": "ur5",
+      "scenario": "open_space",
+      "solver": "multi_start",
+      "n": 200,
+      "solved_pct": 97.0,
+      "clean_pct": 82.0
+    },
+    {
+      "exp": "C",
+      "robot": "ur5",
+      "scenario": "cluttered",
+      "solver": "protein_fast",
+      "n": 200,
+      "solved_pct": 100.0,
+      "clean_pct": 78.5
+    },
+    {
+      "exp": "C",
+      "robot": "ur5",
+      "scenario": "cluttered",
+      "solver": "trac_ik_style",
+      "n": 200,
+      "solved_pct": 97.0,
+      "clean_pct": 48.5
+    },
+    {
+      "exp": "C",
+      "robot": "ur5",
+      "scenario": "cluttered",
+      "solver": "jacobian_dls",
+      "n": 200,
+      "solved_pct": 54.50000000000001,
+      "clean_pct": 25.0
+    },
+    {
+      "exp": "C",
+      "robot": "ur5",
+      "scenario": "cluttered",
+      "solver": "multi_start",
+      "n": 200,
+      "solved_pct": 98.5,
+      "clean_pct": 59.5
+    },
+    {
+      "exp": "C",
+      "robot": "franka_panda",
+      "scenario": "open_space",
+      "solver": "protein_fast",
+      "n": 200,
+      "solved_pct": 99.5,
+      "clean_pct": 27.500000000000004
+    },
+    {
+      "exp": "C",
+      "robot": "franka_panda",
+      "scenario": "open_space",
+      "solver": "trac_ik_style",
+      "n": 200,
+      "solved_pct": 94.5,
+      "clean_pct": 23.0
+    },
+    {
+      "exp": "C",
+      "robot": "franka_panda",
+      "scenario": "open_space",
+      "solver": "jacobian_dls",
+      "n": 200,
+      "solved_pct": 25.5,
+      "clean_pct": 5.5
+    },
+    {
+      "exp": "C",
+      "robot": "franka_panda",
+      "scenario": "open_space",
+      "solver": "multi_start",
+      "n": 200,
+      "solved_pct": 87.0,
+      "clean_pct": 23.0
+    },
+    {
+      "exp": "C",
+      "robot": "franka_panda",
+      "scenario": "cluttered",
+      "solver": "protein_fast",
+      "n": 200,
+      "solved_pct": 98.0,
+      "clean_pct": 1.5
+    },
+    {
+      "exp": "C",
+      "robot": "franka_panda",
+      "scenario": "cluttered",
+      "solver": "trac_ik_style",
+      "n": 200,
+      "solved_pct": 90.0,
+      "clean_pct": 1.0
+    },
+    {
+      "exp": "C",
+      "robot": "franka_panda",
+      "scenario": "cluttered",
+      "solver": "jacobian_dls",
+      "n": 200,
+      "solved_pct": 23.5,
+      "clean_pct": 0.5
+    },
+    {
+      "exp": "C",
+      "robot": "franka_panda",
+      "scenario": "cluttered",
+      "solver": "multi_start",
+      "n": 200,
+      "solved_pct": 83.5,
+      "clean_pct": 0.5
+    },
+    {
+      "exp": "C",
+      "robot": "planar3dof",
+      "scenario": "open_space",
+      "solver": "protein_fast",
+      "n": 200,
+      "solved_pct": 99.5,
+      "clean_pct": 95.0
+    },
+    {
+      "exp": "C",
+      "robot": "planar3dof",
+      "scenario": "open_space",
+      "solver": "trac_ik_style",
+      "n": 200,
+      "solved_pct": 99.5,
+      "clean_pct": 89.5
+    },
+    {
+      "exp": "C",
+      "robot": "planar3dof",
+      "scenario": "open_space",
+      "solver": "jacobian_dls",
+      "n": 200,
+      "solved_pct": 44.0,
+      "clean_pct": 41.0
+    },
+    {
+      "exp": "C",
+      "robot": "planar3dof",
+      "scenario": "open_space",
+      "solver": "multi_start",
+      "n": 200,
+      "solved_pct": 97.5,
+      "clean_pct": 87.0
+    },
+    {
+      "exp": "C",
+      "robot": "planar3dof",
+      "scenario": "cluttered",
+      "solver": "protein_fast",
+      "n": 200,
+      "solved_pct": 100.0,
+      "clean_pct": 50.5
+    },
+    {
+      "exp": "C",
+      "robot": "planar3dof",
+      "scenario": "cluttered",
+      "solver": "trac_ik_style",
+      "n": 200,
+      "solved_pct": 98.0,
+      "clean_pct": 30.5
+    },
+    {
+      "exp": "C",
+      "robot": "planar3dof",
+      "scenario": "cluttered",
+      "solver": "jacobian_dls",
+      "n": 200,
+      "solved_pct": 37.5,
+      "clean_pct": 11.5
+    },
+    {
+      "exp": "C",
+      "robot": "planar3dof",
+      "scenario": "cluttered",
+      "solver": "multi_start",
+      "n": 200,
+      "solved_pct": 93.0,
+      "clean_pct": 31.5
+    }
+  ],
+  "D": [
+    {
+      "exp": "D",
+      "robot": "ur5",
+      "scenario": "cluttered",
+      "primary": "trac_ik_style",
+      "fallback": "protein_fast",
+      "n": 200,
+      "punt_pct": 54.0,
+      "rescue_pct": 60.18518518518518
+    },
+    {
+      "exp": "D",
+      "robot": "ur5",
+      "scenario": "near_singular",
+      "primary": "trac_ik_style",
+      "fallback": "protein_fast",
+      "n": 200,
+      "punt_pct": 33.5,
+      "rescue_pct": 77.61194029850746
+    },
+    {
+      "exp": "D",
+      "robot": "franka_panda",
+      "scenario": "cluttered",
+      "primary": "trac_ik_style",
+      "fallback": "protein_fast",
+      "n": 200,
+      "punt_pct": 99.5,
+      "rescue_pct": 1.0050251256281406
+    },
+    {
+      "exp": "D",
+      "robot": "franka_panda",
+      "scenario": "near_singular",
+      "primary": "trac_ik_style",
+      "fallback": "protein_fast",
+      "n": 200,
+      "punt_pct": 72.5,
+      "rescue_pct": 10.344827586206897
+    }
+  ],
+  "E": [
+    {
+      "exp": "E",
+      "dof": 4,
+      "solver": "protein_fast",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 75.83333333333333
+    },
+    {
+      "exp": "E",
+      "dof": 4,
+      "solver": "trac_ik_style",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 34.166666666666664
+    },
+    {
+      "exp": "E",
+      "dof": 6,
+      "solver": "protein_fast",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 59.166666666666664
+    },
+    {
+      "exp": "E",
+      "dof": 6,
+      "solver": "trac_ik_style",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 16.666666666666664
+    },
+    {
+      "exp": "E",
+      "dof": 8,
+      "solver": "protein_fast",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 36.666666666666664
+    },
+    {
+      "exp": "E",
+      "dof": 8,
+      "solver": "trac_ik_style",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 5.0
+    },
+    {
+      "exp": "E",
+      "dof": 12,
+      "solver": "protein_fast",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 11.666666666666666
+    },
+    {
+      "exp": "E",
+      "dof": 12,
+      "solver": "trac_ik_style",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 0.8333333333333334
+    },
+    {
+      "exp": "E",
+      "dof": 16,
+      "solver": "protein_fast",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 1.6666666666666667
+    },
+    {
+      "exp": "E",
+      "dof": 16,
+      "solver": "trac_ik_style",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 0.0
+    }
+  ]
+}

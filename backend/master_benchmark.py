@@ -162,6 +162,14 @@ def write_markdown(rows: list[dict], path: str, meta: dict) -> None:
 
 
 def main(argv=None) -> int:
+    # Solver display names contain non-latin-1 glyphs (e.g. the λ in "Fixed-λ
+    # Homotopy"). On Windows the default console/redirect encoding is cp1252, which
+    # can't encode them, so a progress print() would crash mid-run and lose the
+    # entire sweep (results are only written at the end). Force UTF-8 stdout.
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
     ap = argparse.ArgumentParser(description="Master benchmark for the ProteinIK solver suite.")
     ap.add_argument("--trials", type=int, default=100, help="trials per seed per cell")
     ap.add_argument("--seeds", type=int, nargs="+", default=[1, 2, 3], help="RNG seeds (noise-averaged)")

@@ -1,0 +1,59 @@
+
+=== EXP A: real-time servo (warm seed, small move) — latency is king ===
+  [ur5          ProteinIK Fast (V4)   ] succ 100.0%  p50   0.95  p99     5.3  max    29.1  >10ms   0.6%
+  [ur5          TRAC-IK style         ] succ 100.0%  p50   0.70  p99     1.4  max     1.5  >10ms   0.0%
+  [ur5          Jacobian (DLS)        ] succ 100.0%  p50   0.66  p99     1.2  max     1.6  >10ms   0.0%
+  [franka_panda ProteinIK Fast (V4)   ] succ  99.4%  p50  36.95  p99   928.2  max  2457.9  >10ms  74.4%
+  [franka_panda TRAC-IK style         ] succ 100.0%  p50   1.02  p99     2.5  max     3.3  >10ms   0.0%
+  [franka_panda Jacobian (DLS)        ] succ 100.0%  p50   0.89  p99     2.2  max     9.7  >10ms   0.0%
+
+=== EXP B: goal-config sampler for a motion planner (usable rate + diversity) ===
+  [ProteinIK Fast (V4)   ] >=1 usable goal  87.5%  usable/attempt  83.4%  diversity 3.109 rad
+  [TRAC-IK style         ] >=1 usable goal  85.0%  usable/attempt  56.9%  diversity 3.156 rad
+  [Multi-start           ] >=1 usable goal  87.5%  usable/attempt  65.3%  diversity 2.961 rad
+
+=== EXP C: offline batch generation — clean-solve rate (quality per solve) ===
+  [ur5          open_space    ProteinIK Fast (V4)   ] solved 100.0%  CLEAN  96.5%
+  [ur5          open_space    TRAC-IK style         ] solved  98.5%  CLEAN  78.5%
+  [ur5          open_space    Jacobian (DLS)        ] solved  51.5%  CLEAN  41.5%
+  [ur5          open_space    Multi-start           ] solved  97.0%  CLEAN  82.0%
+  [ur5          cluttered     ProteinIK Fast (V4)   ] solved 100.0%  CLEAN  78.5%
+  [ur5          cluttered     TRAC-IK style         ] solved  97.0%  CLEAN  48.5%
+  [ur5          cluttered     Jacobian (DLS)        ] solved  54.5%  CLEAN  25.0%
+  [ur5          cluttered     Multi-start           ] solved  98.5%  CLEAN  59.5%
+  [franka_panda open_space    ProteinIK Fast (V4)   ] solved  99.5%  CLEAN  27.5%
+  [franka_panda open_space    TRAC-IK style         ] solved  94.5%  CLEAN  23.0%
+  [franka_panda open_space    Jacobian (DLS)        ] solved  25.5%  CLEAN   5.5%
+  [franka_panda open_space    Multi-start           ] solved  87.0%  CLEAN  23.0%
+  [franka_panda cluttered     ProteinIK Fast (V4)   ] solved  98.0%  CLEAN   1.5%
+  [franka_panda cluttered     TRAC-IK style         ] solved  90.0%  CLEAN   1.0%
+  [franka_panda cluttered     Jacobian (DLS)        ] solved  23.5%  CLEAN   0.5%
+  [franka_panda cluttered     Multi-start           ] solved  83.5%  CLEAN   0.5%
+  [planar3dof   open_space    ProteinIK Fast (V4)   ] solved  99.5%  CLEAN  95.0%
+  [planar3dof   open_space    TRAC-IK style         ] solved  99.5%  CLEAN  89.5%
+  [planar3dof   open_space    Jacobian (DLS)        ] solved  44.0%  CLEAN  41.0%
+  [planar3dof   open_space    Multi-start           ] solved  97.5%  CLEAN  87.0%
+  [planar3dof   cluttered     ProteinIK Fast (V4)   ] solved 100.0%  CLEAN  50.5%
+  [planar3dof   cluttered     TRAC-IK style         ] solved  98.0%  CLEAN  30.5%
+  [planar3dof   cluttered     Jacobian (DLS)        ] solved  37.5%  CLEAN  11.5%
+  [planar3dof   cluttered     Multi-start           ] solved  93.0%  CLEAN  31.5%
+
+=== EXP D: fallback tier — rescue rate on targets the fast solver punts ===
+  [ur5          cluttered    ] trac_ik_style punted  54.0% of targets -> ProteinIK Fast (V4) rescued  60.2% of those
+  [ur5          near_singular] trac_ik_style punted  33.5% of targets -> ProteinIK Fast (V4) rescued  77.6% of those
+  [franka_panda cluttered    ] trac_ik_style punted  99.5% of targets -> ProteinIK Fast (V4) rescued   1.0% of those
+  [franka_panda near_singular] trac_ik_style punted  72.5% of targets -> ProteinIK Fast (V4) rescued  10.3% of those
+
+=== EXP E: hyper-redundant folding — clean-solve vs DOF (the protein regime) ===
+  [planar  4-DOF  ProteinIK Fast (V4)   ] solved 100.0%  CLEAN  75.8%
+  [planar  4-DOF  TRAC-IK style         ] solved 100.0%  CLEAN  34.2%
+  [planar  6-DOF  ProteinIK Fast (V4)   ] solved 100.0%  CLEAN  59.2%
+  [planar  6-DOF  TRAC-IK style         ] solved 100.0%  CLEAN  16.7%
+  [planar  8-DOF  ProteinIK Fast (V4)   ] solved 100.0%  CLEAN  36.7%
+  [planar  8-DOF  TRAC-IK style         ] solved 100.0%  CLEAN   5.0%
+  [planar 12-DOF  ProteinIK Fast (V4)   ] solved 100.0%  CLEAN  11.7%
+  [planar 12-DOF  TRAC-IK style         ] solved 100.0%  CLEAN   0.8%
+  [planar 16-DOF  ProteinIK Fast (V4)   ] solved 100.0%  CLEAN   1.7%
+  [planar 16-DOF  TRAC-IK style         ] solved 100.0%  CLEAN   0.0%
+
+DONE in 1386.2s -> usecase_results.json

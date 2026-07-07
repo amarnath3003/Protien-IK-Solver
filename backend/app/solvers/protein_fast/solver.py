@@ -71,7 +71,7 @@ import time
 
 from app.core.kinematics import (
     RobotSpec, end_effector_pose, pose_error, self_collision_min_distance,
-    self_collision_min_distance_from_chain,
+    self_collision_min_distance_from_chain, joint_axis_frames,
 )
 from app.core.types import SolveResult, SolveStep
 from app.solvers.protein_energy import (
@@ -113,9 +113,15 @@ def _fast_chain(spec: RobotSpec, q: np.ndarray,
     ct = np.cos(thetas); st = np.sin(thetas)
     a = spec.a; d = spec.d
     L = np.zeros((n, 4, 4))
-    L[:, 0, 0] = ct;  L[:, 0, 1] = -st * ca; L[:, 0, 2] = st * sa;  L[:, 0, 3] = a * ct
-    L[:, 1, 0] = st;  L[:, 1, 1] = ct * ca;  L[:, 1, 2] = -ct * sa; L[:, 1, 3] = a * st
-    L[:, 2, 1] = sa;  L[:, 2, 2] = ca;       L[:, 2, 3] = d
+    if spec.dh_convention == "modified":
+        # modified (Craig) DH: Rot_x(alpha) Trans_x(a) Rot_z(theta) Trans_z(d)
+        L[:, 0, 0] = ct;      L[:, 0, 1] = -st;     L[:, 0, 3] = a
+        L[:, 1, 0] = st * ca; L[:, 1, 1] = ct * ca; L[:, 1, 2] = -sa; L[:, 1, 3] = -sa * d
+        L[:, 2, 0] = st * sa; L[:, 2, 1] = ct * sa; L[:, 2, 2] = ca;  L[:, 2, 3] = ca * d
+    else:
+        L[:, 0, 0] = ct;  L[:, 0, 1] = -st * ca; L[:, 0, 2] = st * sa;  L[:, 0, 3] = a * ct
+        L[:, 1, 0] = st;  L[:, 1, 1] = ct * ca;  L[:, 1, 2] = -ct * sa; L[:, 1, 3] = a * st
+        L[:, 2, 1] = sa;  L[:, 2, 2] = ca;       L[:, 2, 3] = d
     L[:, 3, 3] = 1.0
     T = np.empty((n + 1, 4, 4))
     T[0] = np.eye(4)
@@ -136,9 +142,14 @@ def _incremental_chain(spec: RobotSpec, chain: np.ndarray, L: np.ndarray,
     theta_i = cand + spec.theta_offset[i]
     ct = np.cos(theta_i); st = np.sin(theta_i)
     Li = np.zeros((4, 4))
-    Li[0, 0] = ct; Li[0, 1] = -st * ca[i]; Li[0, 2] = st * sa[i]; Li[0, 3] = spec.a[i] * ct
-    Li[1, 0] = st; Li[1, 1] = ct * ca[i];  Li[1, 2] = -ct * sa[i]; Li[1, 3] = spec.a[i] * st
-    Li[2, 1] = sa[i]; Li[2, 2] = ca[i]; Li[2, 3] = spec.d[i]
+    if spec.dh_convention == "modified":
+        Li[0, 0] = ct;         Li[0, 1] = -st;         Li[0, 3] = spec.a[i]
+        Li[1, 0] = st * ca[i]; Li[1, 1] = ct * ca[i];  Li[1, 2] = -sa[i]; Li[1, 3] = -sa[i] * spec.d[i]
+        Li[2, 0] = st * sa[i]; Li[2, 1] = ct * sa[i];  Li[2, 2] = ca[i];  Li[2, 3] = ca[i] * spec.d[i]
+    else:
+        Li[0, 0] = ct; Li[0, 1] = -st * ca[i]; Li[0, 2] = st * sa[i]; Li[0, 3] = spec.a[i] * ct
+        Li[1, 0] = st; Li[1, 1] = ct * ca[i];  Li[1, 2] = -ct * sa[i]; Li[1, 3] = spec.a[i] * st
+        Li[2, 1] = sa[i]; Li[2, 2] = ca[i]; Li[2, 3] = spec.d[i]
     Li[3, 3] = 1.0
     T = np.empty_like(chain)
     T[:i + 1] = chain[:i + 1]
@@ -176,8 +187,7 @@ def _fast_pose_jac(spec: RobotSpec, q: np.ndarray,
     chain, _ = _fast_chain(spec, q, ca, sa)
     n = spec.n_joints
     pose = chain[n]
-    z = chain[:n, :3, 2]
-    p = chain[:n, :3, 3]
+    z, p = joint_axis_frames(spec, chain)
     d = chain[n, :3, 3] - p
     J = np.empty((6, n))
     J[0, :] = z[:, 1] * d[:, 2] - z[:, 2] * d[:, 1]

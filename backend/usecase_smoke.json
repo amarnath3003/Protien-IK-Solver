@@ -1,0 +1,163 @@
+{
+  "A": [
+    {
+      "exp": "A",
+      "robot": "ur5",
+      "solver": "protein_fast",
+      "n": 8,
+      "success": 100.0,
+      "p50_ms": 1.072499988367781,
+      "p99_ms": 11.935511028277684,
+      "max_ms": 12.716200028080493,
+      "over_10ms": 12.5,
+      "over_50ms": 0.0
+    },
+    {
+      "exp": "A",
+      "robot": "ur5",
+      "solver": "trac_ik_style",
+      "n": 8,
+      "success": 100.0,
+      "p50_ms": 0.7670999621041119,
+      "p99_ms": 1.1230550316395238,
+      "max_ms": 1.1282000341452658,
+      "over_10ms": 0.0,
+      "over_50ms": 0.0
+    },
+    {
+      "exp": "A",
+      "robot": "ur5",
+      "solver": "jacobian_dls",
+      "n": 8,
+      "success": 100.0,
+      "p50_ms": 0.6207000114955008,
+      "p99_ms": 1.3596649852115659,
+      "max_ms": 1.4044999843463302,
+      "over_10ms": 0.0,
+      "over_50ms": 0.0
+    }
+  ],
+  "B": [
+    {
+      "exp": "B",
+      "robot": "ur5",
+      "solver": "protein_fast",
+      "n_targets": 5,
+      "K": 5,
+      "atleast1_pct": 100.0,
+      "mean_usable_frac": 96.0,
+      "diversity_rad": 3.664370225443014
+    },
+    {
+      "exp": "B",
+      "robot": "ur5",
+      "solver": "trac_ik_style",
+      "n_targets": 5,
+      "K": 5,
+      "atleast1_pct": 100.0,
+      "mean_usable_frac": 92.0,
+      "diversity_rad": 3.8562728805266984
+    },
+    {
+      "exp": "B",
+      "robot": "ur5",
+      "solver": "multi_start",
+      "n_targets": 5,
+      "K": 5,
+      "atleast1_pct": 100.0,
+      "mean_usable_frac": 80.0,
+      "diversity_rad": 3.7681073336840187
+    }
+  ],
+  "C": [
+    {
+      "exp": "C",
+      "robot": "ur5",
+      "scenario": "cluttered",
+      "solver": "protein_fast",
+      "n": 15,
+      "solved_pct": 100.0,
+      "clean_pct": 86.66666666666667
+    },
+    {
+      "exp": "C",
+      "robot": "ur5",
+      "scenario": "cluttered",
+      "solver": "trac_ik_style",
+      "n": 15,
+      "solved_pct": 100.0,
+      "clean_pct": 66.66666666666666
+    },
+    {
+      "exp": "C",
+      "robot": "ur5",
+      "scenario": "cluttered",
+      "solver": "jacobian_dls",
+      "n": 15,
+      "solved_pct": 53.333333333333336,
+      "clean_pct": 40.0
+    }
+  ],
+  "D": [
+    {
+      "exp": "D",
+      "robot": "ur5",
+      "scenario": "cluttered",
+      "primary": "trac_ik_style",
+      "fallback": "protein_fast",
+      "n": 20,
+      "punt_pct": 45.0,
+      "rescue_pct": 66.66666666666666
+    }
+  ],
+  "E": [
+    {
+      "exp": "E",
+      "dof": 4,
+      "solver": "protein_fast",
+      "n": 12,
+      "solved_pct": 100.0,
+      "clean_pct": 75.0
+    },
+    {
+      "exp": "E",
+      "dof": 4,
+      "solver": "trac_ik_style",
+      "n": 12,
+      "solved_pct": 100.0,
+      "clean_pct": 25.0
+    },
+    {
+      "exp": "E",
+      "dof": 8,
+      "solver": "protein_fast",
+      "n": 12,
+      "solved_pct": 100.0,
+      "clean_pct": 25.0
+    },
+    {
+      "exp": "E",
+      "dof": 8,
+      "solver": "trac_ik_style",
+      "n": 12,
+      "solved_pct": 100.0,
+      "clean_pct": 8.333333333333332
+    },
+    {
+      "exp": "E",
+      "dof": 12,
+      "solver": "protein_fast",
+      "n": 12,
+      "solved_pct": 100.0,
+      "clean_pct": 16.666666666666664
+    },
+    {
+      "exp": "E",
+      "dof": 12,
+      "solver": "trac_ik_style",
+      "n": 12,
+      "solved_pct": 100.0,
+      "clean_pct": 0.0
+    }
+  ]
+}

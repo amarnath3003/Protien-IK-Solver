@@ -47,10 +47,10 @@ LM_ENDGAME_THRESH  = 0.05  # switch to LM polish when pos_err < this (metres)
 # ---------------------------------------------------------------------------
 
 def _fast_pose_jac_fl(spec, q):
-    from app.core.kinematics import forward_kinematics_chain
+    from app.core.kinematics import forward_kinematics_chain, joint_axis_frames
     chain = forward_kinematics_chain(spec, q)
     n = spec.n_joints; pose = chain[n]
-    z = chain[:n, :3, 2]; p = chain[:n, :3, 3]; d = chain[n, :3, 3] - p
+    z, p = joint_axis_frames(spec, chain); d = chain[n, :3, 3] - p
     J = np.empty((6, n))
     J[0,:] = z[:,1]*d[:,2] - z[:,2]*d[:,1]
     J[1,:] = z[:,2]*d[:,0] - z[:,0]*d[:,2]

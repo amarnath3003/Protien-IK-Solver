@@ -1,0 +1,33 @@
+pybullet build time: Jul  6 2026 03:26:29
+C:\Users\subik\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: FutureWarning: robot_descriptions.ur5_description is deprecated and will switch to the official UR5 model in robot_descriptions.py v2. Use robot_descriptions.ur5_official_description now to migrate early.
+  return _bootstrap._gcd_import(name[level:], package, level)
+[ur5] oracle ready: ee=tool0 offset=base residual=9.48e-07
+[ur5          open_space    Jacobian (DLS)              ] our_succ  56.7  sim_succ  56.7  our_col  11.3  sim_col  28.0  mean    93.5ms
+[ur5          open_space    CCD                         ] our_succ  44.7  sim_succ  44.7  our_col  24.7  sim_col  38.0  mean   770.1ms
+[ur5          open_space    FABRIK                      ] our_succ  53.3  sim_succ  53.3  our_col  20.7  sim_col  42.7  mean   172.8ms
+[ur5          open_space    TRAC-IK style               ] our_succ  98.7  sim_succ  98.7  our_col  17.3  sim_col  32.7  mean    18.7ms
+[ur5          open_space    Multi-start                 ] our_succ  97.3  sim_succ  97.3  our_col  13.3  sim_col  34.7  mean   141.2ms
+[ur5          open_space    ProteinIK (V1)              ] our_succ  92.0  sim_succ  92.0  our_col  12.7  sim_col  36.7  mean    61.9ms
+[ur5          open_space    ProteinIK Fast (V4)         ] our_succ 100.0  sim_succ 100.0  our_col   2.7  sim_col  29.3  mean    19.9ms
+[ur5          open_space    ProteinIK Raw Biology (V6)  ] our_succ  99.3  sim_succ  99.3  our_col   2.7  sim_col  14.0  mean  6109.5ms
+[ur5          open_space    PyBullet native IK          ] our_succ   -    sim_succ  74.7  our_col   -    sim_col  42.0  mean    16.1ms
+[ur5          near_singular Jacobian (DLS)              ] our_succ  47.3  sim_succ  47.3  our_col  29.3  sim_col  48.7  mean    71.5ms
+[ur5          near_singular CCD                         ] our_succ  32.0  sim_succ  32.0  our_col  36.7  sim_col  46.7  mean   375.7ms
+[ur5          near_singular FABRIK                      ] our_succ  33.3  sim_succ  33.3  our_col  28.0  sim_col  53.3  mean   167.0ms
+[ur5          near_singular TRAC-IK style               ] our_succ  99.3  sim_succ  99.3  our_col  29.3  sim_col  48.7  mean    28.9ms
+[ur5          near_singular Multi-start                 ] our_succ  98.0  sim_succ  98.0  our_col  22.0  sim_col  44.7  mean   156.3ms
+[ur5          near_singular ProteinIK (V1)              ] our_succ  90.0  sim_succ  90.0  our_col  18.0  sim_col  39.3  mean    86.0ms
+[ur5          near_singular ProteinIK Fast (V4)         ] our_succ 100.0  sim_succ  99.3  our_col   8.7  sim_col  39.3  mean    44.8ms
+[ur5          near_singular ProteinIK Raw Biology (V6)  ] our_succ  98.7  sim_succ  98.7  our_col   8.0  sim_col  26.0  mean  3343.5ms
+[ur5          near_singular PyBullet native IK          ] our_succ   -    sim_succ  46.0  our_col   -    sim_col  54.0  mean    11.2ms
+[ur5          cluttered     Jacobian (DLS)              ] our_succ  57.3  sim_succ  57.3  our_col  48.7  sim_col  68.0  mean    34.1ms
+[ur5          cluttered     CCD                         ] our_succ  42.0  sim_succ  42.0  our_col  60.0  sim_col  70.0  mean   177.2ms
+[ur5          cluttered     FABRIK                      ] our_succ  34.0  sim_succ  34.0  our_col  51.3  sim_col  70.0  mean   134.3ms
+[ur5          cluttered     TRAC-IK style               ] our_succ  97.3  sim_succ  97.3  our_col  44.0  sim_col  64.7  mean    19.7ms
+[ur5          cluttered     Multi-start                 ] our_succ  98.7  sim_succ  98.7  our_col  38.7  sim_col  65.3  mean   120.4ms
+[ur5          cluttered     ProteinIK (V1)              ] our_succ  90.7  sim_succ  90.7  our_col  33.3  sim_col  65.3  mean    93.6ms
+[ur5          cluttered     ProteinIK Fast (V4)         ] our_succ 100.0  sim_succ 100.0  our_col  17.3  sim_col  56.0  mean    26.7ms
+[ur5          cluttered     ProteinIK Raw Biology (V6)  ] our_succ 100.0  sim_succ 100.0  our_col  16.0  sim_col  48.7  mean  3003.1ms
+[ur5          cluttered     PyBullet native IK          ] our_succ   -    sim_succ  54.0  our_col   -    sim_col  71.3  mean     9.0ms
+
+Wrote sim_oracle_ur5.csv and sim_oracle_ur5.md  (27 cells).

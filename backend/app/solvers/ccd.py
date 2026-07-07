@@ -30,7 +30,7 @@ import time
 
 from app.core.kinematics import (
     RobotSpec, forward_kinematics_chain, pose_error, end_effector_pose,
-    self_collision_min_distance,
+    self_collision_min_distance, joint_axis_frames,
 )
 from app.core.types import SolveResult, SolveStep
 
@@ -61,8 +61,9 @@ def solve_ccd(
         # one full sweep = base -> tip, one joint rotation update each
         for i in range(n):
             chain = forward_kinematics_chain(spec, q)  # re-evaluate after each joint update
-            p_i = chain[i, :3, 3]
-            z_i = chain[i, :3, 2]
+            z_all, p_all = joint_axis_frames(spec, chain)  # DH-convention-aware axes
+            p_i = p_all[i]
+            z_i = z_all[i]
             p_end = chain[n, :3, 3]
             R_end = chain[n, :3, :3]
 

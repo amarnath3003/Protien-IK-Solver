@@ -1,0 +1,7 @@
+pybullet build time: Jul  6 2026 03:26:29
+[franka_panda] oracle ready: ee=panda_link8 offset=tool residual=6.60e-07
+[franka_panda open_space    ProteinIK Raw Biology (V6)  ] our_succ 100.0  sim_succ 100.0  our_col   0.0  sim_col  10.0  mean  4612.4ms
+[franka_panda near_singular ProteinIK Raw Biology (V6)  ] our_succ  98.3  sim_succ  98.3  our_col   0.0  sim_col   6.7  mean  4274.6ms
+[franka_panda cluttered     ProteinIK Raw Biology (V6)  ] our_succ  91.7  sim_succ  91.7  our_col  26.7  sim_col  86.7  mean  4042.8ms
+
+Wrote sim_oracle_franka_v6.csv and sim_oracle_franka_v6.md  (3 cells).

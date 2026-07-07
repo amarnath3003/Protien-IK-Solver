@@ -37,6 +37,7 @@ import numpy as np
 
 from app.core.kinematics import (
     RobotSpec, forward_kinematics_chain, self_collision_min_distance,
+    joint_axis_frames,
 )
 
 
@@ -157,8 +158,7 @@ def lj_energy_and_grad(spec: RobotSpec, q: np.ndarray,
     dE_dd = (24.0 * epsilon / d) * (s2 * sr6 - 2.0 * sr12)   # (P,)
     u = diff / d[:, None]                                    # û_ij  (P, 3)
 
-    z = chain[:n, :3, 2]                  # (n, 3) joint axes
-    p = chain[:n, :3, 3]                  # (n, 3) joint origins
+    z, p = joint_axis_frames(spec, chain)  # (n,3) joint axes + points, DH-aware
 
     # ∂E/∂q_k for each joint k. Joint k moves only beads m > k.
     for k in range(n):
