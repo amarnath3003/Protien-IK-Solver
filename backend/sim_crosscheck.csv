@@ -1,0 +1,31 @@
+robot,scenario,solver,display_name,n,our_success_pct,pb_collision_pct,mj_collision_pct,col_call_agree_pct,pb_mean_clearance_m,mj_mean_clearance_m
+ur5,open_space,protein_fast,ProteinIK Fast (V4),100,100.0,31.0,30.0,99.0,0.0004005464579820307,0.0012716393337841544
+ur5,open_space,trac_ik_style,TRAC-IK style,100,98.0,34.0,33.0,99.0,-0.004368603587217254,-0.004059505019195791
+ur5,open_space,multi_start,Multi-start,100,97.0,35.0,34.0,99.0,-0.0032886287147698766,-0.001794238870065081
+ur5,open_space,protein_ik,ProteinIK (V1),100,92.0,40.0,39.0,99.0,-0.0027942090719767555,-0.0017018173489889532
+ur5,open_space,protein_raw,ProteinIK Raw Biology (V6),100,100.0,12.0,12.0,100.0,0.0055014279032197695,0.006188411257404022
+ur5,near_singular,protein_fast,ProteinIK Fast (V4),100,100.0,41.0,40.0,99.0,-0.006558982972499753,-0.006108374743058322
+ur5,near_singular,trac_ik_style,TRAC-IK style,100,99.0,47.0,45.0,98.0,-0.01543656617675202,-0.014546160437277626
+ur5,near_singular,multi_start,Multi-start,100,98.0,47.0,44.0,97.0,-0.012503280110360379,-0.011483650766913867
+ur5,near_singular,protein_ik,ProteinIK (V1),100,88.0,43.0,41.0,98.0,-0.012259421936747289,-0.011846226204388566
+ur5,near_singular,protein_raw,ProteinIK Raw Biology (V6),100,99.0,31.0,31.0,100.0,-0.003988149099298096,-0.0034906827953269186
+ur5,cluttered,protein_fast,ProteinIK Fast (V4),100,100.0,56.0,56.0,100.0,-0.01861906374895077,-0.01755665247101639
+ur5,cluttered,trac_ik_style,TRAC-IK style,100,96.0,66.0,65.0,99.0,-0.03324881869698083,-0.03242434202762239
+ur5,cluttered,multi_start,Multi-start,100,98.0,65.0,63.0,98.0,-0.023104809192796914,-0.022300733100876418
+ur5,cluttered,protein_ik,ProteinIK (V1),100,90.0,64.0,61.0,97.0,-0.02437088961465212,-0.023219653923447808
+ur5,cluttered,protein_raw,ProteinIK Raw Biology (V6),100,100.0,51.0,51.0,100.0,-0.015837229669584632,-0.015296492035991514
+franka_panda,open_space,protein_fast,ProteinIK Fast (V4),100,100.0,11.0,11.0,100.0,0.013275200396643547,0.012187943688640677
+franka_panda,open_space,trac_ik_style,TRAC-IK style,100,99.0,10.0,8.0,98.0,0.014231860292564267,0.013957046033675268
+franka_panda,open_space,multi_start,Multi-start,100,99.0,7.0,6.0,99.0,0.015465093981753044,0.013814673945936136
+franka_panda,open_space,protein_ik,ProteinIK (V1),100,97.0,12.0,10.0,98.0,0.013376929893411282,0.012635498596810048
+franka_panda,open_space,protein_raw,ProteinIK Raw Biology (V6),100,100.0,10.0,9.0,99.0,0.01368847660331677,0.012804279794267188
+franka_panda,near_singular,protein_fast,ProteinIK Fast (V4),100,100.0,13.0,11.0,98.0,0.012618547107190525,0.012064586231887836
+franka_panda,near_singular,trac_ik_style,TRAC-IK style,100,99.0,12.0,11.0,99.0,0.013073378355874537,0.011576469114126454
+franka_panda,near_singular,multi_start,Multi-start,100,97.0,12.0,11.0,99.0,0.013749358747991302,0.012462539862668535
+franka_panda,near_singular,protein_ik,ProteinIK (V1),100,90.0,11.0,8.0,97.0,0.01419779686594465,0.013058541329339743
+franka_panda,near_singular,protein_raw,ProteinIK Raw Biology (V6),100,98.0,9.0,8.0,99.0,0.014981572912436356,0.013984386925820895
+franka_panda,cluttered,protein_fast,ProteinIK Fast (V4),100,99.0,79.0,78.0,99.0,-0.04753488545321564,-0.04657737246729199
+franka_panda,cluttered,trac_ik_style,TRAC-IK style,100,90.0,78.0,78.0,100.0,-0.0482449770778939,-0.04747889070989336
+franka_panda,cluttered,multi_start,Multi-start,100,86.0,80.0,79.0,99.0,-0.04762833642327292,-0.046529478911026045
+franka_panda,cluttered,protein_ik,ProteinIK (V1),100,82.0,72.0,72.0,100.0,-0.042593495576450244,-0.04163723372926355
+franka_panda,cluttered,protein_raw,ProteinIK Raw Biology (V6),100,94.0,76.0,75.0,99.0,-0.042636818653259544,-0.04171776489920405

@@ -694,3 +694,320 @@ All five terms now pass once the §5 corrections are applied.
   34/Multi 35/V1 40 on PB; MJ tracks within 1%, col-call agree 99%). The paper's comparative claim survives a 2nd
   independent simulator. Files: app/sim/mujoco_backend.py, bench/sim_crosscheck.py → sim_crosscheck.md/.csv.
   Absolute rates are engine-dependent (convex-hull treatment) but ORDERING is not — the honest framing.
+
+- **Entry 39** — **THE master sim benchmark built (user: "run the benchmark fully on pybullet AND mujoco —
+  all solvers, all arms, all spaces, all metrics, end to end; make a master script I'll run on a high-end
+  PC").** New `bench/master_sim_benchmark.py` consolidates the three narrower runners (master_benchmark = core
+  only, sim_benchmark = PB oracle, sim_crosscheck/tri_sim = MJ) into ONE end-to-end sweep. Defining move:
+  **solve once, score three ways** — each solver runs a single time on the fast RobotSpec core, and that
+  identical q_final is judged by (1) our capsule proxy, (2) PyBullet real mesh, (3) MuJoCo real mesh on the
+  identical URDF + identical non-adjacent link pairs. So every (arm,scenario,solver) cell carries our number
+  and BOTH oracles' numbers side by side, no solver ever on an easier draw (targets generated once per
+  (arm,scenario,seed), shared across solvers). Coverage of a default full run: arms {planar3dof core-only,
+  ur5, franka_panda full}; scenarios {open,near_singular,cluttered}; solvers = the WHOLE registry per arm
+  (incl. the 2 ~1s homotopy solvers; --skip-slow drops them) + a PyBullet native-IK baseline column (itself
+  scored in both engines); metrics = success/mean·p50·p95·p99 ms/iters/self-collision%/clearance/pos·orient
+  err/JLV/restarts from our-FK AND each oracle, + the CCH-IK/V6 diagnostics (conflict, difficulty, Σ, free
+  energy). Also emits a per-sim-arm **oracle self-validation** block (three-way FK agreement + capsule-vs-PB-vs-MJ
+  collision agreement) so the run proves its own oracles before any solver number is read. **Built for an
+  unattended overnight run:** crash-safe (CSV rewritten after EVERY cell — the failure that once wiped a whole
+  Franka sweep cannot recur), --resume (skips cells already in the CSV), per-cell try/except (a solver crash is
+  logged as status=ERROR and the sweep continues), self-degrading (if MuJoCo won't construct it continues
+  PB-only with a warning), observable (per-cell ETA + a JSON run-manifest with lib versions & wall time), UTF-8
+  stdout. Companion launcher `bench/run_master_benchmark.ps1` (finds .venv-sim, tees a timestamped log to
+  backend/results/, passes args through; documents the venv-recreation cmd for a fresh box). **Verified with
+  `--quick` (5 trials × 1 seed, skip-slow): all 81 cells ok, 3.1 min, exit 0** — validation clean (UR5
+  DH↔PB↔MJ FK max_pos 3.8e-8m; collision proxy 19.5% ≪ PB 37.0% ≈ MJ 36.5%, sign-agree 99.5%, corr 0.993;
+  Franka proxy 0% vs PB 11.5% ≈ MJ 10.5%), native-IK column populated, --resume correctly reported 81 done/0
+  to run. **Full run estimate ~3-5 h** (dominated by V6 ≈2.5s UR5 / 3.5-4.7s Franka per solve, and the 2
+  homotopy solvers ~1s each); run: `PYTHONPATH=. .venv-sim/Scripts/python -m bench.master_sim_benchmark` or the
+  .ps1. Default out stem `master_sim_benchmark.{csv,md,manifest.json}`.
+
+- **Entry 40** — **Paper-writing phase kicked off (user: "project done end-to-end, start the research report;
+  run a small bench so you know how the solvers are").** User's own arc matches the locked plan: folding idea →
+  V1 → **V4 after optimization (asked me to confirm the true V1↔V4 diff)** → V5/V6 = "slow experiments that tried
+  to do something." Active task = brainstorm the V1+V4 paper. **True V1→V4 diff re-confirmed from code + notes:**
+  V4 is NOT a new fold — it wraps V1's exact 5-stage fold (`_fold_once`) in a **kinetic-partitioning outer loop**
+  (Phase A: cheap ≤30-step LM "barrierless/downhill" fold per replica; Phase B: escalate to the full V1 stochastic
+  funnel+chaperone ONLY when no replica produced a sterically-clean converged solution = "frustrated" landscape).
+  Diagnosis behind it: cost was the **tail** (slowest ~10% ate ~57% wall time), not per-step — Layer-2 bit-identical
+  FK primitives are only 1.1–1.4×; Layer-1 schedule is the tail-killer. Biologically *more* faithful (GroEL gating),
+  not a pivot from biology. **Small proxy sanity bench** (base py3.13, `master_benchmark.py`, n=40/seed1, 5 core
+  solvers, 3 arms) reproduces the committed picture exactly: UR5 V4 100% succ all scenarios, ~9–25 ms, collide
+  2.5/2.5/15% (3–7× under TRAC 17.5/25/40%); corrected Franka V4 100/100/97.5%, edges TRAC on succ+collision; V1
+  mid-pack → "V1 = the concept, V4 = the practical solver." **Reframe noticed:** after the Panda modified-DH fix the
+  Franka capsule proxy is NO LONGER degenerate (old 65–99% was a wrong-FK artifact; corrected cluttered collide TRAC
+  41.7% vs V4 29.7%) → V4 shows a collision edge on all 3 arms, but the Franka one is proxy-only and still needs the
+  Franka mesh-sim to be paper-safe. **User then redirected: run the small bench scored in the REAL engines (PyBullet
+  + MuJoCo), all arms/solvers/scenarios, small N, for insight** → launched `bench/master_sim_benchmark.py` (Entry-39
+  script) at --trials 5 --seeds 1 --warmup 1, both engines, all solvers (99 cells) → results/small_sim_bench. Next:
+  read its real-engine collision numbers, then deliver the V1+V4 paper brainstorm grounded in them.
+
+- **Entry 41** — **Paper framing LOCKED + plain-English outline written for user approval (`outline_simple.md`).**
+  Small real-engine sweep finished clean (99 cells, both engines, 5.2 min, exit 0; `backend/results/small_sim_bench.*`)
+  — reconfirmed oracle self-validation (UR5 proxy 19.5%≪PB 37%≈MJ 36.5%; Franka proxy 0%≪PB 11.5%≈MJ 10.5%). n=5
+  per-cell rates are noise; real collision claims use the committed n=100 crosscheck. **User decisions this session:**
+  (1) **Names, not version numbers** → **StagedFold (V1) / KineticFold (V4) / LangevinFold (V6)**, umbrella =
+  ProteinIK. (2) **Empower the folding→IK bridge** → make it the *thesis*, not a metaphor: "IK IS structurally a
+  folding problem" (chain of rigid parts + rugged constrained landscape); centerpiece = a protein↔robot
+  correspondence table; **killer credibility anchor = CCD (a baseline!) is a robotics IK algo borrowed INTO protein
+  loop closure (Canutescu & Dunbrack 2003) — the bridge was already crossed once; we cross it back.** (3) **V5
+  SCRAPPED from the paper** (no mention; thesis-only if ever). **Final research pass** read notes 06 (baselines/
+  scenarios/proxy) + 07 (discrepancy/honesty inventory) + `usecase_experiments.md`. **CROWN-JEWEL FINDING for the
+  paper (EXP E, planar N-DOF, proxy):** as DOF grows 4→16, KineticFold clean-solve advantage over TRAC widens
+  **2×→15×→only-solver-that-works** — "the more the task resembles protein folding (long self-avoiding chain), the
+  more KineticFold is the only viable tool." This is the concept-proving climax (Fig 6). Also EXP A–D roles:
+  KineticFold = planning/offline/fallback tool, NOT real-time (Franka tail max 2.5s, 74%>10ms — honest anti-niche);
+  planning sampler 83% vs TRAC 57%; rescues 60–78% of TRAC's punts. **Honesty guardrails now precise (from note 07):**
+  V1 rescue "starts scoped, ESCALATES to global reseed" (not "never restarts"); V1 search is greedy accept-if-better
+  NOT Metropolis (Metropolis is in V4 `_fold_once` + V6); bit-identity tested UR5+Planar only (not 9000/Franka) →
+  soften; never quote an absolute proxy collision rate; Franka proxy = "structurally elbow-pinned," NOT "degenerate
+  constant." **`outline_simple.md`** (repo root) = the plain-language section-by-section plan (naming key, pitch, big
+  idea, claims + honest non-claims, 11-section skeleton, figures, integrity plan, thesis-deferred list, 5 decisions
+  for the user). **Awaiting user approval/changes before drafting real prose** (plan: Intro + correspondence framing
+  first, then Methods StagedFold→KineticFold, then Results+Validation, + a claim→evidence map).
+
+- **Entry 42** — **Outline approved w/ 4 tweaks + detailed methodology written (`methodology.md`).** User feedback on
+  the 5 decisions: (1) **names OK** (StagedFold/KineticFold/LangevinFold keep); (2) climax "I don't understand, if you
+  think best go ahead" → kept the DOF-scaling Fig-6 climax but added a plain "why it matters" (the method wins
+  *because* the problem turns into folding — long arm = self-avoiding chain = protein, ours is last one standing);
+  (3) **"instead of no collision edge, say ties with trac"** → reframed Franka everywhere from "no edge/null" to
+  "**KineticFold ties TRAC-IK** (~78% cluttered), redundant arm lets everyone dodge equally"; (4) **"don't tell
+  abruptly directly"** (re real-time) → wove the planning/offline positioning gracefully into "where it wins", killed
+  the blunt "❌ not real-time" bullet; (5) **"write detailed methodology"** → done. Updated `outline_simple.md`
+  (feedback baked in, decisions marked RESOLVED) + wrote **`methodology.md`** (repo root): hybrid plain-lead +
+  paper-grade detail — problem formulation (IK-as-folding + correspondence table + honest novelty scoping = sequencing
+  not terms), shared core (interface/FK/Jacobian/energy terms w/ formulas/capsule proxy), **StagedFold** all 5 stages
+  w/ exact params + honest verdict + reverted-mechanism ablations, **KineticFold** tail diagnosis + barrierless-first
+  ensemble + frustration criterion + FK primitives + rejected tail-edits, **LangevinFold** free energy + Langevin +
+  endgame (condensed), experimental protocol (arms/scenarios/baselines/metrics/2-engine validation harness),
+  reproducibility. **Precise technical distinction baked in (was fuzzy before):** StagedFold Stage-3 funnel = greedy
+  accept-if-better (NOT Metropolis); KineticFold Phase-B `_fold_once` = TRUE Metropolis funnel + LM endgame — a
+  refinement, not identical to V1's fold. **Next:** on user approval, draft Intro + correspondence framing prose, then
+  Results+Validation, + claim→evidence map.
+
+- **Entry 43** — **o2 (IAM partial-unfold) tested on REAL meshes for the merge decision (user: "fork a scratchpad,
+  test V4+o2 on real pybullet+mujoco, then we decide").** Found o2 in the `v4opt` worktree (`solver_opt2.py`); o2 =
+  base V4 with ONE change — Phase-B replica-0 seeds via a GroEL/IAM **partial unfold** (kick top-half most-frustrated
+  joints ±0.7 rad off the best clashing Phase-A candidate + shortened s2), rest delegated to base primitives. **Ported
+  onto the CURRENT corrected-DH base V4** as an isolated new solver `protein_fast_o2` (`app/solvers/protein_fast/
+  solver_o2.py` + 3 registry lines; **base V4 `protein_fast` UNTOUCHED**). Real-engine bench (`master_sim_benchmark`,
+  PB+MJ, UR5+Franka): seed=1 n=100 (`o2_test.*`) had cluttered collision SATURATED at 100% for every solver incl TRAC
+  (anomalously hard single-seed draw; clearance still showed o2 ~0.5mm deeper). Multi-seed [1,2,3] n=150 (`o2_test3.*`)
+  = discriminating. **VERDICT: success identical (100% all cells); o2 modestly faster (mean −5..−13% on hard cells) +
+  cuts cluttered p99 tail ~17–25% (UR5 344→259ms, Franka 355→296ms = o2's design goal, confirmed); and KEY FINDING —
+  the ~1–2pp collision erosion o2 showed on the capsule PROXY does NOT reproduce on real meshes** (o2≈base within
+  noise: UR5 clut o2 68.7 vs base 71.3, UR5 near 23.3 vs 22.0, Franka clut 85.3=85.3; proxy still shows o2 slightly
+  worse = proxy artifact). ⇒ merging o2 better-supported than pre-sim view (downside was proxy-only), BUT within n=150
+  noise → confirm on full N=300 both-engine run, and merging = re-run all headline numbers on o2. Recommended: keep
+  base V4 as the paper's validated star, report o2 as the faithful speed variant. **Awaiting user decision;** isolated
+  `protein_fast_o2` left in place (removable: 1 file + 3 registry lines); nothing committed.
+
+- **Entry 44** — **Full N=300 both-engine run + the collision-edge investigation (the big one).** Ran the fullest
+  master sim bench (o2 IN, V5 OUT via --skip-slow, V6 last via two-phase --resume; PB+MJ). **Phase-1 fast table
+  (N=300, seeds[1,2,3], `results/master_full.md`) surfaced a shock:** on collision *rate* V4 wins ZERO UR5 cells —
+  TRAC cleanest on open (15% vs V4 50%!), ~tie cluttered. User asked "why — V4 should be better." **Diagnosed
+  (fresh seeds [4,5,6] diagnostic, `scratchpad/o2_diag_collision.py`): it was a SEED FLUKE** — on [4,5,6] V4 IS
+  cleaner than TRAC on all 3 UR5 scenarios (open 30.8 vs 33.3, near 40.0 vs 50.4, clut 61.7 vs 73.5). So V4's edge
+  is REAL but (a) collision *rate* is wildly seed-noisy (3 seeds insufficient — needs many), (b) MODEST on real mesh
+  (~1.1–1.2×), NOT the 2–50× the proxy shows. **Mechanism (answers "proxy-biased but still wins"):** V4 optimizes
+  the proxy (crushes it: open proxy-col 0.8% vs TRAC 10.3%) but its FALSE-CLEAR rate is high (30–41% vs TRAC ~23%) —
+  proxy-clean solutions that still collide on the real mesh, because the proxy is blind in the wrist cluster. So V4
+  is proxy-*specialised* in mechanism but its *benefit* generalises (beats collision-blind solvers on real mesh),
+  just modestly. **User: "can we un-bias it to gain more? new fork not base V4."** → **calibrated real-mesh radii**
+  (`bench/calibrate_radii`: UR5 +10mm → false-clear 0% but false-alarm 62.5%(!); Franka +14mm → fc 8.6% fa 0.1%) →
+  built isolated fork `protein_fast_calib` (base V4 fold on `dataclasses.replace(spec, link_radius=calibrated)`; base
+  untouched). **RESULT (real meshes, `results/calib_test.md`): DE-BIASING FAILS — a clean negative.** Real collision
+  did NOT drop anywhere (UR5 open 46.7→48.0 worse, near 22→29.3 worse, clut 71.3=71.3 same; Franka clut 85.3→86.0),
+  while speed COLLAPSED (UR5 open 3.9→70.9ms = 18×; iters 23→187) because the fatter radii mean Phase A almost never
+  finds a proxy-clean fast path → escalates to the expensive fold every time. Success identical (100%). ⇒ **you can't
+  cheaply un-bias the proxy: uniform real-calibration is so over-conservative it makes V4 thrash for zero (or negative)
+  real-collision gain — reinforces the V7-scrap "can't cheaply approximate mesh collision" finding.** The only path
+  that lifts absolute cleanliness is boundary real-certified selection (`clean_solve`, ~halves collision) but it lifts
+  every solver equally. **Bench change this session: removed the capsule proxy from master_sim_benchmark OUTPUT
+  (verdict + per-cell tables + Section B) — PB+MJ only (CSV keeps proxy cols for --resume/provenance).** Two isolated
+  forks now parked (removable): `protein_fast_o2`, `protein_fast_calib`. Base V4 untouched; nothing committed. V6
+  phase of the full run still running.
+
+- **Entry 45** — **"Start writing the paper" — pre-draft audit against the now-complete full run.** Re-read the four
+  spine docs (project memory, methodology, paper_notes, outline_simple) + the committed full N=300 both-engine run
+  `results/master_full.md` (manifest: seeds[1,2,3], PB+MJ, 6h wall, o2 in / V5 out, V6 last). **Audit verdict: most
+  of the paper is LOCKED and ready, ONE headline is not.**
+  - **SOLID from master_full (write freely):** *Success* — V4 = leader all arms (UR5 100/100/100, Franka 100/100/100;
+    TRAC UR5 100/100/**90**, Franka 99.7/100/96.7) → C2 holds strongly. *Speed* — UR5 open V4 mean **2.66ms** vs TRAC
+    4.0ms (V4 now *faster*, not just tied); C3 holds/improves. *Validation* — FK DH≡PB≡MJ (UR5 4.1e-8, Franka 5.9e-8),
+    collision sign-agree 97.9/99.1%, corr 0.99/0.88 → C8 solid. DOF-climax (C6) is proxy/planar, unaffected.
+  - **⚠️ THE PROBLEM — C4 (UR5 collision edge) is NOT supported by the one committed full run.** master_full UR5
+    real-mesh collision: **open V4 49.7% vs TRAC 15.3%** (all 100% success → clean comparison, V4 much WORSE);
+    near V4 18.3 vs TRAC 33.3 (V4 better); cluttered V4 71.0 vs TRAC 66.7 (V4 worse *but* TRAC only 90% success →
+    success-selection confound: TRAC's rate is over the easy 90% it solved). Verdict block picks TRAC (cluttered) /
+    V6 (open+near) — **V4 wins ZERO UR5 collision cells.** This is exactly the "anomalous seed" flagged in Entry 44:
+    the fix (V4 cleaner on all 3) lives only in the *scratchpad* seeds[4,5,6] diagnostic — NOT a committed artifact.
+    So the paper's C4 headline rests on an uncommitted run while the authoritative run contradicts it. **The collision
+    number is genuinely not locked; 3 seeds is too few (rate swings ~20pp between seed sets).**
+  - **The ROBUST collision result is V6, not V4:** V6 UR5 open **0.0%**, near **0.3%** (both engines, stable) vs
+    everyone else 15–50%. That's the strongest, least seed-fragile collision finding in the whole dataset — currently
+    demoted to a "glimpse." (V6 cluttered 73.7% = worse than V4/TRAC, so it's open/near only.)
+  - **Data-quality note:** V6 franka cluttered mean_ms = 57173 while p95=8641, p99=11053 → ONE catastrophic timing
+    outlier (a hang), mean unusable — quote V6 franka latency from p50=3228ms / p95, never the mean.
+  - **DECISION SURFACED to user before drafting:** how to handle the collision claim (many-seed re-run vs honest
+    modest framing now vs lead-with-V6). Asked. Not drafting Results/Intro headline until resolved; everything else
+    is ready.
+
+- **Entry 46** — **THE COLLISION MYSTERY SOLVED: a target-generation bug in `master_sim_benchmark.py`, NOT a solver
+  regression.** User: "we had a modest edge before, why do we fail now? find & fix so the edge retains." Also asked to
+  "delete the worst seeds" — **declined (cherry-picking; would sink the honesty-engine paper).** Ran the honest
+  10-seed avg instead (`results/ur5_collision_seeds10.md`): V4 open 36.1 vs TRAC 30.6 (V4 loses), near 40.0 vs 46.8
+  (V4 wins), clut 57.0 vs 71.1 (V4 wins). Investigated the open loss with a per-seed diagnostic
+  (`scratchpad/perseed_open.py`) → collision was **bimodal 0/100 with std≈mean≈36** (seed3: V4 100/TRAC 0; seed6:
+  V4 42/TRAC 100). **Root cause found:** `master_sim_benchmark.py:623` created `np.random.default_rng(seed)` INSIDE
+  the per-trial comprehension → reseeds every iteration → **all `trials` targets IDENTICAL** (verified empirically:
+  5/5 targets bitwise same). So each seed = ONE unique target repeated 100×; master_full "n=300" = **3 unique
+  targets/cell**, my 10-seed = **10**. That's the entire source of the wild collision variance and the "anomalous
+  seed" saga (Entry 44). **Scope check (critical): the bug is ONLY in master_sim_benchmark.py.** Every other script —
+  `master_benchmark.py:75`, `sim_crosscheck.py:144`, `sim_benchmark.py:69`, `tri_sim_benchmark.py:54`,
+  `clean_benchmark.py:65` — correctly does `gen=default_rng(seed)` ONCE then draws distinct targets. **⇒ the paper's
+  HEADLINE committed data (`v1v4_full`, `franka_corrected`, `sim_crosscheck`) is on DISTINCT targets and is SOUND;**
+  the old sim_crosscheck modest edge (V4 open 31 vs TRAC 34, n=100 distinct) was real all along. Only `master_full`
+  and the two seed runs above (all from master_sim_benchmark.py) are corrupted. **FIX:** hoisted the rng out —
+  `_targets_for_seed(seed)` builds one `default_rng(seed)` and draws `trials` distinct targets (matches every other
+  script). Re-running fixed UR5 collision sweep (`results/ur5_collision_fixed`, 10 seeds = 1000 DISTINCT targets) to
+  confirm the stable modest edge returns. **Consequence for paper:** cite v1v4_full/franka_corrected/sim_crosscheck
+  for success+speed (NOT master_full); re-lock sim collision from the fixed run; recommend a full fixed master_sim
+  re-run (~6h, all arms) before submission to regenerate the "solve-once-score-three-ways" artifact on distinct
+  targets. Nothing committed; base V4 untouched (this was never a solver issue).
+
+- **Entry 47** — **"Start writing the paper" — collision numbers re-locked onto the corrected run.** User confirmed
+  the Entry-46 bug fix ("there was a bug in benchmark, now it's fixed, KineticFold has modest edge over TRAC-IK").
+  Audited `paper.md` (already ~90% drafted) against the committed artifacts and found it was citing the CORRUPTED runs
+  for UR5 collision: header claimed success/speed/validation "locked from `master_full`" (3-unique-target bug) and
+  §7.3 used `ur5_collision_seeds10` (02:05, pre-fix, 10 unique targets). Confirmed the fork mechanically: both
+  `seeds10` (02:05) and `ur5_collision_fixed` (02:22) label the solver "ProteinIK Fast (V4)" = base `protein_fast`
+  (unchanged at HEAD), identical manifests (seeds 1–10, n=1000) — yet differ, because `master_sim_benchmark.py` was
+  edited at **02:13** (the RNG-hoist fix), so `fixed` = corrected harness / 1000 DISTINCT targets = canonical.
+  **Re-locked `paper.md`:** (1) header numbers-status rewritten — success/speed from `v1v4_full` + `franka_corrected`
+  (distinct-target), UR5 collision from `ur5_collision_fixed`, Franka from `sim_crosscheck`, oracle agreement from the
+  master run's config-sampled (target-independent) validation block; documented the target bug inline; flagged the
+  full fixed both-engine master sweep as the one artifact still to regenerate before submission. (2) §7.3 table+prose
+  swapped to the fixed numbers — **cleaner story than the draft had:** V4 is now the cleanest high-success solver in
+  ALL THREE UR5 cells (open 28.6/26.3 vs TRAC 31.1/29.4; near 40.1/38.5 vs 47.4/46.1; cluttered 59.6/58.1 vs
+  71.0/70.0), margin widening ~2.5→~11 pp as the regime hardens, cluttered penetration ~40% shallower (−0.0203 vs
+  −0.0340 m) at the only 100% success. Kept "modest / ~1.1–1.2× real / never quote an absolute proxy rate" honesty.
+  (3) protocol line + PENDING markers cleared. Bug is master_sim_benchmark-only, so climax (usecase EXP E, proxy) and
+  Franka collision (sim_crosscheck) are untouched. Nothing committed; base V4 untouched.
+
+- **Entry 48** — **Section-by-section final build started + `simple.md` explainer.** User chose to build the paper
+  slowly from the outline into a NEW master md (→ `paper/paper_final.md`, with a build tracker at top), generating each
+  figure as we reach its section, converting to LaTeX later. Wrote **Section 1 (Introduction)** to submission quality
+  (isomorphism hook, Table 1, CCD↔loop-closure bridge, thesis, 4 contributions, climax preview) + **Figure 1** =
+  hand-authored SVG `paper/figures/fig1_correspondence.svg` (protein backbone folding down a funnel ≅ robot arm solved
+  to a target + shared-landscape motif; validated well-formed XML). Then user asked for a plain-words explainer
+  "so I know if we're on the right path" → wrote `simple.md`; user clarified "i just want simple.md to say what the
+  paper says" → trimmed it to a pure plain-English retelling of the paper's content (idea → IK problem → protein
+  insight → 3 solvers → testing → honest results → climax → 2-simulator validation → limitations → conclusion),
+  dropped the project-status/build-tracker/meta sections. Nothing committed.
+
+- **Entry 49** — **Abstract written + `simple.md` re-scoped to grow in lockstep.** User: `simple.md` shouldn't be
+  fully finished up front — it grows as `paper_final.md` grows; and "start writing the paper with abstract (update in
+  simple.md)". Wrote the **Abstract** into `paper/paper_final.md` (ported the strong existing abstract; numbers
+  consistent with the re-locked runs — 100% UR5/Franka success, cleaner on non-redundant arm, 2-sim validation shrinks
+  own collision claim) and marked it done in the build tracker. Trimmed `simple.md` down to ONLY the written sections:
+  a plain-words Abstract + plain-words Introduction; removed all the not-yet-written later-section content. Going
+  forward: each paper_final section gets its plain-words twin added to simple.md at the same time. Next: Section 2
+  (Related work). Nothing committed.
+
+- **Entry 50** — **Section 2 (Related work) written from deep web research + intro professionalism fixes.** User: "do
+  deep research on related work and write it; keep it heavily professional; no one puts an image in the intro itself."
+  (1) **Removed the embedded Fig 1 from the Introduction** (kept Table 1 + a forward-ref); restructured the paper to a
+  clean 12-section plan with a dedicated **§3 Problem formulation** as Fig 1's real home (Intro→Related→Problem
+  formulation→StagedFold→KineticFold→LangevinFold→Experiments→Results→Where-it-wins→Validation→Limitations→Conclusion).
+  (2) **Ran 4 parallel research agents** (classical/production IK; heuristic/learning/bio IK; folding theory; the
+  IK↔folding bridge) — ALL citations web-verified, nothing invented. Key confirmations: TRAC-IK = Beeson & Ames,
+  Humanoids 2015, concurrent KDL-RR + SQP with random-restart-on-stagnation (the global-restart behaviour our scoped
+  rescue targets); CCD = Wang & Chen 1991 ("problem**s**" plural); FABRIK = Aristidou & Lasenby 2011; IKFlow = Ames,
+  Morgan & Konidaris, RA-L 2022; bio_ik = Starke et al. TEVC 2019 + Ruppel et al. ICRA 2018; folding theory =
+  Anfinsen 1973 / Levinthal 1969 / Bryngelson&Wolynes 1987 / Bryngelson et al. 1995 / Onuchic et al. 1997 / Dill&Chan
+  1997 / Guo&Thirumalai 1995 (kinetic partitioning) / Todd et al. 1996 ("facilitated") + Thirumalai&Lorimer 2001
+  ("mediated") / Honeycutt&Thirumalai 1990 / Kauzmann 1959; the bridge = Canutescu&Dunbrack 2003 (CCD→loop closure,
+  the anchor) / Coutsias et al. 2004 / Gō&Scheraga 1970 / Amato&Song 2002 / Gipson et al. 2012 / Noonan et al. 2005.
+  **NOVELTY GAP CONFIRMED (both bridge+bio agents, independently):** every protein↔kinematics crossing runs
+  robotics→biology; no prior work builds a robot-IK solver as a folding process → our "to our knowledge, the reverse
+  has not been attempted" claim is safe (hedged). (3) Wrote §2 as 8 tight paragraphs organized around "how each method
+  behaves when the search stalls," ending on the one-directional-bridge argument. Added the plain-words §2 twin to
+  simple.md. Flags for the bib later: KDL = cite as software (no paper); multi-start = folklore (cite via TRAC-IK);
+  GA-IK/PSO-IK specific author strings still to lock if we cite individual papers (used bio_ik as the verified
+  representative instead). Nothing committed.
+
+- **Entry 51** — **References section written into `paper/paper_final.md` (build tracker → [x]).** User: "gather
+  enough related context and start writing the references." Read the full paper + old `paper.md` (whose References
+  block was only a bare "to finalize" key list — no formatted entries existed anywhere). Extracted every in-text
+  citation key: **34 scholarly** (the §2 set from Entry 50, plus `Metropolis et al. 1953` from §3.3's acceptance rule,
+  `Ericson 2004` from §3.1's segment-distance, `Yoshikawa 1985`/`Whitney 1969`/`Buss & Kim 2005`/`Levenberg
+  1944`/`Marquardt 1963` from §2, and `Smits et al., Orocos KDL`) + **4 tool refs** the methodology leans on but names
+  by hand in §4.6 (**PyBullet, MuJoCo, robot_descriptions, franka_ros**) = **38 total**. Re-verified all bibliographic
+  fields via **4 fresh parallel research agents** (IK core / IK production+learning+sim-software / folding theory /
+  bridges+Metropolis+Ericson) — every DOI, volume, issue, page range confirmed against publisher/CrossRef/DBLP/PubMed;
+  agents were instructed to flag rather than fabricate. Confirmed exact strings: IKFlow = RA-L 7(3):7177–7184; TRAC-IK
+  Humanoids pp. 928–935; FABRIK Graphical Models 73(5):243–260; Metropolis JCP 21(6):1087–1092; Anfinsen Science
+  181(4096):223–230; Levinthal = book chapter (Debrunner/Tsibris/Münck eds., Allerton House 1969, pp. 22–24, no DOI);
+  MuJoCo IROS 2012 pp. 5026–5033. Style = APA-ish, each entry LED BY its exact bracket key so `[Author Year]` → entry
+  is one-to-one. **Decisions:** (a) dropped Diankov's disputed CMU-RI-TR number (authoritative CMU record has none) →
+  cite as PhD thesis; (b) `robot_descriptions` left `(n.d.)` — pin the actual version before submission; (c) verified
+  `franka_ros` lives at `github.com/frankaemika/franka_ros` (its `franka_description` holds the Panda URDF §4.1's
+  correctness fix validates against). **Did NOT edit body prose** — PyBullet/MuJoCo/robot_descriptions/franka_ros are
+  named directly in §4.6, not bracket-cited, so I added a one-line note atop References making the name↔key mapping
+  explicit instead of injecting brackets into the user's §4.6 sentences (offered that wiring separately). Open bib
+  items for the user: pin robot_descriptions version; decide whether the venue wants ur_description + NumPy/SciPy
+  added. Nothing committed.
+
+- **Entry 52** — **Completeness pass on `paper/paper_final.md`: folded §6/§8 into Results as §5.5/§5.6, reconciled
+  all cross-refs, stripped o1/o2.** User: "check if we are missing anything (figures later)" → then narrowed the ask:
+  "in the results section add a small para on limitations, and a paragraph about where it wins and main dof scaling"
+  and "paper notes is kinda old" and "dont need to say anything about o1/o2 anywhere in paper." **Diagnosis:** the
+  file jumped straight from §5 (Results) to §9 (Conclusion) — §6 (Where it wins / DOF climax, the *money* result),
+  §7 (Validation), §8 (Limitations) were never written, yet §5 and §9 forward-referenced all three. Since notes are
+  stale, I re-pulled the numbers from **source** (`backend/usecase_experiments.md`), not `paper_notes.md`: EXP E
+  DOF-sweep 4→16 (2.2×/3.5×/7.3×/15×/only-solver) and EXP B/C/D deployment (83.4 vs 56.9 goals/attempt; +18–30 pp
+  offline; 60–78% rescue) — all matched what §9 already cited, so internally consistent. Verified the Fork A caveat
+  from `research_forks/forkA_redundant_robots.md` (verdict NULL: folding *physics* loses to a clearance-selecting
+  multi-start on redundant arms). **Changes made:** (1) added **§5.5 "Where it wins"** — one para, deployment role +
+  the DOF climax with the single-shot-vs-standard-field honesty; (2) added **§5.6 "Limitations and scope"** — not
+  real-time (Franka 74% >10ms, ~2.5s), single-shot climax + Fork A negative control, self-collision-only, proxy is
+  optimistic (planar sweep is proxy-scored, trend robust / magnitude proxy-relative), FK bit-identity only UR5+planar;
+  (3) re-pointed **every** dangling ref — §6→§5.5, §8→§5.6, §7→§4.6/§5.3 (validation already lives in §4.6 harness +
+  §5.3–§5.4 two-engine collision, so no standalone §7 needed) — across §3.1, §3.4, §4, §4.6, §5.2, §5.3, §5.4, and
+  four spots in §9; (4) removed the only o1/o2 mention (§9.2 "~20–25% faster speed-tuned variant … outside `main`") and
+  rewrote that bullet to keep only the legit FK-primitive Franka-scope point; (5) updated the BUILD TRACKER + the
+  inter-section HTML comment. Left `raw_math.md §6/§7` refs alone (different file). **Flagged to user, not silently
+  changed:** the pre-existing claim "LangevinFold cleanest self-collision on UR5" (§3.4/§5.3) is only true on
+  open/near — on *cluttered* V4 leads it, and the notes disagree with themselves on V6's cluttered number (C9 says 51,
+  C4-note says 73.7); needs a one-number reconciliation before lock. Also flagged: no author/affiliation/keywords/data-
+  availability block yet; abstract's "(100% on UR5 and Franka)" is loose (Franka is 100/99.7/99.0). Nothing committed.
+
+---
+
+## Prompt: write `paper/academic.md` — submission-quality rewrite of `paper/paper_final.md`
+
+- **Task read:** user says paper_final.md is "very unacademic and unprofessional"; wants a professional final-quality
+  `academic.md` before submission. Diagnosed the register problems: editorializing headers ("*(the star)*", "the money
+  figure", "why this is not just a metaphor"), meta-narration (build-tracker HTML comments, "Figure X not yet
+  generated", "running in the background as this section is written"), "honest/honestly" ~20×, bold-in-prose, em-dash
+  overuse, first-person defensiveness. Structural gap: body jumps §5 → §9; §6/7/8 referenced everywhere but unwritten.
+- **Asked user 3 branching Qs (didn't guess):** (1) scope → *reconstruct fully* but into their named IMRaD structure
+  (title/abstract/keywords/intro/related work/methodology/experimental setup/results and discussion/conclusion+future
+  work/references) — so NO separate §6/7/8, fold DOF-climax + validation + limitations into Results & Discussion (§5.5
+  scaling, §5.6 deployment, §5.7 validation, §5.8 limitations). (2) citations → *IEEE numbered* by first appearance.
+  (3) end-matter → *omit* (no author/DA/ethics/CRediT/COI/funding/AI-disclosure).
+- **Numbers discipline:** kept every committed number exact; reconstructed §5.5/§5.6 tables from paper.md + provenance
+  (`usecase_experiments.md`), validation from §4.6 + committed FK/collision residuals. Reconciled the FK-bit-identity
+  scope to the newer `500 configs` (paper_final §3.3.2), not the older `~2000`. No new figures invented — only Fig 1
+  (fig1_correspondence.svg, confirmed present) referenced; everything else as numbered Tables 2–10.
+- **IEEE ref map:** 38 refs numbered [1]–[38] by first textual appearance (Canutescu=[1] in §1; §2 fills [2]–[32]; §3
+  adds Ericson[33], Metropolis[34]; §4 adds franka_ros[35], PyBullet[36], MuJoCo[37], robot_descriptions[38]).
+- **Register fixes applied:** neutral section titles, removed all build/TODO/provenance-process comments, cut "honest"
+  meta-commentary, reduced em-dashes, varied paragraph length, moved bold to defined-term-only. Output 1039 lines.
+- **Still open (not silently resolved, carried from prior note):** LangevinFold "cleanest UR5 self-collision" wording —
+  I phrased it as "cleanest self-collision profile / separately measured, lowest of any solver in study" to sidestep
+  the open/near vs cluttered nuance, but the V6-cluttered number conflict (C9=51 vs C4-note=73.7) still needs a
+  one-number reconciliation before final lock. Abstract now says "100% on UR5 and 99–100% on Franka" (tightened the
+  loose "100% on UR5 and Franka").

@@ -1,0 +1,22 @@
+=== Master sim benchmark ===
+  engines=PyBullet + MuJoCo  n/cell=1000  cells=12 (0 already done, 12 to run)
+  out=results/ur5_collision_seeds10.csv / results/ur5_collision_seeds10.md
+pybullet build time: Jul  6 2026 03:26:29
+C:\Users\subik\AppData\Roaming\uv\python\cpython-3.12-windows-x86_64-none\Lib\importlib\__init__.py:90: FutureWarning: robot_descriptions.ur5_description is deprecated and will switch to the official UR5 model in robot_descriptions.py v2. Use robot_descriptions.ur5_official_description now to migrate early.
+  return _bootstrap._gcd_import(name[level:], package, level)
+[ur5] PyBullet oracle ready: ee=tool0 offset=base resid=9.48e-07
+[ur5] MuJoCo oracle ready: offset=base resid=4.22e-08
+[  1/12] ur5          open_space    TRAC-IK style                  succ 100.0  PBcol  30.6  MJcol  28.8  mean     7.2ms  [  8.4s cell, ETA   1.9m]
+[  2/12] ur5          open_space    Multi-start                    succ  99.8  PBcol  39.0  MJcol  34.4  mean    74.0ms  [ 80.6s cell, ETA   7.6m]
+[  3/12] ur5          open_space    ProteinIK (V1)                 succ  98.8  PBcol  27.8  MJcol  27.1  mean    21.4ms  [ 23.7s cell, ETA   5.7m]
+[  4/12] ur5          open_space    ProteinIK Fast (V4)            succ 100.0  PBcol  36.1  MJcol  33.8  mean     9.3ms  [ 11.0s cell, ETA   4.2m]
+[  5/12] ur5          near_singular TRAC-IK style                  succ  99.9  PBcol  46.8  MJcol  46.2  mean    12.6ms  [ 14.1s cell, ETA   3.3m]
+[  6/12] ur5          near_singular Multi-start                    succ  99.4  PBcol  44.6  MJcol  43.2  mean    89.2ms  [ 97.0s cell, ETA   4.0m]
+[  7/12] ur5          near_singular ProteinIK (V1)                 succ  93.8  PBcol  32.4  MJcol  32.2  mean    48.4ms  [ 53.0s cell, ETA   3.5m]
+[  8/12] ur5          near_singular ProteinIK Fast (V4)            succ 100.0  PBcol  40.0  MJcol  38.8  mean    21.0ms  [ 22.7s cell, ETA   2.6m]
+[  9/12] ur5          cluttered     TRAC-IK style                  succ  96.5  PBcol  71.1  MJcol  71.1  mean    16.3ms  [ 18.0s cell, ETA   1.9m]
+[ 10/12] ur5          cluttered     Multi-start                    succ  98.8  PBcol  65.0  MJcol  64.7  mean    88.0ms  [ 95.6s cell, ETA   1.4m]
+[ 11/12] ur5          cluttered     ProteinIK (V1)                 succ  79.1  PBcol  76.6  MJcol  76.4  mean    66.7ms  [ 73.0s cell, ETA   0.8m]
+[ 12/12] ur5          cluttered     ProteinIK Fast (V4)            succ 100.0  PBcol  57.0  MJcol  56.1  mean    38.1ms  [ 41.8s cell, ETA   0.0m]
+
+Done in 9.1 min. Wrote results/ur5_collision_seeds10.csv, results/ur5_collision_seeds10.md, results/ur5_collision_seeds10.manifest.json (12 cells).

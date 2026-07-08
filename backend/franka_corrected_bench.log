@@ -25,3 +25,8 @@
 [franka_panda cluttered     Multi-start                 ] succ  86.7%  mean   117.5ms  p95   158.7  collide  38.3%
 [franka_panda cluttered     ProteinIK (V1)              ] succ  83.3%  mean    83.8ms  p95   195.0  collide  30.7%
 [franka_panda cluttered     Fixed-λ Homotopy (Baseline) ] succ  68.7%  mean  4040.1ms  p95  7306.5  collide  22.0%
+[franka_panda cluttered     ProteinIK Homotopy (CCH-IK) ] succ  68.0%  mean 71298.1ms  p95 14382.1  collide  19.0%
+[franka_panda cluttered     ProteinIK Fast (V4)         ] succ  99.0%  mean   271.2ms  p95  1342.0  collide  29.7%
+[franka_panda cluttered     ProteinIK Raw Biology (V6)  ] succ  94.7%  mean  9119.4ms  p95  9671.4  collide  28.0%
+
+Wrote franka_corrected_benchmark.csv and franka_corrected_benchmark.md  (30 cells).

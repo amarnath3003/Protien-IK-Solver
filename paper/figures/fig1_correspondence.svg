@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" font-family="Georgia, 'Times New Roman', serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-end">
+      <path d="M0,0 L10,5 L0,10 z" fill="#444"/>
+    </marker>
+    <marker id="arrowlite" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-end">
+      <path d="M0,0 L10,5 L0,10 z" fill="#888"/>
+    </marker>
+    <linearGradient id="funnel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e9edf4"/>
+      <stop offset="1" stop-color="#c3ccdb"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="960" height="470" fill="#ffffff"/>
+
+  <!-- Header -->
+  <text x="480" y="34" text-anchor="middle" font-size="19" font-weight="bold" fill="#1a1a1a">
+    A protein backbone and a robot arm are the same object
+  </text>
+  <text x="480" y="56" text-anchor="middle" font-size="13.5" fill="#555">
+    a chain of rigid segments whose only freedom is the rotation between neighbours
+  </text>
+
+  <!-- ===================== LEFT: PROTEIN ===================== -->
+  <text x="205" y="92" text-anchor="middle" font-size="14" font-weight="bold" letter-spacing="1.5" fill="#7a3b8f">PROTEIN FOLDING</text>
+
+  <!-- unfolded backbone (zig-zag of beads) -->
+  <g stroke="#7a3b8f" stroke-width="3" fill="#c79ad6">
+    <line x1="70" y1="150" x2="110" y2="120"/>
+    <line x1="110" y1="120" x2="150" y2="150"/>
+    <line x1="150" y1="150" x2="190" y2="120"/>
+    <line x1="190" y1="120" x2="230" y2="150"/>
+    <line x1="230" y1="150" x2="270" y2="120"/>
+    <circle cx="70" cy="150" r="7"/>
+    <circle cx="110" cy="120" r="7"/>
+    <circle cx="150" cy="150" r="7"/>
+    <circle cx="190" cy="120" r="7"/>
+    <circle cx="230" cy="150" r="7"/>
+    <circle cx="270" cy="120" r="7"/>
+  </g>
+  <!-- dihedral angle annotation -->
+  <path d="M 168 138 A 22 22 0 0 1 205 135" fill="none" stroke="#7a3b8f" stroke-width="1.4"/>
+  <text x="150" y="181" font-size="12.5" fill="#7a3b8f" font-style="italic">&#966;, &#968; &#8212; backbone dihedrals</text>
+
+  <!-- fold arrow -->
+  <line x1="150" y1="196" x2="150" y2="224" stroke="#444" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="163" y="214" font-size="12" fill="#444" font-style="italic">folds</text>
+
+  <!-- folded native state (compact blob) -->
+  <path d="M 205 300 q -55 -40 -20 -78 q 30 -34 66 -6 q 42 -30 52 22 q 30 34 -14 62 q -30 40 -84 0 z"
+        fill="#c79ad6" stroke="#7a3b8f" stroke-width="2.5"/>
+  <text x="205" y="356" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#7a3b8f">native state</text>
+
+  <!-- ===================== ISOMORPHISM ===================== -->
+  <text x="480" y="200" text-anchor="middle" font-size="52" fill="#1a1a1a">&#8773;</text>
+  <text x="480" y="232" text-anchor="middle" font-size="12" fill="#777" letter-spacing="1">structural</text>
+  <text x="480" y="247" text-anchor="middle" font-size="12" fill="#777" letter-spacing="1">isomorphism</text>
+
+  <!-- ===================== RIGHT: IK ===================== -->
+  <text x="755" y="92" text-anchor="middle" font-size="14" font-weight="bold" letter-spacing="1.5" fill="#1f6f6b">INVERSE KINEMATICS</text>
+
+  <!-- extended arm -->
+  <g stroke="#1f6f6b" stroke-width="4" fill="#7cc3bd" stroke-linecap="round">
+    <line x1="620" y1="160" x2="620" y2="150"/>
+    <line x1="620" y1="150" x2="672" y2="128"/>
+    <line x1="672" y1="128" x2="724" y2="150"/>
+    <line x1="724" y1="150" x2="776" y2="120"/>
+    <circle cx="620" cy="150" r="7"/>
+    <circle cx="672" cy="128" r="7"/>
+    <circle cx="724" cy="150" r="7"/>
+    <circle cx="776" cy="120" r="6" fill="#1f6f6b"/>
+  </g>
+  <rect x="608" y="160" width="24" height="9" fill="#1f6f6b"/>
+  <!-- joint angle annotation -->
+  <path d="M 690 140 A 20 20 0 0 1 724 138" fill="none" stroke="#1f6f6b" stroke-width="1.4"/>
+  <text x="660" y="181" font-size="12.5" fill="#1f6f6b" font-style="italic">q &#8212; joint angles</text>
+
+  <!-- solve arrow -->
+  <line x1="700" y1="196" x2="700" y2="224" stroke="#444" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="713" y="214" font-size="12" fill="#444" font-style="italic">solves IK</text>
+
+  <!-- posed arm reaching target -->
+  <g stroke="#1f6f6b" stroke-width="4" fill="#7cc3bd" stroke-linecap="round">
+    <line x1="675" y1="330" x2="675" y2="300"/>
+    <line x1="675" y1="300" x2="700" y2="270"/>
+    <line x1="700" y1="270" x2="742" y2="282"/>
+    <line x1="742" y1="282" x2="770" y2="258"/>
+    <circle cx="675" cy="300" r="6"/>
+    <circle cx="700" cy="270" r="6"/>
+    <circle cx="742" cy="282" r="6"/>
+  </g>
+  <rect x="663" y="330" width="24" height="9" fill="#1f6f6b"/>
+  <!-- target star -->
+  <path d="M 786 252 l 4 10 11 1 -8 8 2 11 -9 -6 -9 6 2 -11 -8 -8 11 -1 z" fill="#e0a500" stroke="#b98400" stroke-width="1"/>
+  <text x="742" y="356" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#1f6f6b">IK solution</text>
+
+  <!-- ===================== SHARED LANDSCAPE ===================== -->
+  <text x="480" y="398" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#333">
+    one search, one landscape
+  </text>
+  <!-- funnel -->
+  <path d="M 300 414 Q 480 414 660 414 L 520 452 Q 480 460 440 452 Z" fill="url(#funnel)" stroke="#9aa7bd" stroke-width="1.2"/>
+  <path d="M 300 414 Q 420 430 440 452" fill="none" stroke="#9aa7bd" stroke-width="1"/>
+  <path d="M 660 414 Q 540 430 520 452" fill="none" stroke="#9aa7bd" stroke-width="1"/>
+  <circle cx="480" cy="453" r="5.5" fill="#1a1a1a"/>
+  <text x="300" y="410" text-anchor="start" font-size="11.5" fill="#666" font-style="italic">local minima &#183; singular / frustrated regions &#183; self-overlap</text>
+  <text x="480" y="468" text-anchor="middle" font-size="11.5" fill="#666" font-style="italic">a single low-energy configuration</text>
+</svg>
