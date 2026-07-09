@@ -2,25 +2,9 @@
 
 - **100** trials/seed × seeds **[1, 2, 3]** (n=300 per cell)  |  warm-up 8 untimed solves/cell
 - Arms: planar3dof, ur5, franka_panda  |  Scenarios: open_space, near_singular, cluttered
-- Engines: PyBullet + MuJoCo  |  generated 2026-07-08 10:08:42
+- Engines: PyBullet + MuJoCo  |  generated (in progress)
 
 Each solver runs **once** on our DH `RobotSpec` core; that `q_final` is then scored by two independent real-mesh oracles — **PB** = PyBullet, **MJ** = MuJoCo (identical URDF & non-adjacent link pairs). The capsule proxy the solvers optimize against is **not** used to evaluate them here — only real-mesh collision counts (planar3dof has no URDF, so it carries success/speed only). `PyBullet native IK` is the sim's own solver on the identical targets. Timing is wall-clock (OS noise on mean/p95/p99); success/collision/error columns are deterministic given the seed.
-
-## Oracle validation — DH ≡ PyBullet ≡ MuJoCo
-
-### A. Forward-kinematics agreement
-
-| Arm | n | DH↔PB resid | DH↔MJ resid | PB↔MJ max pos | max orient |
-|:--|--:|--:|--:|--:|--:|
-| ur5 | 2000 | 9.5e-07 (base) | 4.2e-08 (base) | 4.11e-08 m | 5.93e-07 rad |
-| franka_panda | 2000 | 6.6e-07 (tool) | 8.7e-16 (tool) | 5.90e-08 m | 4.09e-07 rad |
-
-### B. Self-collision agreement — PyBullet vs MuJoCo
-
-| Arm | n | PB col% | MJ col% | PB↔MJ sign-agree% | PB↔MJ corr |
-|:--|--:|--:|--:|--:|--:|
-| ur5 | 2000 | 39.1 | 37.0 | 97.9 | 0.993 |
-| franka_panda | 2000 | 9.2 | 8.3 | 99.1 | 0.876 |
 
 ## Verdict — lowest real-mesh-collision solver per cell (among ≥90% success)
 
@@ -46,10 +30,13 @@ Each solver runs **once** on our DH `RobotSpec` core; that `q_final` is then sco
 | Jacobian (DLS) | 100.0 |   –   |   –   | 1.0 | 1.5 | 1.7 | 7 |   –   |   –   |   –   |   –   |   –   | 0.00 |
 | Multi-start | 100.0 |   –   |   –   | 43.3 | 63.3 | 71.4 | 260 |   –   |   –   |   –   |   –   |   –   | 0.00 |
 | ProteinIK Fast (V4) | 100.0 |   –   |   –   | 5.5 | 8.3 | 129.6 | 28 |   –   |   –   |   –   |   –   |   –   | 0.00 |
+| ProteinIK Fast (V4 real-calib) | 100.0 |   –   |   –   | 10.7 | 35.2 | 178.1 | 58 |   –   |   –   |   –   |   –   |   –   | 0.01 |
 | ProteinIK Fast (V4+o2 IAM) | 100.0 |   –   |   –   | 5.6 | 8.2 | 133.0 | 28 |   –   |   –   |   –   |   –   |   –   | 0.00 |
 | ProteinIK (V1) | 100.0 |   –   |   –   | 5.4 | 7.4 | 9.8 | 19 |   –   |   –   |   –   |   –   |   –   | 0.00 |
 | TRAC-IK style | 100.0 |   –   |   –   | 1.1 | 1.6 | 2.2 | 7 |   –   |   –   |   –   |   –   |   –   | 0.00 |
 | ProteinIK Raw Biology (V6) | 99.3 |   –   |   –   | 668.9 | 732.0 | 855.6 | 100 |   –   |   –   |   –   |   –   |   –   | 0.01 |
+| ProteinIK Homotopy (CCH-IK) | 92.7 |   –   |   –   | 606.1 | 1436.5 | 1653.7 | 729 |   –   |   –   |   –   |   –   |   –   | 0.07 |
+| Fixed-λ Homotopy (Baseline) | 92.3 |   –   |   –   | 648.9 | 1472.1 | 1730.3 | 767 |   –   |   –   |   –   |   –   |   –   | 0.03 |
 
 ## planar3dof — near_singular
 
@@ -58,11 +45,14 @@ Each solver runs **once** on our DH `RobotSpec` core; that `q_final` is then sco
 | Analytical IK (Planar 3-DOF, exact) | 100.0 |   –   |   –   | 0.1 | 0.1 | 0.1 | 1 |   –   |   –   |   –   |   –   |   –   | 0.00 |
 | Jacobian (DLS) | 100.0 |   –   |   –   | 7.3 | 17.4 | 18.6 | 42 |   –   |   –   |   –   |   –   |   –   | 0.00 |
 | ProteinIK Fast (V4) | 100.0 |   –   |   –   | 2.6 | 9.3 | 14.2 | 26 |   –   |   –   |   –   |   –   |   –   | 0.00 |
+| ProteinIK Fast (V4 real-calib) | 100.0 |   –   |   –   | 63.8 | 247.6 | 738.9 | 183 |   –   |   –   |   –   |   –   |   –   | 0.01 |
 | ProteinIK Fast (V4+o2 IAM) | 100.0 |   –   |   –   | 2.6 | 9.6 | 14.2 | 26 |   –   |   –   |   –   |   –   |   –   | 0.00 |
 | ProteinIK Raw Biology (V6) | 100.0 |   –   |   –   | 702.3 | 838.3 | 1270.3 | 100 |   –   |   –   |   –   |   –   |   –   | 0.00 |
 | ProteinIK (V1) | 99.3 |   –   |   –   | 31.7 | 66.4 | 80.7 | 80 |   –   |   –   |   –   |   –   |   –   | 0.00 |
 | TRAC-IK style | 99.3 |   –   |   –   | 7.3 | 23.2 | 40.6 | 43 |   –   |   –   |   –   |   –   |   –   | 0.00 |
 | Multi-start | 98.3 |   –   |   –   | 54.9 | 73.4 | 81.5 | 325 |   –   |   –   |   –   |   –   |   –   | 0.02 |
+| ProteinIK Homotopy (CCH-IK) | 86.3 |   –   |   –   | 676.5 | 1492.6 | 1664.8 | 823 |   –   |   –   |   –   |   –   |   –   | 0.10 |
+| Fixed-λ Homotopy (Baseline) | 83.7 |   –   |   –   | 717.0 | 1494.2 | 1585.8 | 864 |   –   |   –   |   –   |   –   |   –   | 0.04 |
 | CCD | 66.7 |   –   |   –   | 43.4 | 92.0 | 97.9 | 142 |   –   |   –   |   –   |   –   |   –   | 0.00 |
 | FABRIK | 33.3 |   –   |   –   | 45.7 | 62.3 | 70.8 | 115 |   –   |   –   |   –   |   –   |   –   | 0.67 |
 
@@ -72,11 +62,14 @@ Each solver runs **once** on our DH `RobotSpec` core; that `q_final` is then sco
 |:--|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
 | Analytical IK (Planar 3-DOF, exact) | 100.0 |   –   |   –   | 0.1 | 0.1 | 0.3 | 1 |   –   |   –   |   –   |   –   |   –   | 0.00 |
 | ProteinIK Fast (V4) | 100.0 |   –   |   –   | 62.2 | 251.0 | 445.4 | 240 |   –   |   –   |   –   |   –   |   –   | 0.00 |
+| ProteinIK Fast (V4 real-calib) | 100.0 |   –   |   –   | 65.4 | 258.9 | 478.6 | 219 |   –   |   –   |   –   |   –   |   –   | 0.00 |
 | ProteinIK Fast (V4+o2 IAM) | 100.0 |   –   |   –   | 45.6 | 201.6 | 360.9 | 192 |   –   |   –   |   –   |   –   |   –   | 0.00 |
 | ProteinIK Raw Biology (V6) | 99.3 |   –   |   –   | 722.2 | 871.5 | 981.9 | 100 |   –   |   –   |   –   |   –   |   –   | 0.01 |
 | TRAC-IK style | 97.0 |   –   |   –   | 15.1 | 42.5 | 51.6 | 87 |   –   |   –   |   –   |   –   |   –   | 0.01 |
 | ProteinIK (V1) | 93.0 |   –   |   –   | 25.3 | 85.6 | 99.7 | 62 |   –   |   –   |   –   |   –   |   –   | 0.06 |
 | Multi-start | 91.3 |   –   |   –   | 64.5 | 82.1 | 92.1 | 374 |   –   |   –   |   –   |   –   |   –   | 0.09 |
+| ProteinIK Homotopy (CCH-IK) | 85.7 |   –   |   –   | 696.2 | 1425.2 | 1643.8 | 855 |   –   |   –   |   –   |   –   |   –   | 0.13 |
+| Fixed-λ Homotopy (Baseline) | 84.3 |   –   |   –   | 731.7 | 1494.3 | 1610.4 | 874 |   –   |   –   |   –   |   –   |   –   | 0.07 |
 | CCD | 33.3 |   –   |   –   | 59.9 | 93.8 | 118.6 | 206 |   –   |   –   |   –   |   –   |   –   | 0.67 |
 | FABRIK | 33.3 |   –   |   –   | 41.2 | 62.5 | 72.0 | 103 |   –   |   –   |   –   |   –   |   –   | 0.67 |
 | Jacobian (DLS) | 0.0 |   –   |   –   | 34.6 | 38.0 | 48.3 | 200 |   –   |   –   |   –   |   –   |   –   | 1.00 |
