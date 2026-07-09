@@ -1,0 +1,22 @@
+=== Master sim benchmark ===
+  engines=PyBullet + MuJoCo  n/cell=1000  cells=48 (0 already done, 48 to run)
+  out=results/master_10seed_fast.csv / results/master_10seed_fast.md
+pybullet build time: Jul  2 2026 17:31:00
+C:\Users\Amarnath\AppData\Local\Programs\Python\Python310\lib\importlib\__init__.py:126: FutureWarning: robot_descriptions.ur5_description is deprecated and will switch to the official UR5 model in robot_descriptions.py v2. Use robot_descriptions.ur5_official_description now to migrate early.
+  return _bootstrap._gcd_import(name[level:], package, level)
+[ur5] PyBullet oracle ready: ee=tool0 offset=base resid=9.48e-07
+[ur5] MuJoCo oracle ready: offset=base resid=4.22e-08
+[ur5]  A/FK  PB↔MJ max_pos=4.11e-08m max_orient=5.93e-07rad
+[ur5]  B/col proxy 19.2%  PB 39.1%  MJ 37.0%  sign-agree 97.9%
+[  1/48] ur5          open_space    Jacobian (DLS)                 succ  52.2  PBcol  36.8  MJcol  34.0  mean    34.5ms  [ 37.4s cell, ETA  30.8m]
+[  2/48] ur5          open_space    CCD                            succ  45.1  PBcol  36.9  MJcol  35.0  mean   161.1ms  [175.3s cell, ETA  82.3m]
+[  3/48] ur5          open_space    FABRIK                         succ  47.4  PBcol  40.7  MJcol  38.9  mean   101.5ms  [109.9s cell, ETA  81.2m]
+[  4/48] ur5          open_space    TRAC-IK style                  succ  99.0  PBcol  31.1  MJcol  29.4  mean    13.7ms  [ 15.3s cell, ETA  62.4m]
+[  5/48] ur5          open_space    Multi-start                    succ  97.8  PBcol  30.7  MJcol  29.5  mean    99.2ms  [107.6s cell, ETA  64.2m]
+[  6/48] ur5          open_space    ProteinIK (V1)                 succ  94.5  PBcol  32.6  MJcol  30.2  mean    40.4ms  [ 43.8s cell, ETA  57.4m]
+[  7/48] ur5          open_space    ProteinIK Fast (V4)            succ 100.0  PBcol  28.6  MJcol  26.3  mean    17.2ms  [ 19.3s cell, ETA  49.9m]
+[  8/48] ur5          open_space    PyBullet native IK             succ   –    PBcol  43.0  MJcol  40.8  mean     8.0ms  [  8.9s cell, ETA  43.3m]
+[  9/48] ur5          near_singular Jacobian (DLS)                 succ  53.2  PBcol  48.6  MJcol  47.3  mean    37.6ms  [ 41.1s cell, ETA  40.6m]
+[ 10/48] ur5          near_singular CCD                            succ  35.7  PBcol  51.2  MJcol  49.3  mean   190.2ms  [208.0s cell, ETA  48.8m]
+[ 11/48] ur5          near_singular FABRIK                         succ  36.2  PBcol  54.4  MJcol  53.0  mean   123.0ms  [133.8s cell, ETA  50.8m]
+[ 12/48] ur5          near_singular TRAC-IK style                  succ  97.2  PBcol  47.4  MJcol  46.1  mean    19.2ms  [ 21.1s cell, ETA  46.4m]
