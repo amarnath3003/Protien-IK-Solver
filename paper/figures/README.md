@@ -24,7 +24,8 @@ cover (it needs planar N-DOF arms).
 | `fig_validation.py`      | `fig_validation.{pdf,png}`      | master CSV | P2 |
 | `fig_deployment.py`      | `fig_deployment.{pdf,png}`      | master CSV | P2 |
 | `fig_energy_trace.py`    | `fig_energy_trace.{pdf,png}`    | runs a solve (`collect_steps`) | P2 |
-| `make_tables.py`         | `../tables/tab_*.tex`           | master + collision CSV, usecase JSON | — |
+| `fig_langevin.py`        | `fig_langevin.{pdf,png}`        | `langevin_bench.csv` (separate run) | mini |
+| `make_tables.py`         | `../tables/tab_*.tex`           | master + collision + langevin CSV, usecase JSON | — |
 | `../tables/tables_static.tex` | hand-authored T1–T4 (isomorphism, robots, thresholds, baselines) | — | — |
 
 `_style.py` holds the shared style, the fixed **solver → colour** map (colour
@@ -56,6 +57,23 @@ python fig_success.py       --csv  ../../backend/results/master_10seed_fast.csv
 python fig_collision_ur5.py --csv  ../../backend/results/master_10seed_fast.csv
 python make_tables.py       --csv ... --collision-csv ... --json ...
 ```
+
+## LangevinFold mini-benchmark (separate, small-scale)
+
+LangevinFold (`protein_raw`) costs ~seconds/solve, so it is excluded from the master
+sweep and gets its own small run — but scored the *same* three-way way (it reuses the
+master harness). Run it on your sim env, then rebuild the figure/table:
+
+```bash
+cd backend
+PYTHONPATH=. .venv-sim/Scripts/python -m bench.langevin_benchmark          # -> results/langevin_bench.{csv,md}
+# then, from paper/figures:
+python fig_langevin.py       # -> fig_langevin.{pdf,png}
+python make_tables.py        # -> ../tables/tab_langevin.tex  (auto-picks up langevin_bench.csv)
+```
+
+`fig_langevin.py` / `tab_langevin` self-skip with a message until `langevin_bench.csv`
+exists, so `build_all.py` never fails when the run hasn't happened yet.
 
 ## Default input paths (override on the CLI)
 

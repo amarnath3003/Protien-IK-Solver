@@ -2,7 +2,7 @@
 
 - **100** trials/seed × seeds **[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]** (n=1000 per cell)  |  warm-up 8 untimed solves/cell
 - Arms: ur5, franka_panda  |  Scenarios: open_space, near_singular, cluttered
-- Engines: PyBullet + MuJoCo  |  generated (in progress)
+- Engines: PyBullet + MuJoCo  |  generated 2026-07-10 18:29:27
 
 Each solver runs **once** on our DH `RobotSpec` core; that `q_final` is then scored by two independent real-mesh oracles — **PB** = PyBullet, **MJ** = MuJoCo (identical URDF & non-adjacent link pairs). The capsule proxy the solvers optimize against is **not** used to evaluate them here — only real-mesh collision counts (planar3dof has no URDF, so it carries success/speed only). `PyBullet native IK` is the sim's own solver on the identical targets. Timing is wall-clock (OS noise on mean/p95/p99); success/collision/error columns are deterministic given the seed.
 
@@ -12,14 +12,12 @@ Each solver runs **once** on our DH `RobotSpec` core; that `q_final` is then sco
 
 | Arm | n | DH↔PB resid | DH↔MJ resid | PB↔MJ max pos | max orient |
 |:--|--:|--:|--:|--:|--:|
-| ur5 | 2000 | 9.5e-07 (base) | 4.2e-08 (base) | 4.11e-08 m | 5.93e-07 rad |
 | franka_panda | 2000 | 6.6e-07 (tool) | 8.0e-16 (tool) | 5.90e-08 m | 4.09e-07 rad |
 
 ### B. Self-collision agreement — PyBullet vs MuJoCo
 
 | Arm | n | PB col% | MJ col% | PB↔MJ sign-agree% | PB↔MJ corr |
 |:--|--:|--:|--:|--:|--:|
-| ur5 | 2000 | 39.1 | 37.0 | 97.9 | 0.993 |
 | franka_panda | 2000 | 9.2 | 8.3 | 99.1 | 0.876 |
 
 ## Verdict — lowest real-mesh-collision solver per cell (among ≥90% success)
@@ -31,7 +29,7 @@ Each solver runs **once** on our DH `RobotSpec` core; that `q_final` is then sco
 | ur5 | cluttered | ProteinIK Fast (V4) | ProteinIK Fast (V4) |
 | franka_panda | open_space | Multi-start | Multi-start |
 | franka_panda | near_singular | Multi-start | Multi-start |
-| franka_panda | cluttered | — | — |
+| franka_panda | cluttered | ProteinIK Fast (V4) | ProteinIK Fast (V4) |
 
 ## ur5 — open_space
 
@@ -102,4 +100,11 @@ Each solver runs **once** on our DH `RobotSpec` core; that `q_final` is then sco
 
 | Solver | Succ% | PB succ% | MJ succ% | Mean ms | p95 | p99 | Iters | PB col% | MJ col% | PB clr | MJ clr | PB pos mm | JLV |
 |:--|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| ProteinIK Fast (V4) | 98.7 | 98.3 | 98.3 | 123.1 | 656.0 | 832.5 | 222 | 81.7 | 81.2 | -0.0467 | -0.0454 | 0.674 | 0.30 |
+| TRAC-IK style | 92.6 | 92.6 | 92.6 | 28.6 | 105.4 | 108.4 | 81 | 82.4 | 81.8 | -0.0502 | -0.0490 | 1.625 | 0.45 |
+| Multi-start | 88.4 | 88.4 | 88.4 | 132.9 | 175.9 | 183.5 | 363 | 82.0 | 81.3 | -0.0492 | -0.0481 | 2.558 | 0.30 |
+| ProteinIK (V1) | 85.5 | 85.5 | 85.5 | 97.8 | 250.5 | 256.3 | 84 | 78.1 | 77.4 | -0.0441 | -0.0430 | 38.987 | 0.39 |
 | Jacobian (DLS) | 37.4 | 37.4 | 37.4 | 51.4 | 78.9 | 81.6 | 135 | 71.9 | 71.5 | -0.0427 | -0.0416 | 116.618 | 2.04 |
+| FABRIK | 20.5 | 20.5 | 20.5 | 175.4 | 221.5 | 224.2 | 125 | 81.1 | 80.7 | -0.0454 | -0.0441 | 50.258 | 1.58 |
+| CCD | 15.0 | 15.0 | 15.0 | 275.4 | 325.6 | 337.0 | 264 | 83.9 | 83.3 | -0.0511 | -0.0499 | 21.744 | 1.69 |
+| PyBullet native IK |   –   | 94.6 | 94.6 | 4.1 | 12.5 | 12.8 |   –   | 87.6 | 87.3 | -0.0654 | -0.0639 | 3.588 |   –   |

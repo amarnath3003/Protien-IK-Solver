@@ -1,0 +1,84 @@
+{
+  "E": [
+    {
+      "exp": "E",
+      "dof": 4,
+      "solver": "protein_fast",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 75.83333333333333
+    },
+    {
+      "exp": "E",
+      "dof": 4,
+      "solver": "trac_ik_style",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 34.166666666666664
+    },
+    {
+      "exp": "E",
+      "dof": 6,
+      "solver": "protein_fast",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 59.166666666666664
+    },
+    {
+      "exp": "E",
+      "dof": 6,
+      "solver": "trac_ik_style",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 16.666666666666664
+    },
+    {
+      "exp": "E",
+      "dof": 8,
+      "solver": "protein_fast",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 36.666666666666664
+    },
+    {
+      "exp": "E",
+      "dof": 8,
+      "solver": "trac_ik_style",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 5.0
+    },
+    {
+      "exp": "E",
+      "dof": 12,
+      "solver": "protein_fast",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 11.666666666666666
+    },
+    {
+      "exp": "E",
+      "dof": 12,
+      "solver": "trac_ik_style",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 0.8333333333333334
+    },
+    {
+      "exp": "E",
+      "dof": 16,
+      "solver": "protein_fast",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 1.6666666666666667
+    },
+    {
+      "exp": "E",
+      "dof": 16,
+      "solver": "trac_ik_style",
+      "n": 120,
+      "solved_pct": 100.0,
+      "clean_pct": 0.0
+    }
+  ]
+}

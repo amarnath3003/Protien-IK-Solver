@@ -877,7 +877,7 @@ climax.** We then grow a planar arm from 4 to 16 joints in the `cluttered` scena
 geometry, progressively more like a self-avoiding polymer — and measure single-shot *clean-solve* rate (reach the
 target *and* clear self-collision). Both KineticFold and TRAC-IK-style reach the target 100% of the time at every
 length; the entire difference is self-collision avoidance. KineticFold's clean-solve advantage over the standard
-field widens monotonically as the chain lengthens — **2.2× at 4 DOF, 3.5× at 6, 7.3× at 8, 15× at 12** — until at
+field widens monotonically as the chain lengthens — **2.2× at 4 DOF, 3.5× at 6, 7.3× at 8, 14× at 12** — until at
 **16 DOF it is the only method of the standard field still producing collision-free folds at all** (TRAC-IK-style:
 0.0% clean). This is the concept proving itself: a short arm is easy for every solver, but a long one *is* a folding
 polymer, and the method built from folding is the last one standing. We state it precisely, not triumphantly — it is
@@ -929,7 +929,7 @@ redundant Franka for the structural reason §5.4 gives — the cleanest practica
 independently on two physics engines that never saw our own proxy (§4.6). And the single
 result that turns the paper's thesis from an analogy into a mechanism is the climax (§5.5): as a planar arm is lengthened
 from 4 to 16 joints and made progressively more polymer-like, KineticFold's single-shot clean-solve advantage over
-the standard field widens monotonically — 2.2× at 4 DOF, 3.5× at 6, 7.3× at 8, 15× at 12, and by 16 DOF it is the
+the standard field widens monotonically — 2.2× at 4 DOF, 3.5× at 6, 7.3× at 8, 14× at 12, and by 16 DOF it is the
 only method of the standard field still producing collision-free solutions at all (`usecase_experiments.md`, EXP E).
 We report that result carefully, not triumphantly: it is a **single-shot** advantage over the standard baseline
 field specifically, and a clearance-selecting multi-start wrapper — an orthogonal, honestly-reported counter-finding

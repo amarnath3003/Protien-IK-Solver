@@ -53,3 +53,20 @@ C:\Users\Amarnath\AppData\Local\Programs\Python\Python310\lib\importlib\__init__
 [ 39/48] franka_panda near_singular ProteinIK Fast (V4)            succ  99.5  PBcol  10.0  MJcol   8.9  mean    31.8ms  [ 34.4s cell, ETA  13.2m]
 [ 40/48] franka_panda near_singular PyBullet native IK             succ   –    PBcol  23.2  MJcol  22.9  mean    10.4ms  [ 11.9s cell, ETA  11.5m]
 [ 41/48] franka_panda cluttered     Jacobian (DLS)                 succ  37.4  PBcol  71.9  MJcol  71.5  mean    51.4ms  [ 56.6s cell, ETA  10.0m]
+[ 42/48] franka_panda cluttered     CCD                            succ  15.0  PBcol  83.9  MJcol  83.3  mean   275.4ms  [298.4s cell, ETA   9.2m]
+=== Master sim benchmark ===
+  engines=PyBullet + MuJoCo  n/cell=1000  cells=48 (42 already done, 6 to run)
+  out=results/master_10seed_fast.csv / results/master_10seed_fast.md
+pybullet build time: Jul  2 2026 17:31:00
+[franka_panda] PyBullet oracle ready: ee=panda_link8 offset=tool resid=6.60e-07
+[franka_panda] MuJoCo oracle ready: offset=tool resid=7.99e-16
+[franka_panda]  A/FK  PB↔MJ max_pos=5.90e-08m max_orient=4.09e-07rad
+[franka_panda]  B/col proxy 0.5%  PB 9.2%  MJ 8.3%  sign-agree 99.1%
+[  1/6] franka_panda cluttered     FABRIK                         succ  20.5  PBcol  81.1  MJcol  80.7  mean   175.4ms  [190.2s cell, ETA  17.8m]
+[  2/6] franka_panda cluttered     TRAC-IK style                  succ  92.6  PBcol  82.4  MJcol  81.8  mean    28.6ms  [ 32.4s cell, ETA   8.9m]
+[  3/6] franka_panda cluttered     Multi-start                    succ  88.4  PBcol  82.0  MJcol  81.3  mean   132.9ms  [145.5s cell, ETA   7.2m]
+[  4/6] franka_panda cluttered     ProteinIK (V1)                 succ  85.5  PBcol  78.1  MJcol  77.4  mean    97.8ms  [107.9s cell, ETA   4.7m]
+[  5/6] franka_panda cluttered     ProteinIK Fast (V4)            succ  98.7  PBcol  81.7  MJcol  81.2  mean   123.1ms  [135.1s cell, ETA   2.4m]
+[  6/6] franka_panda cluttered     PyBullet native IK             succ   –    PBcol  87.6  MJcol  87.3  mean     4.1ms  [  4.9s cell, ETA   0.0m]
+
+Done in 12.3 min. Wrote results/master_10seed_fast.csv, results/master_10seed_fast.md, results/master_10seed_fast.manifest.json (48 cells).

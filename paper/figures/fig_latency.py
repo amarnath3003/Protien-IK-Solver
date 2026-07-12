@@ -1,13 +1,13 @@
-"""F4 -- latency distribution: median-fast, with a bounded tail concentrated exactly
-where the frustration diagnosis predicts.
+"""F4 -- per-solve latency across the whole solver field: median vs mean.
 
-For four (arm, scenario) cells this draws, per solver, the p50 -> p99 interval on a
-LOG time axis with markers at p50 / p95 / p99 and a caret at the mean. KineticFold's
-barrierless-first schedule makes its median 2-2.5x below TRAC-IK everywhere, at the
-cost of a heavier tail on the hardest cell (Franka cluttered) -- a story a table of
-percentiles renders poorly and a picture renders instantly.
+For each arm (UR5, Franka) this draws, for every solver, its median (p50) and mean
+wall-clock latency as two grouped bars on a LOG time axis, with the millisecond
+value printed on each bar. The open-space regime is used so every solver is timed
+on targets it actually attempts (on the harder regimes the simple baselines fail
+outright and LangevinFold carries a measurement outlier). KineticFold has the
+fastest typical solve of the practical field; LangevinFold alone runs offline-slow.
 
-Source: master CSV (needs p50_ms/p95_ms/p99_ms/mean_ms columns).
+Source: broad 3-seed survey (master_full.csv) -- the paper's speed source.
 Run:    python fig_latency_tail.py [--csv path/to/master_full.csv]
 """
 from __future__ import annotations
@@ -20,71 +20,71 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _style as S
 
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
+import numpy as np
 
-CELLS = [("ur5", "open_space"), ("ur5", "cluttered"),
-         ("franka_panda", "open_space"), ("franka_panda", "cluttered")]
-SOLVERS = ["trac_ik_style", "protein_fast"]
+SCENARIO = "open_space"
+# weak -> strong (LangevinFold excluded: offline, seconds/solve -- off the scale)
+ORDER = ["ccd", "fabrik", "jacobian_dls", "protein_ik",
+         "multi_start", "trac_ik_style", "protein_fast"]
+METRICS = [("p50_ms", "median", "#1f6f6b"), ("mean_ms", "mean", "#e08a3c")]
+FLOOR = 0.7  # ms; log-scale bar base
+
+
+def _fmt(v: float) -> str:
+    if v != v:
+        return ""
+    if v < 10:
+        return f"{v:.1f}"
+    if v < 1000:
+        return f"{v:.0f}"
+    return f"{v / 1000:.1f}k"
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--csv", default=str(S.DEFAULT_MASTER_CSV))
+    # Latency is reported from the broad 3-seed survey (master_full); success and
+    # collision come from the 10-seed run.
+    ap.add_argument("--csv", default=str(S.REPO / "backend" / "results" / "master_full.csv"))
     args = ap.parse_args()
 
     S.use_paper_style()
     rows = S.load_rows(args.csv)
+    arms = [a for a in ("ur5", "franka_panda") if S.cell(rows, a, SCENARIO)]
 
-    cells = [c for c in CELLS if S.cell(rows, *c)]
-    fig, ax = plt.subplots(figsize=(S.COL * 2, S.COL * 1.05))
+    fig, axes = plt.subplots(1, len(arms), figsize=(S.WIDE, S.WIDE * 0.44), sharey=True)
+    if len(arms) == 1:
+        axes = [axes]
 
-    yticks, ylabels, y = [], [], 0.0
-    for robot, scen in cells:
-        c = S.cell(rows, robot, scen)
-        group_top = y
-        for sid in SOLVERS:
-            r = c.get(sid)
-            if not r:
-                continue
-            col = S.color(sid)
-            ax.plot([r["p50_ms"], r["p99_ms"]], [y, y], color=col, lw=1.4, zorder=2)
-            ax.scatter(r["p50_ms"], y, color=col, s=34, zorder=4)            # p50
-            ax.scatter(r["p95_ms"], y, color=col, s=30, marker="D", zorder=4)  # p95
-            ax.scatter(r["p99_ms"], y, color="white", edgecolor=col, s=30,
-                       linewidth=1.2, zorder=4)                              # p99
-            ax.scatter(r["mean_ms"], y, color=col, marker="|", s=90,
-                       linewidth=1.4, zorder=3)                              # mean
-            ax.text(r["p50_ms"], y + 0.18, S.label(sid), fontsize=6.2,
-                    color=col, ha="left", va="bottom")
-            yticks.append(y)
-            ylabels.append("")
-            y += 1.0
-        # cell label centred on the group
-        ax.text(-0.02, (group_top + y - 1) / 2,
-                f"{ {'ur5':'UR5','franka_panda':'Franka'}[robot] }\n{S.SCEN_LABEL[scen]}",
-                transform=ax.get_yaxis_transform(), ha="right", va="center",
-                fontsize=7, fontweight="bold")
-        y += 0.7  # gap between cells
+    top = 0.0
+    for ax, arm in zip(axes, arms):
+        c = S.cell(rows, arm, SCENARIO)
+        solvers = [s for s in ORDER if s in c]
+        x = np.arange(len(solvers))
+        w = 0.40
+        for k, (metric, mlabel, mcolor) in enumerate(METRICS):
+            vals = [c.get(s, {}).get(metric, float("nan")) for s in solvers]
+            top = max([top] + [v for v in vals if v == v])
+            heights = [(v - FLOOR) if v == v else float("nan") for v in vals]
+            bars = ax.bar(x + (k - 0.5) * w, heights, w, bottom=FLOOR,
+                          color=mcolor, edgecolor="white", linewidth=0.4,
+                          label=mlabel, zorder=3)
+            ax.bar_label(bars, labels=[_fmt(v) for v in vals], padding=1.5,
+                         fontsize=5.4, rotation=90)
+        ax.set_yscale("log")
+        ax.set_xticks(x)
+        ax.set_xticklabels([S.label(s) for s in solvers], rotation=32, ha="right")
+        ax.set_title({"ur5": "UR5 (6-DOF, non-redundant)",
+                      "franka_panda": "Franka Panda (7-DOF, redundant)"}[arm])
+        ax.grid(axis="x", visible=False)
+    axes[0].set_ylabel("Wall-clock latency (ms, log scale)")
+    for ax in axes:
+        ax.set_ylim(FLOOR, top * 3.0)
+    axes[0].legend(loc="upper right", title="per-solve latency")
+    fig.suptitle("KineticFold has the fastest typical solve of the practical solver field",
+                 fontsize=10, fontweight="bold", y=1.02)
+    fig.subplots_adjust(bottom=0.24, wspace=0.06)
 
-    ax.set_xscale("log")
-    ax.set_xlabel("Wall-clock latency (ms, log scale)")
-    ax.set_yticks([])
-    ax.set_ylim(-0.6, y - 0.4)
-    ax.margins(x=0.08)
-    ax.grid(axis="y", visible=False)
-    ax.set_title("KineticFold: faster median, tail only on the hardest cell")
-
-    marker_legend = [
-        Line2D([0], [0], marker="o", color="#444", ls="", label="p50 (median)"),
-        Line2D([0], [0], marker="D", color="#444", ls="", label="p95"),
-        Line2D([0], [0], marker="o", mfc="white", mec="#444", color="#444", ls="", label="p99"),
-        Line2D([0], [0], marker="|", color="#444", ls="", label="mean"),
-    ]
-    ax.legend(handles=marker_legend, ncol=4, loc="upper center",
-              bbox_to_anchor=(0.5, -0.16))
-    fig.subplots_adjust(left=0.16, bottom=0.24)
-
-    S.save(fig, "fig_latency_tail")
+    S.save(fig, "fig_latency")
 
 
 if __name__ == "__main__":

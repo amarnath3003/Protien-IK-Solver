@@ -1,0 +1,14 @@
+
+=== EXP E: hyper-redundant folding — clean-solve vs DOF (the protein regime) ===
+  [planar  4-DOF  ProteinIK Fast (V4)   ] solved 100.0%  CLEAN  75.8%
+  [planar  4-DOF  TRAC-IK style         ] solved 100.0%  CLEAN  34.2%
+  [planar  6-DOF  ProteinIK Fast (V4)   ] solved 100.0%  CLEAN  59.2%
+  [planar  6-DOF  TRAC-IK style         ] solved 100.0%  CLEAN  16.7%
+  [planar  8-DOF  ProteinIK Fast (V4)   ] solved 100.0%  CLEAN  36.7%
+  [planar  8-DOF  TRAC-IK style         ] solved 100.0%  CLEAN   5.0%
+  [planar 12-DOF  ProteinIK Fast (V4)   ] solved 100.0%  CLEAN  11.7%
+  [planar 12-DOF  TRAC-IK style         ] solved 100.0%  CLEAN   0.8%
+  [planar 16-DOF  ProteinIK Fast (V4)   ] solved 100.0%  CLEAN   1.7%
+  [planar 16-DOF  TRAC-IK style         ] solved 100.0%  CLEAN   0.0%
+
+DONE in 20.6s -> scrap/dof_scaling_rerun.json

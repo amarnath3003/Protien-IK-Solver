@@ -3,17 +3,17 @@
 \centering
 \caption{Success rate (\%), Franka Panda (corrected kinematics).}
 \label{tab:success_franka}
-\begin{tabular}{lrr}
+\begin{tabular}{lrrr}
 \toprule
-Solver & open & near-sing. \\
+Solver & open & near-sing. & cluttered \\
 \midrule
-CCD & 27.1 & 15.5 \\
-FABRIK & 21.1 & 12.7 \\
-Jacobian-DLS & 47.6 & 48.9 \\
-StagedFold & 96.9 & 92.5 \\
-Multi-start & 97.0 & 95.1 \\
-TRAC-IK-style & 98.5 & 97.0 \\
-\textbf{KineticFold} & \textbf{99.8} & \textbf{--} \\
+CCD & 27.1 & 15.5 & 15.0 \\
+FABRIK & 21.1 & 12.7 & 20.5 \\
+Jacobian-DLS & 47.6 & 48.9 & 37.4 \\
+StagedFold & 96.9 & 92.5 & 85.5 \\
+Multi-start & 97.0 & 95.1 & 88.4 \\
+TRAC-IK-style & 98.5 & 97.0 & 92.6 \\
+\textbf{KineticFold} & \textbf{99.8} & \textbf{99.5} & \textbf{98.7} \\
 \bottomrule
 \end{tabular}
 \end{table}

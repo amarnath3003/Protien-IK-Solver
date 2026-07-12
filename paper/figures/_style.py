@@ -42,6 +42,7 @@ TABLE_DIR = PAPER_DIR / "tables"                    # paper/tables
 DEFAULT_MASTER_CSV    = REPO / "backend" / "results" / "master_10seed_fast.csv"  # THE master sim benchmark
 DEFAULT_COLLISION_CSV = REPO / "backend" / "results" / "master_10seed_fast.csv"  # same file (carries pb_/mj_ collision)
 DEFAULT_USECASE_JSON  = REPO / "backend" / "scrap"   / "usecase_results.json"    # DOF scaling (SEPARATE experiment)
+DEFAULT_LANGEVIN_CSV  = REPO / "backend" / "results" / "langevin_bench.csv"      # LangevinFold mini-benchmark (SEPARATE, small-scale)
 
 # --------------------------------------------------------------------------- #
 # Paper-facing names + fixed per-solver colours

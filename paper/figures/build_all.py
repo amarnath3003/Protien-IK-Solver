@@ -18,8 +18,10 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 
-DATA_FIGS = ["fig_dof_scaling.py", "fig_success.py", "fig_latency_tail.py",
-             "fig_collision_ur5.py", "fig_validation.py", "fig_deployment.py"]
+DATA_FIGS = ["fig_dof_scaling.py", "fig_success.py", "fig_latency.py",
+             "fig_collision.py", "fig_validation.py", "fig_deployment.py"]
+# fig_langevin.py is parked for future work (see backend/bench/langevin_benchmark.py);
+# not part of the active paper build. Run it manually if/when needed.
 SOLVER_FIGS = ["fig_qualitative_fold.py", "fig_energy_trace.py"]
 TABLES = ["make_tables.py"]
 

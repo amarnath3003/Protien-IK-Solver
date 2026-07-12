@@ -112,6 +112,33 @@ def tab_collision(rows, name):
                      "collision reported as a ranking, not an absolute rate.")
 
 
+def tab_langevin(rows, name, robot="ur5"):
+    """LangevinFold vs. the field on UR5: per-scenario real-mesh collision, worst-case
+    success, and latency (from the hardest scenario). From the separate small-scale run."""
+    order = ["protein_raw", "protein_fast", "trac_ik_style", "multi_start", "protein_ik"]
+    solvers = [s for s in order if any(r["robot"] == robot and r["solver"] == s for r in rows)]
+    scen = [s for s in S.SCENARIOS if S.cell(rows, robot, s)]
+    hard = "cluttered" if "cluttered" in scen else (scen[-1] if scen else None)
+    body = []
+    for sid in solvers:
+        pbc = [f1(S.cell(rows, robot, sc).get(sid, {}).get("pb_collision_pct", float("nan")))
+               for sc in scen]
+        succs = [S.cell(rows, robot, sc).get(sid, {}).get("success_pct", float("nan")) for sc in scen]
+        succs = [s for s in succs if s == s]
+        rr = S.cell(rows, robot, hard).get(sid, {}) if hard else {}
+        cells = ([S.label(sid)] + pbc
+                 + [f1(min(succs) if succs else float("nan")),
+                    f1(rr.get("mean_ms", float("nan"))), f1(rr.get("p99_ms", float("nan")))])
+        body.append(bold(cells) if sid == "protein_raw" else cells)
+    header = ["Solver"] + [f"PB {S.SCEN_LABEL[s]}" for s in scen] + ["succ (min)", "mean ms", "p99 ms"]
+    write_table(name,
+                "LangevinFold vs.\\ the field on UR5 (separate small-scale run). "
+                "PB = PyBullet self-collision \\%; latency from the cluttered cell.",
+                "tab:langevin", "l" + "r" * (len(header) - 1), header, body,
+                note="LangevinFold gives the lowest real-mesh collision at seconds/solve "
+                     "(MuJoCo agrees; see \\texttt{mj\\_collision\\_pct}).")
+
+
 def tab_dof(json_path, name):
     E = json.loads(Path(json_path).read_text(encoding="utf-8"))["E"]
     dofs = sorted({int(r["dof"]) for r in E})
@@ -135,6 +162,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--csv", default=str(S.DEFAULT_MASTER_CSV))
     ap.add_argument("--collision-csv", default=str(S.DEFAULT_COLLISION_CSV))
+    ap.add_argument("--langevin-csv", default=str(S.DEFAULT_LANGEVIN_CSV))
     ap.add_argument("--json", default=str(S.DEFAULT_USECASE_JSON))
     args = ap.parse_args()
 
@@ -153,6 +181,13 @@ def main():
         tab_collision(coll, "tab_collision_ur5.tex")
     except FileNotFoundError as e:
         print(f"  [skip] tab_collision_ur5: {e}")
+
+    # tab_langevin is parked for future work — not emitted by the default run.
+    # To generate it: uncomment below after running bench/langevin_benchmark.py.
+    # try:
+    #     tab_langevin(S.load_rows(args.langevin_csv), "tab_langevin.tex")
+    # except FileNotFoundError:
+    #     print("  [skip] tab_langevin: run bench/langevin_benchmark.py first")
 
 
 if __name__ == "__main__":
