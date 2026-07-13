@@ -1,0 +1,551 @@
+// CCH-IK (Conflict-Controlled Homotopy IK) + fixed-lambda ablation — generic-DOF
+// port of app/solvers/protein_homotopy/{core,solver}.py and fixed_lambda_ik.py.
+//
+// Exposes TWO solvers on the runtime `Robot` (dh_robot.hpp), so both run on
+// planar3dof / ur5 / franka_panda identically to the Python:
+//   - solveHomotopy(...)     <- solve_protein_homotopy  (CCH-IK, components A-E on)
+//   - solveFixedLambda(...)  <- solve_fixed_lambda_ik   (ablation: A off, C on)
+//
+// The shared core primitives (protein_homotopy/core.py) are ported here as free
+// functions in namespace pik:
+//   computeConflict, eTarget, eConstraints, fdConstraintGradient,
+//   backtrackingLineSearch, geometricSeed, pcgradProject.
+//
+// Hyperparameters/tolerances/budgets match the Python exactly; only the RNG
+// stream differs (see dh_robot.hpp Rng). Energy terms reuse dh_robot.hpp
+// (jointLimitEnergy, collisionEnergyFromDist, selfCollisionMinDist) verified
+// term-for-term against protein_energy.py.
+#ifndef PIK_HOMOTOPY_HPP
+#define PIK_HOMOTOPY_HPP
+
+#include "dh_robot.hpp"
+#include <vector>
+#include <cmath>
+#include <algorithm>
+
+namespace pik {
+
+// ===========================================================================
+// Shared core primitives  (protein_homotopy/core.py)
+// ===========================================================================
+
+// compute_conflict() — full joint-space cosine distance C in [0, 2].
+//   C=0 aligned, C=1 orthogonal, C=2 opposed. Vanishing gradient -> 0.
+inline double computeConflict(const VecN& g_target, const VecN& g_constr,
+                              double eps = 1e-8) {
+  double norm_t = g_target.norm();
+  double norm_c = g_constr.norm();
+  if (norm_t < eps || norm_c < eps) return 0.0;
+  double cosine = g_target.dot(g_constr) / (norm_t * norm_c);
+  return 1.0 - cosine;  // [0,2]
+}
+
+// e_target() — SQUARED pose error: ||pos||^2 + orient_w * ||orient||^2.
+// NOTE: squared, unlike dh_robot::targetEnergy (which is non-squared).
+inline double eTarget(const Robot& s, const VecN& q,
+                      const Eigen::Matrix4d& T_target, double orient_w = 0.3) {
+  Vec6 err = poseError(eePose(s, q), T_target);
+  double p = err.head<3>().norm();
+  double o = err.tail<3>().norm();
+  return p * p + orient_w * o * o;
+}
+
+// e_constraints() — collision_energy + 0.5 * joint_limit_energy.
+//   collision_energy(spec,q) == collisionEnergyFromDist(selfCollisionMinDist)
+inline double eConstraints(const Robot& s, const VecN& q) {
+  return collisionEnergyFromDist(selfCollisionMinDist(s, q))
+         + 0.5 * jointLimitEnergy(s, q);
+}
+
+// fd_constraint_gradient() — central finite-diff gradient of e_constraints.
+//   eps = 1e-5, 2n FK-based evaluations, NO clipping of the perturbed configs.
+inline VecN fdConstraintGradient(const Robot& s, const VecN& q,
+                                 double eps = 1e-5) {
+  const int n = s.n;
+  VecN g(n);
+  for (int i = 0; i < n; ++i) {
+    VecN qp = q, qm = q;
+    qp[i] += eps;
+    qm[i] -= eps;
+    g[i] = (eConstraints(s, qp) - eConstraints(s, qm)) / (2.0 * eps);
+  }
+  return g;
+}
+
+// backtracking_line_search() — Armijo on E(q,λ)=e_target(q)+λ*e_constraints(q).
+//   alpha0=0.08, beta=0.5, max_halvings=6. Returns first descending alpha, else
+//   alpha0*beta^6 (matches the Python's post-loop fall-through return).
+inline double backtrackingLineSearch(const Robot& s, const VecN& q, const VecN& g,
+                                     const Eigen::Matrix4d& T_target, double lambda_,
+                                     double alpha0 = 0.08, double beta = 0.5,
+                                     int max_halvings = 6) {
+  double E_cur = eTarget(s, q, T_target) + lambda_ * eConstraints(s, q);
+  double alpha = alpha0;
+  for (int k = 0; k < max_halvings; ++k) {
+    VecN q_try = s.clip(q - alpha * g);
+    double E_try = eTarget(s, q_try, T_target) + lambda_ * eConstraints(s, q_try);
+    if (E_try < E_cur) return alpha;
+    alpha *= beta;
+  }
+  return alpha;
+}
+
+// geometric_seed() — 20 steps of λ=0 gradient descent on E_target via the
+// analytical Jacobian: q += 0.05 * (J^T @ err_vec). Keep only if it reduces the
+// POSITION error, else return q0.
+inline VecN geometricSeed(const Robot& s, const VecN& q0,
+                          const Eigen::Matrix4d& T_target, int max_steps = 20) {
+  VecN q = q0;
+  double e0 = poseError(eePose(s, q), T_target).head<3>().norm();
+  for (int k = 0; k < max_steps; ++k) {
+    Eigen::Matrix4d pose; Jac J; poseJac(s, q, pose, J);
+    Vec6 err = poseError(pose, T_target);
+    q = s.clip(q + 0.05 * (J.transpose() * err));
+  }
+  double e1 = poseError(eePose(s, q), T_target).head<3>().norm();
+  return (e1 < e0) ? q : q0;
+}
+
+// pcgrad_project() — PCGrad-style gradient surgery (Yu et al. 2020).
+// Remove the E_target-opposing component of g_constr when the two TRUE
+// gradients point apart (dot < 0); else return g_constr unchanged.
+inline VecN pcgradProject(const VecN& g_constr, const VecN& g_target_true,
+                          double eps = 1e-8) {
+  double dot = g_constr.dot(g_target_true);
+  if (dot >= 0.0) return g_constr;
+  double norm_sq = g_target_true.dot(g_target_true) + eps;
+  return g_constr - (dot / norm_sq) * g_target_true;
+}
+
+// ===========================================================================
+// CCH-IK hyperparameters  (solver.py)
+// ===========================================================================
+namespace hcfg {
+constexpr double CONFLICT_THRESHOLD     = 0.6;
+constexpr double LAMBDA_MAX_STEP        = 0.10;
+constexpr double LAMBDA_BETA            = 3.84;
+constexpr int    CONFLICT_RETREAT_AFTER = 20;
+constexpr double RETREAT_ALPHA          = 0.15;
+constexpr double MIN_LAMBDA_PROGRESS    = 0.05;  // Component E monotonic step
+constexpr double ORIENT_WEIGHT          = 0.3;
+constexpr int    MAX_ITERS              = 400;
+constexpr int    N_RESTARTS             = 3;
+constexpr double LM_ENDGAME_THRESH      = 0.05;
+// (LAMBDA_RETRACT_FACTOR unused: COMPONENT_E is on, so λ never retreats.)
+}  // namespace hcfg
+
+// ===========================================================================
+// Fixed-lambda hyperparameters  (fixed_lambda_ik.py)
+// ===========================================================================
+namespace flcfg {
+constexpr double ORIENT_WEIGHT       = 0.3;
+constexpr int    MAX_ITERS           = 400;
+constexpr int    N_RESTARTS          = 3;
+constexpr double LM_ENDGAME_THRESH   = 0.05;
+// (DELTA_LAMBDA / FORCE_ADVANCE_AFTER / CONFLICT_THRESHOLD unused: COMPONENT_A
+//  is OFF, so the schedule is the fixed linear λ = (it+1)/max_iters.)
+}  // namespace flcfg
+
+// ---------------------------------------------------------------------------
+// Component D — null-space declash refinement (solver.py _null_space_declash)
+// ---------------------------------------------------------------------------
+inline VecN nullSpaceDeclash(const Robot& s, const VecN& q_in,
+                             const Eigen::Matrix4d& T_target,
+                             double pos_tol, double ori_tol,
+                             int steps = 8, double alpha = 0.1) {
+  const int n = s.n;
+  VecN q = q_in;
+  Mat6 eye6 = Mat6::Identity();
+  Eigen::MatrixXd eyen = Eigen::MatrixXd::Identity(n, n);
+  double d_best = selfCollisionMinDist(s, q);
+  for (int k = 0; k < steps; ++k) {
+    Eigen::Matrix4d pose; Jac J; poseJac(s, q, pose, J);
+    Mat6 A = J * J.transpose() + 1e-6 * eye6;
+    Eigen::MatrixXd J_pinv = J.transpose() * A.inverse();  // damped pseudoinverse (n x 6)
+    Eigen::MatrixXd N = eyen - J_pinv * J;                 // null-space projector (n x n)
+    VecN g_c = fdConstraintGradient(s, q);                 // uphill grad of e_constraints
+    VecN q_try = s.clip(q - alpha * (N * g_c));
+    Vec6 err = poseError(eePose(s, q_try), T_target);
+    if (err.head<3>().norm() < pos_tol && err.tail<3>().norm() < ori_tol) {
+      double d_new = selfCollisionMinDist(s, q_try);
+      if (d_new > d_best) { q = q_try; d_best = d_new; }
+      else break;                     // no further constraint improvement
+    } else {
+      alpha *= 0.5;                   // step left the target basin — shrink
+      if (alpha < 1e-3) break;
+    }
+  }
+  return q;
+}
+
+// ---------------------------------------------------------------------------
+// LM endgame (homotopy, solver.py _lm_polish): WEIGHTED acceptance p+0.3o,
+// then Component D null-space declash once converged.
+// ---------------------------------------------------------------------------
+inline void lmPolishHomotopy(const Robot& s, const VecN& q0,
+                             const Eigen::Matrix4d& T_target,
+                             double pos_tol, double ori_tol,
+                             VecN& q_out, bool& converged,
+                             int max_steps = 20, double lam0 = 0.05) {
+  VecN q = q0;
+  Eigen::Matrix4d pose; Jac J; poseJac(s, q, pose, J);
+  Vec6 err = poseError(pose, T_target);
+  double lam = lam0;
+  for (int k = 0; k < max_steps; ++k) {
+    double pos_e = err.head<3>().norm(), ori_e = err.tail<3>().norm();
+    if (pos_e < pos_tol && ori_e < ori_tol) break;
+    VecN q_try = s.clip(q + dlsStep(J, err, lam));
+    Eigen::Matrix4d pose_t; Jac J_t; poseJac(s, q_try, pose_t, J_t);
+    Vec6 err_t = poseError(pose_t, T_target);
+    if (err_t.head<3>().norm() + 0.3 * err_t.tail<3>().norm()
+        < err.head<3>().norm() + 0.3 * err.tail<3>().norm()) {
+      q = q_try; J = J_t; err = err_t; lam = std::max(lam * 0.5, 1e-4);
+    } else {
+      lam = std::min(lam * 2.5, 2.0);
+      if (lam >= 2.0) break;
+    }
+  }
+  double pos_e = err.head<3>().norm(), ori_e = err.tail<3>().norm();
+  converged = (pos_e < pos_tol && ori_e < ori_tol);
+  if (converged) {  // COMPONENT_D
+    q = nullSpaceDeclash(s, q, T_target, pos_tol, ori_tol);
+  }
+  q_out = q;
+}
+
+// ---------------------------------------------------------------------------
+// LM endgame (fixed-λ, fixed_lambda_ik.py _lm_polish_fl): FULL 6-vector norm
+// acceptance ||err_t|| < ||err||, and NO null-space declash.
+// ---------------------------------------------------------------------------
+inline void lmPolishFl(const Robot& s, const VecN& q0,
+                       const Eigen::Matrix4d& T_target,
+                       double pos_tol, double ori_tol,
+                       VecN& q_out, bool& converged,
+                       int max_steps = 20, double lam0 = 0.05) {
+  VecN q = q0;
+  Eigen::Matrix4d pose; Jac J; poseJac(s, q, pose, J);
+  Vec6 err = poseError(pose, T_target);
+  double lam = lam0;
+  for (int k = 0; k < max_steps; ++k) {
+    double pe = err.head<3>().norm(), oe = err.tail<3>().norm();
+    if (pe < pos_tol && oe < ori_tol) break;
+    VecN q_try = s.clip(q + dlsStep(J, err, lam));
+    Eigen::Matrix4d pose_t; Jac J_t; poseJac(s, q_try, pose_t, J_t);
+    Vec6 err_t = poseError(pose_t, T_target);
+    if (err_t.norm() < err.norm()) {  // FULL 6-vector norm
+      q = q_try; J = J_t; err = err_t; lam = std::max(lam * 0.5, 1e-4);
+    } else {
+      lam = std::min(lam * 2.5, 2.0);
+      if (lam >= 2.0) break;
+    }
+  }
+  double pe = err.head<3>().norm(), oe = err.tail<3>().norm();
+  converged = (pe < pos_tol && oe < ori_tol);
+  q_out = q;
+}
+
+// ---------------------------------------------------------------------------
+// Single-trajectory result plumbing
+// ---------------------------------------------------------------------------
+struct HomotopyTraj {
+  VecN best_q;
+  double best_err = std::numeric_limits<double>::infinity();
+  bool converged = false;
+  int iters = 0;
+  double C_final = 0.0;
+  double lambda_final = 0.0;
+  double difficulty = 0.0;
+};
+
+// ---------------------------------------------------------------------------
+// CCH-IK single trajectory  (solver.py _solve_single)
+// ---------------------------------------------------------------------------
+inline HomotopyTraj solveHomotopySingle(const Robot& s, const VecN& q0,
+                                        const Eigen::Matrix4d& T_target,
+                                        int max_iters, double pos_tol, double ori_tol) {
+  using namespace hcfg;
+  const int n = s.n;
+  VecN q = q0;
+  double lambda_ = 0.0;
+  HomotopyTraj R;
+  R.best_q = q;
+  int iters_at_same_lambda = 0;
+  double conflict_integral = 0.0;
+
+  for (int it = 0; it < max_iters; ++it) {
+    // ---- task gradient (analytical Jacobian, one FK pass) ------------------
+    Eigen::Matrix4d T_cur; Jac J; poseJac(s, q, T_cur, J);
+    Vec6 err_vec = poseError(T_cur, T_target);
+    double pos_e = err_vec.head<3>().norm();
+    double ori_e = err_vec.tail<3>().norm();
+    VecN g_target = -(J.transpose() * err_vec);  // TRUE gradient of E_target (uphill)
+
+    // ---- constraint gradient (finite differences) --------------------------
+    VecN g_constr = fdConstraintGradient(s, q);
+
+    // ---- full-vector conflict ---------------------------------------------
+    double C = computeConflict(g_target, g_constr);
+    R.C_final = C;
+    conflict_integral += C;
+
+    // ---- λ advancement (Component A) — exponential step --------------------
+    double prev_lambda = lambda_;
+    if (C < CONFLICT_THRESHOLD && lambda_ < 1.0) {
+      double delta = LAMBDA_MAX_STEP * std::exp(-LAMBDA_BETA * C);
+      lambda_ = std::min(1.0, lambda_ + delta);
+      iters_at_same_lambda = 0;
+    } else {
+      iters_at_same_lambda += 1;
+      if (iters_at_same_lambda >= CONFLICT_RETREAT_AFTER && lambda_ > 0.0) {
+        // Corrector: reduce constraint violation on joints where task and
+        // constraint forces most oppose (per-element product < 0).
+        VecN per_joint_conflict = g_target.cwiseProduct(g_constr);
+        bool any_conflict = false;
+        VecN q_retreat = q;
+        for (int i = 0; i < n; ++i) {
+          if (per_joint_conflict[i] < 0.0) {
+            any_conflict = true;
+            q_retreat[i] -= RETREAT_ALPHA * g_constr[i];
+          }
+        }
+        if (any_conflict) q = s.clip(q_retreat);
+        // Component E: forced monotonic forward λ step (never retreat).
+        lambda_ = std::min(1.0, lambda_ + MIN_LAMBDA_PROGRESS);
+        iters_at_same_lambda = 0;
+      }
+    }
+
+    // ---- gradient surgery (Component B) ------------------------------------
+    VecN g_constr_used = (C >= CONFLICT_THRESHOLD)
+                             ? pcgradProject(g_constr, g_target)
+                             : g_constr;
+
+    // ---- combined TRUE gradient → descend via q -= α * g -------------------
+    VecN g = g_target + lambda_ * g_constr_used;
+
+    // ---- Armijo backtracking step size -------------------------------------
+    double alpha = backtrackingLineSearch(s, q, g, T_target, lambda_);
+    q = s.clip(q - alpha * g);
+
+    // ---- LM endgame --------------------------------------------------------
+    if (lambda_ >= 0.8 && pos_e < LM_ENDGAME_THRESH) {
+      VecN q_lm; bool lm_conv;
+      lmPolishHomotopy(s, q, T_target, pos_tol, ori_tol, q_lm, lm_conv);
+      Vec6 err_lm = poseError(eePose(s, q_lm), T_target);
+      double pe_lm = err_lm.head<3>().norm();
+      double oe_lm = err_lm.tail<3>().norm();
+      double sc_lm = pe_lm + ORIENT_WEIGHT * oe_lm;
+      if (sc_lm < R.best_err) { R.best_err = sc_lm; R.best_q = q_lm; }
+      if (lm_conv) {
+        R.converged = true; R.iters = it + 1; R.lambda_final = lambda_;
+        R.difficulty = conflict_integral / std::max(1, it + 1);
+        return R;
+      }
+      q = q_lm;  // continue from LM result
+    }
+
+    // ---- track best solution ----------------------------------------------
+    double err_scalar = pos_e + ORIENT_WEIGHT * ori_e;
+    if (err_scalar < R.best_err) { R.best_err = err_scalar; R.best_q = q; }
+
+    // ---- convergence check (on pre-step error) ----------------------------
+    if (pos_e < pos_tol && ori_e < ori_tol) {
+      R.converged = true; R.iters = it + 1; R.lambda_final = lambda_;
+      R.difficulty = conflict_integral / std::max(1, it + 1);
+      return R;
+    }
+
+    // ---- final LM sweep on best_q at the end of the budget ----------------
+    if (it == max_iters - 1) {
+      VecN q_lm; bool lm_conv;
+      lmPolishHomotopy(s, R.best_q, T_target, pos_tol, ori_tol, q_lm, lm_conv, 30);
+      if (lm_conv) {
+        R.best_q = q_lm; R.converged = true; R.iters = max_iters;
+        R.lambda_final = lambda_;
+        R.difficulty = conflict_integral / std::max(1, max_iters);
+        return R;
+      }
+    }
+    (void)prev_lambda;  // used only for step-recording phase in Python
+  }
+
+  R.converged = false; R.iters = max_iters; R.lambda_final = lambda_;
+  R.difficulty = conflict_integral / std::max(1, max_iters);
+  return R;
+}
+
+// ---------------------------------------------------------------------------
+// Fixed-λ single trajectory  (fixed_lambda_ik.py _solve_single)
+// ---------------------------------------------------------------------------
+inline HomotopyTraj solveFixedLambdaSingle(const Robot& s, const VecN& q0,
+                                           const Eigen::Matrix4d& T_target,
+                                           int max_iters, double pos_tol, double ori_tol) {
+  using namespace flcfg;
+  VecN q = q0;
+  double lambda_ = 0.0;
+  HomotopyTraj R;
+  R.best_q = q;
+
+  for (int it = 0; it < max_iters; ++it) {
+    Eigen::Matrix4d T_cur; Jac J; poseJac(s, q, T_cur, J);
+    Vec6 err_vec = poseError(T_cur, T_target);
+    double pos_e = err_vec.head<3>().norm();
+    double ori_e = err_vec.tail<3>().norm();
+    VecN g_target = -(J.transpose() * err_vec);
+
+    VecN g_constr = fdConstraintGradient(s, q);
+
+    double C = computeConflict(g_target, g_constr);
+    R.C_final = C;
+
+    // COMPONENT_A OFF — fixed linear schedule λ = (it+1)/max_iters.
+    lambda_ = std::min(1.0, (double)(it + 1) / max_iters);
+
+    // No surgery (baseline has no Component B).
+    VecN g = g_target + lambda_ * g_constr;
+
+    double alpha = backtrackingLineSearch(s, q, g, T_target, lambda_);
+    q = s.clip(q - alpha * g);
+
+    // ---- LM endgame --------------------------------------------------------
+    if (lambda_ >= 0.8 && pos_e < LM_ENDGAME_THRESH) {
+      VecN q_lm; bool lm_conv;
+      lmPolishFl(s, q, T_target, pos_tol, ori_tol, q_lm, lm_conv);
+      if (lm_conv && lambda_ >= 1.0) {
+        R.best_q = q_lm;  // returned q; best_err unchanged (matches Python)
+        R.converged = true; R.iters = it + 1; R.lambda_final = lambda_;
+        return R;
+      }
+      q = q_lm;
+    }
+
+    double err_scalar = pos_e + ORIENT_WEIGHT * ori_e;
+    if (err_scalar < R.best_err) { R.best_err = err_scalar; R.best_q = q; }
+
+    if (pos_e < pos_tol && ori_e < ori_tol) {
+      R.converged = true; R.iters = it + 1; R.lambda_final = lambda_;
+      return R;
+    }
+
+    if (it == max_iters - 1) {
+      VecN q_lm; bool lm_conv;
+      lmPolishFl(s, R.best_q, T_target, pos_tol, ori_tol, q_lm, lm_conv, 30);
+      if (lm_conv) {
+        R.best_q = q_lm; R.converged = true; R.iters = max_iters;
+        R.lambda_final = lambda_;
+        return R;
+      }
+    }
+  }
+
+  R.converged = false; R.iters = max_iters; R.lambda_final = lambda_;
+  return R;
+}
+
+// ===========================================================================
+// Public entry points
+// ===========================================================================
+
+// solve_protein_homotopy — CCH-IK multi-start driver.
+inline PikResult solveHomotopy(const Robot& s, const VecN& q0,
+                               const Eigen::Matrix4d& Ttgt, Rng& rng,
+                               int max_iters = 0, double pos_tol = 1e-3,
+                               double orient_tol = 1e-2) {
+  using namespace hcfg;
+  if (max_iters == 0)
+    max_iters = MAX_ITERS + std::max(0, s.n - 6) * 150;
+
+  // Component C: geometric warm-start (no RNG draws).
+  VecN q_seed = geometricSeed(s, q0, Ttgt);
+
+  // Seeds: improved seed + N_RESTARTS random restarts, drawn up front in order.
+  std::vector<VecN> seeds;
+  seeds.push_back(q_seed);
+  for (int r = 0; r < N_RESTARTS; ++r) seeds.push_back(rng.randomConfig(s));
+
+  VecN global_best_q = q_seed;
+  double global_best_err = std::numeric_limits<double>::infinity();
+  double global_C = 0.0, global_lambda = 0.0;
+  bool success = false;
+  int total_iters = 0;
+
+  for (size_t i = 0; i < seeds.size(); ++i) {
+    HomotopyTraj t = solveHomotopySingle(s, seeds[i], Ttgt, max_iters, pos_tol, orient_tol);
+    total_iters += t.iters;
+    if (t.best_err < global_best_err) {
+      global_best_err = t.best_err;
+      global_best_q   = t.best_q;
+      global_C        = t.C_final;
+      global_lambda   = t.lambda_final;
+    }
+    if (t.converged) { success = true; break; }
+  }
+
+  VecN q = global_best_q;
+  Vec6 err_fin = poseError(eePose(s, q), Ttgt);
+
+  PikResult R;
+  R.success = success;
+  R.q = q;
+  R.pos_error = err_fin.head<3>().norm();
+  R.orient_error = err_fin.tail<3>().norm();
+  R.min_self_distance = selfCollisionMinDist(s, q);
+  R.iterations = total_iters;
+  R.restarts = (int)seeds.size() - 1;   // = N_RESTARTS (extra seeds)
+  R.conflict_index = global_C;
+  R.lambda_final = global_lambda;
+  return R;
+}
+
+// solve_fixed_lambda_ik — fixed-λ ablation multi-start driver.
+inline PikResult solveFixedLambda(const Robot& s, const VecN& q0,
+                                  const Eigen::Matrix4d& Ttgt, Rng& rng,
+                                  int max_iters = 0, double pos_tol = 1e-3,
+                                  double orient_tol = 1e-2) {
+  using namespace flcfg;
+  if (max_iters == 0)
+    max_iters = MAX_ITERS + std::max(0, s.n - 6) * 150;
+
+  // Component C: geometric warm-start.
+  VecN q_seed = geometricSeed(s, q0, Ttgt);
+
+  std::vector<VecN> seeds;
+  seeds.push_back(q_seed);
+  for (int r = 0; r < N_RESTARTS; ++r) seeds.push_back(rng.randomConfig(s));
+
+  VecN global_best_q = q_seed;
+  double global_best_err = std::numeric_limits<double>::infinity();
+  double global_C = 0.0, global_lambda = 0.0;
+  bool success = false;
+  int total_iters = 0;
+
+  for (size_t i = 0; i < seeds.size(); ++i) {
+    HomotopyTraj t = solveFixedLambdaSingle(s, seeds[i], Ttgt, max_iters, pos_tol, orient_tol);
+    total_iters += t.iters;
+    if (t.best_err < global_best_err) {
+      global_best_err = t.best_err;
+      global_best_q   = t.best_q;
+      global_C        = t.C_final;
+      global_lambda   = t.lambda_final;
+    }
+    if (t.converged) { success = true; break; }
+  }
+
+  VecN q = global_best_q;
+  Vec6 err_fin = poseError(eePose(s, q), Ttgt);
+
+  PikResult R;
+  R.success = success;
+  R.q = q;
+  R.pos_error = err_fin.head<3>().norm();
+  R.orient_error = err_fin.tail<3>().norm();
+  R.min_self_distance = selfCollisionMinDist(s, q);
+  R.iterations = total_iters;
+  R.restarts = (int)seeds.size() - 1;   // = N_RESTARTS
+  R.conflict_index = global_C;
+  R.lambda_final = global_lambda;
+  return R;
+}
+
+}  // namespace pik
+#endif  // PIK_HOMOTOPY_HPP

@@ -1,0 +1,50 @@
+{
+  "finished_at": "2026-07-13 19:11:45",
+  "wall_seconds": 1447.3,
+  "config": {
+    "trials": 100,
+    "seeds": [
+      1,
+      2,
+      3
+    ],
+    "warmup": 8,
+    "robots": [
+      "planar3dof",
+      "ur5",
+      "franka_panda"
+    ],
+    "scenarios": [
+      "open_space",
+      "near_singular",
+      "cluttered"
+    ],
+    "solvers": [
+      "jacobian_dls",
+      "ccd",
+      "fabrik",
+      "trac_ik_style",
+      "multi_start",
+      "protein_ik",
+      "protein_fast",
+      "protein_fast_o2",
+      "protein_fast_calib",
+      "analytical_planar3dof"
+    ],
+    "skip_slow": false,
+    "engines": "PyBullet + MuJoCo",
+    "native_baseline": true,
+    "fk_samples": 2000,
+    "collision_samples": 2000
+  },
+  "cells_total": 90,
+  "cells_run_this_invocation": 90,
+  "n_per_cell": 300,
+  "environment": {
+    "python": "3.10.12",
+    "platform": "Linux-4.4.0-19041-Microsoft-x86_64-with-glibc2.35",
+    "numpy": "1.26.4",
+    "pybullet": 202010061,
+    "mujoco": "3.10.0"
+  }
+}
