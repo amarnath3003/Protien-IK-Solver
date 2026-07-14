@@ -1,0 +1,61 @@
+[native] genuine baselines: jacobian_dls, multi_start, trac_ik_style | C++ ProteinIK: protein_fast, protein_fast_calib, protein_fast_o2, protein_ik, protein_raw
+=== Master sim benchmark ===
+  engines=PyBullet + MuJoCo  n/cell=1000  cells=54 (10 already done, 44 to run)
+  out=results/master_10seed_fast(cpp).csv / results/master_10seed_fast(cpp).md
+pybullet build time: Jan 29 2025 23:16:28
+[ur5] PyBullet oracle ready: ee=tool0 offset=base resid=9.48e-07
+[ur5] MuJoCo oracle ready: offset=base resid=5.16e-08
+[ur5]  A/FK  PB↔MJ max_pos=4.11e-08m max_orient=5.93e-07rad
+[ur5]  B/col proxy 19.2%  PB 39.1%  MJ 37.0%  sign-agree 97.9%
+[  1/44] ur5          open_space    ProteinIK Raw Biology (V6)     succ  99.6  PBcol  13.1  MJcol  12.1  mean    14.2ms  [ 15.8s cell, ETA  12.2m]
+[  2/44] ur5          near_singular FABRIK (in-repo; no genuine upstream) succ  36.2  PBcol  54.4  MJcol  53.0  mean   104.9ms  [114.2s cell, ETA  46.2m]
+[  3/44] ur5          near_singular TRAC-IK (real C++ TRACLabs)    succ  99.3  PBcol  49.9  MJcol  47.6  mean     0.6ms  [  1.6s cell, ETA  30.6m]
+/usr/lib/python3/dist-packages/scipy/__init__.py:146: UserWarning: A NumPy version >=1.17.3 and <1.25.0 is required for this version of SciPy (detected version 1.26.4
+  warnings.warn(f"A NumPy version >={np_minversion} and <{np_maxversion}"
+[  4/44] ur5          near_singular Multi-start (real RTB ik_LM restarts) succ 100.0  PBcol  47.6  MJcol  46.4  mean     0.6ms  [  1.9s cell, ETA  22.9m]
+[  5/44] ur5          near_singular ProteinIK (V1)                 succ  88.1  PBcol  43.4  MJcol  41.7  mean     0.2ms  [  0.6s cell, ETA  18.0m]
+[  6/44] ur5          near_singular ProteinIK Fast (V4)            succ  99.8  PBcol  40.4  MJcol  38.6  mean     0.2ms  [  0.6s cell, ETA  14.8m]
+[  7/44] ur5          near_singular ProteinIK Raw Biology (V6)     succ  99.3  PBcol  27.9  MJcol  27.2  mean    14.6ms  [ 16.2s cell, ETA  13.8m]
+[  8/44] ur5          near_singular PyBullet native IK             succ   –    PBcol  52.8  MJcol  51.3  mean     6.1ms  [  6.9s cell, ETA  12.3m]
+[  9/44] ur5          cluttered     Jacobian DLS (real RTB LM, single-shot) succ  75.8  PBcol  63.5  MJcol  62.6  mean     0.6ms  [  1.2s cell, ETA  10.8m]
+[ 10/44] ur5          cluttered     CCD (in-repo; no genuine upstream) succ  41.3  PBcol  73.6  MJcol  71.4  mean   154.9ms  [168.9s cell, ETA  19.1m]
+[ 11/44] ur5          cluttered     FABRIK (in-repo; no genuine upstream) succ  39.2  PBcol  71.4  MJcol  70.0  mean   100.1ms  [109.7s cell, ETA  22.4m]
+[ 12/44] ur5          cluttered     TRAC-IK (real C++ TRACLabs)    succ 100.0  PBcol  74.2  MJcol  72.1  mean     0.4ms  [  1.0s cell, ETA  20.0m]
+[ 13/44] ur5          cluttered     Multi-start (real RTB ik_LM restarts) succ 100.0  PBcol  74.7  MJcol  73.6  mean     0.6ms  [  1.2s cell, ETA  18.0m]
+[ 14/44] ur5          cluttered     ProteinIK (V1)                 succ  87.4  PBcol  64.6  MJcol  62.9  mean     0.2ms  [  0.6s cell, ETA  16.2m]
+[ 15/44] ur5          cluttered     ProteinIK Fast (V4)            succ 100.0  PBcol  56.4  MJcol  54.9  mean     0.2ms  [  0.6s cell, ETA  14.7m]
+[ 16/44] ur5          cluttered     ProteinIK Raw Biology (V6)     succ 100.0  PBcol  48.6  MJcol  46.8  mean    14.0ms  [ 15.6s cell, ETA  13.8m]
+[ 17/44] ur5          cluttered     PyBullet native IK             succ   –    PBcol  74.4  MJcol  73.3  mean     5.5ms  [  6.3s cell, ETA  12.7m]
+[franka_panda] PyBullet oracle ready: ee=panda_link8 offset=tool resid=6.60e-07
+[franka_panda] MuJoCo oracle ready: offset=tool resid=6.66e-08
+[franka_panda]  A/FK  PB↔MJ max_pos=5.90e-08m max_orient=4.13e-07rad
+[franka_panda]  B/col proxy 0.5%  PB 9.2%  MJ 8.3%  sign-agree 99.1%
+[ 18/44] franka_panda open_space    Jacobian DLS (real RTB LM, single-shot) succ  28.4  PBcol   9.6  MJcol   9.2  mean     0.8ms  [  1.5s cell, ETA  11.6m]
+[ 19/44] franka_panda open_space    CCD (in-repo; no genuine upstream) succ  27.0  PBcol  18.3  MJcol  17.5  mean   216.6ms  [235.0s cell, ETA  15.8m]
+[ 20/44] franka_panda open_space    FABRIK (in-repo; no genuine upstream) succ  21.1  PBcol  18.5  MJcol  18.3  mean   164.6ms  [178.8s cell, ETA  18.0m]
+[ 21/44] franka_panda open_space    TRAC-IK (real C++ TRACLabs)    succ  99.1  PBcol   7.8  MJcol   6.9  mean     0.8ms  [  2.0s cell, ETA  16.4m]
+[ 22/44] franka_panda open_space    Multi-start (real RTB ik_LM restarts) succ  99.0  PBcol   6.1  MJcol   5.2  mean     0.9ms  [  1.6s cell, ETA  15.0m]
+[ 23/44] franka_panda open_space    ProteinIK (V1)                 succ  97.3  PBcol   7.5  MJcol   6.6  mean     0.2ms  [  0.6s cell, ETA  13.7m]
+[ 24/44] franka_panda open_space    ProteinIK Fast (V4)            succ 100.0  PBcol   7.3  MJcol   6.7  mean     0.1ms  [  0.6s cell, ETA  12.5m]
+[ 25/44] franka_panda open_space    ProteinIK Raw Biology (V6)     succ  99.1  PBcol   6.7  MJcol   5.9  mean    21.9ms  [ 24.2s cell, ETA  11.7m]
+[ 26/44] franka_panda open_space    PyBullet native IK             succ   –    PBcol  29.5  MJcol  28.9  mean     4.4ms  [  5.1s cell, ETA  10.8m]
+[ 27/44] franka_panda near_singular Jacobian DLS (real RTB LM, single-shot) succ  27.5  PBcol  10.0  MJcol   9.3  mean     0.8ms  [  1.5s cell, ETA   9.8m]
+[ 28/44] franka_panda near_singular CCD (in-repo; no genuine upstream) succ  15.5  PBcol  17.2  MJcol  16.7  mean   246.2ms  [266.5s cell, ETA  11.5m]
+[ 29/44] franka_panda near_singular FABRIK (in-repo; no genuine upstream) succ  12.7  PBcol  19.3  MJcol  18.8  mean   175.8ms  [190.9s cell, ETA  12.0m]
+[ 30/44] franka_panda near_singular TRAC-IK (real C++ TRACLabs)    succ  98.3  PBcol   9.1  MJcol   8.5  mean     1.1ms  [  2.1s cell, ETA  10.9m]
+[ 31/44] franka_panda near_singular Multi-start (real RTB ik_LM restarts) succ  97.7  PBcol   9.6  MJcol   8.5  mean     1.0ms  [  1.7s cell, ETA   9.8m]
+[ 32/44] franka_panda near_singular ProteinIK (V1)                 succ  92.7  PBcol   9.7  MJcol   9.1  mean     0.2ms  [  0.7s cell, ETA   8.8m]
+[ 33/44] franka_panda near_singular ProteinIK Fast (V4)            succ  99.9  PBcol  11.2  MJcol  10.3  mean     0.2ms  [  0.6s cell, ETA   7.8m]
+[ 34/44] franka_panda near_singular ProteinIK Raw Biology (V6)     succ  98.6  PBcol   7.9  MJcol   7.1  mean    22.3ms  [ 24.5s cell, ETA   7.0m]
+[ 35/44] franka_panda near_singular PyBullet native IK             succ   –    PBcol  23.2  MJcol  22.9  mean     7.2ms  [  8.1s cell, ETA   6.2m]
+[ 36/44] franka_panda cluttered     Jacobian DLS (real RTB LM, single-shot) succ  19.7  PBcol  23.1  MJcol  22.4  mean     0.7ms  [  1.5s cell, ETA   5.4m]
+[ 37/44] franka_panda cluttered     CCD (in-repo; no genuine upstream) succ  15.0  PBcol  83.9  MJcol  83.3  mean   245.2ms  [265.7s cell, ETA   5.5m]
+[ 38/44] franka_panda cluttered     FABRIK (in-repo; no genuine upstream) succ  20.5  PBcol  81.1  MJcol  80.7  mean   161.8ms  [174.7s cell, ETA   5.1m]
+[ 39/44] franka_panda cluttered     TRAC-IK (real C++ TRACLabs)    succ  92.5  PBcol  77.1  MJcol  76.8  mean     1.3ms  [  2.3s cell, ETA   4.2m]
+[ 40/44] franka_panda cluttered     Multi-start (real RTB ik_LM restarts) succ  93.2  PBcol  77.0  MJcol  76.3  mean     1.2ms  [  2.1s cell, ETA   3.3m]
+[ 41/44] franka_panda cluttered     ProteinIK (V1)                 succ  84.7  PBcol  77.3  MJcol  76.4  mean     0.3ms  [  0.8s cell, ETA   2.4m]
+[ 42/44] franka_panda cluttered     ProteinIK Fast (V4)            succ  98.4  PBcol  82.4  MJcol  82.2  mean     0.7ms  [  1.3s cell, ETA   1.6m]
+[ 43/44] franka_panda cluttered     ProteinIK Raw Biology (V6)     succ  96.5  PBcol  80.1  MJcol  79.4  mean    20.9ms  [ 23.1s cell, ETA   0.8m]
+[ 44/44] franka_panda cluttered     PyBullet native IK             succ   –    PBcol  87.6  MJcol  87.3  mean     3.1ms  [  3.9s cell, ETA   0.0m]
+
+Done in 34.7 min. Wrote results/master_10seed_fast(cpp).csv, results/master_10seed_fast(cpp).md, results/master_10seed_fast(cpp).manifest.json (54 cells).
