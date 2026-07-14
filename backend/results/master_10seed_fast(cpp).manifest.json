@@ -1,6 +1,6 @@
 {
-  "finished_at": "2026-07-14 19:37:26",
-  "wall_seconds": 2079.8,
+  "finished_at": "2026-07-14 21:30:16",
+  "wall_seconds": 54.9,
   "config": {
     "trials": 100,
     "seeds": [
@@ -33,7 +33,9 @@
       "jacobian_dls",
       "fabrik",
       "ccd",
-      "protein_raw"
+      "protein_raw",
+      "protein_fast_o2",
+      "protein_fast_calib"
     ],
     "skip_slow": false,
     "engines": "PyBullet + MuJoCo",
@@ -41,8 +43,8 @@
     "fk_samples": 2000,
     "collision_samples": 2000
   },
-  "cells_total": 54,
-  "cells_run_this_invocation": 44,
+  "cells_total": 66,
+  "cells_run_this_invocation": 12,
   "n_per_cell": 1000,
   "environment": {
     "python": "3.10.12",
