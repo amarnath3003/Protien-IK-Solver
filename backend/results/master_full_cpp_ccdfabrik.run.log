@@ -1,0 +1,33 @@
+[native] genuine baselines: jacobian_dls, multi_start, trac_ik_style | C++ ProteinIK: protein_fast, protein_fast_calib, protein_fast_o2, protein_ik, protein_raw | C++ classical: ccd, fabrik
+=== Master sim benchmark ===
+  engines=PyBullet + MuJoCo  n/cell=300  cells=99 (81 already done, 18 to run)
+  out=results/master_full(cpp).csv / results/master_full(cpp).md
+[  1/18] planar3dof   open_space    CCD (in-repo; native C++)      succ  49.0  PBcol   –    MJcol   –    mean     0.1ms  [  0.0s cell, ETA   0.0m]
+[  2/18] planar3dof   open_space    FABRIK (in-repo; native C++)   succ  44.0  PBcol   –    MJcol   –    mean     0.1ms  [  0.0s cell, ETA   0.0m]
+[  3/18] planar3dof   near_singular CCD (in-repo; native C++)      succ  26.0  PBcol   –    MJcol   –    mean     0.1ms  [  0.1s cell, ETA   0.2m]
+[  4/18] planar3dof   near_singular FABRIK (in-repo; native C++)   succ  22.7  PBcol   –    MJcol   –    mean     0.1ms  [  0.1s cell, ETA   0.2m]
+[  5/18] planar3dof   cluttered     CCD (in-repo; native C++)      succ  21.7  PBcol   –    MJcol   –    mean     0.1ms  [  0.1s cell, ETA   0.2m]
+[  6/18] planar3dof   cluttered     FABRIK (in-repo; native C++)   succ  24.3  PBcol   –    MJcol   –    mean     0.1ms  [  0.1s cell, ETA   0.1m]
+pybullet build time: Jan 29 2025 23:16:28
+[ur5] PyBullet oracle ready: ee=tool0 offset=base resid=9.48e-07
+[ur5] MuJoCo oracle ready: offset=base resid=5.16e-08
+[ur5]  A/FK  PB↔MJ max_pos=4.11e-08m max_orient=5.93e-07rad
+[ur5]  B/col proxy 19.2%  PB 39.1%  MJ 37.0%  sign-agree 97.9%
+[  7/18] ur5          open_space    CCD (in-repo; native C++)      succ  43.7  PBcol  38.0  MJcol  37.3  mean     0.4ms  [  0.2s cell, ETA   0.2m]
+[  8/18] ur5          open_space    FABRIK (in-repo; native C++)   succ  49.3  PBcol  43.3  MJcol  41.3  mean     0.3ms  [  0.2s cell, ETA   0.1m]
+[  9/18] ur5          near_singular CCD (in-repo; native C++)      succ  32.0  PBcol  50.0  MJcol  48.3  mean     0.4ms  [  0.3s cell, ETA   0.1m]
+[ 10/18] ur5          near_singular FABRIK (in-repo; native C++)   succ  34.7  PBcol  53.0  MJcol  51.0  mean     0.3ms  [  0.2s cell, ETA   0.1m]
+[ 11/18] ur5          cluttered     CCD (in-repo; native C++)      succ  41.0  PBcol  70.3  MJcol  67.7  mean     0.4ms  [  0.2s cell, ETA   0.1m]
+[ 12/18] ur5          cluttered     FABRIK (in-repo; native C++)   succ  36.7  PBcol  68.0  MJcol  67.0  mean     0.3ms  [  0.2s cell, ETA   0.1m]
+[franka_panda] PyBullet oracle ready: ee=panda_link8 offset=tool resid=6.60e-07
+[franka_panda] MuJoCo oracle ready: offset=tool resid=6.66e-08
+[franka_panda]  A/FK  PB↔MJ max_pos=5.90e-08m max_orient=4.13e-07rad
+[franka_panda]  B/col proxy 0.5%  PB 9.2%  MJ 8.3%  sign-agree 99.1%
+[ 13/18] franka_panda open_space    CCD (in-repo; native C++)      succ  23.0  PBcol  19.0  MJcol  17.3  mean     0.6ms  [  0.3s cell, ETA   0.1m]
+[ 14/18] franka_panda open_space    FABRIK (in-repo; native C++)   succ  18.0  PBcol  20.7  MJcol  20.0  mean     0.5ms  [  0.3s cell, ETA   0.0m]
+[ 15/18] franka_panda near_singular CCD (in-repo; native C++)      succ  11.7  PBcol  15.0  MJcol  14.3  mean     0.7ms  [  0.4s cell, ETA   0.0m]
+[ 16/18] franka_panda near_singular FABRIK (in-repo; native C++)   succ  11.3  PBcol  20.0  MJcol  19.7  mean     0.5ms  [  0.3s cell, ETA   0.0m]
+[ 17/18] franka_panda cluttered     CCD (in-repo; native C++)      succ  12.3  PBcol  82.7  MJcol  82.0  mean     0.7ms  [  0.4s cell, ETA   0.0m]
+[ 18/18] franka_panda cluttered     FABRIK (in-repo; native C++)   succ  22.7  PBcol  76.7  MJcol  76.3  mean     0.5ms  [  0.3s cell, ETA   0.0m]
+
+Done in 0.4 min. Wrote results/master_full(cpp).csv, results/master_full(cpp).md, results/master_full(cpp).manifest.json (99 cells).

@@ -20,6 +20,14 @@
 #  include "pik_raw.hpp"
 #  define HAVE_RAW 1
 #endif
+#if __has_include("pik_ccd.hpp")
+#  include "pik_ccd.hpp"
+#  define HAVE_CCD 1
+#endif
+#if __has_include("pik_fabrik.hpp")
+#  include "pik_fabrik.hpp"
+#  define HAVE_FABRIK 1
+#endif
 
 namespace py = pybind11;
 using namespace pik;
@@ -110,5 +118,20 @@ PYBIND11_MODULE(pik_native, m) {
     Rng rng(seed);
     return to_dict_pik(solveProteinRaw(s, q0, T, rng));
   });
+#endif
+#ifdef HAVE_CCD
+  // CCD is deterministic (no RNG); seed accepted for a uniform adapter signature.
+  m.def("solve_ccd", [](const Robot& s, const VecN& q0, const Eigen::Matrix4d& T,
+                        uint64_t, int max_iters) {
+    return to_dict_pik(solveCCD(s, q0, T, max_iters));
+  }, py::arg("robot"), py::arg("q0"), py::arg("T"), py::arg("seed"),
+     py::arg("max_iters") = 300);
+#endif
+#ifdef HAVE_FABRIK
+  m.def("solve_fabrik", [](const Robot& s, const VecN& q0, const Eigen::Matrix4d& T,
+                           uint64_t, int max_iters) {
+    return to_dict_pik(solveFABRIK(s, q0, T, max_iters));
+  }, py::arg("robot"), py::arg("q0"), py::arg("T"), py::arg("seed"),
+     py::arg("max_iters") = 150);
 #endif
 }

@@ -1,0 +1,27 @@
+[native] genuine baselines: jacobian_dls, multi_start, trac_ik_style | C++ ProteinIK: protein_fast, protein_fast_calib, protein_fast_o2, protein_ik, protein_raw | C++ classical: ccd, fabrik
+=== Master sim benchmark ===
+  engines=PyBullet + MuJoCo  n/cell=1000  cells=66 (54 already done, 12 to run)
+  out=results/master_10seed_fast(cpp).csv / results/master_10seed_fast(cpp).md
+pybullet build time: Jan 29 2025 23:16:28
+[ur5] PyBullet oracle ready: ee=tool0 offset=base resid=9.48e-07
+[ur5] MuJoCo oracle ready: offset=base resid=5.16e-08
+[ur5]  A/FK  PB↔MJ max_pos=4.11e-08m max_orient=5.93e-07rad
+[ur5]  B/col proxy 19.2%  PB 39.1%  MJ 37.0%  sign-agree 97.9%
+[  1/12] ur5          open_space    CCD (in-repo; native C++)      succ  45.1  PBcol  36.9  MJcol  35.0  mean     0.4ms  [  0.8s cell, ETA   0.4m]
+[  2/12] ur5          open_space    FABRIK (in-repo; native C++)   succ  47.4  PBcol  40.7  MJcol  38.9  mean     0.3ms  [  0.6s cell, ETA   0.3m]
+[  3/12] ur5          near_singular CCD (in-repo; native C++)      succ  35.7  PBcol  51.2  MJcol  49.3  mean     0.4ms  [  0.8s cell, ETA   0.2m]
+[  4/12] ur5          near_singular FABRIK (in-repo; native C++)   succ  36.2  PBcol  54.4  MJcol  53.0  mean     0.3ms  [  0.7s cell, ETA   0.2m]
+[  5/12] ur5          cluttered     CCD (in-repo; native C++)      succ  41.3  PBcol  73.6  MJcol  71.4  mean     0.4ms  [  0.8s cell, ETA   0.2m]
+[  6/12] ur5          cluttered     FABRIK (in-repo; native C++)   succ  39.1  PBcol  71.4  MJcol  70.0  mean     0.3ms  [  0.7s cell, ETA   0.2m]
+[franka_panda] PyBullet oracle ready: ee=panda_link8 offset=tool resid=6.60e-07
+[franka_panda] MuJoCo oracle ready: offset=tool resid=6.66e-08
+[franka_panda]  A/FK  PB↔MJ max_pos=5.90e-08m max_orient=4.13e-07rad
+[franka_panda]  B/col proxy 0.5%  PB 9.2%  MJ 8.3%  sign-agree 99.1%
+[  7/12] franka_panda open_space    CCD (in-repo; native C++)      succ  27.0  PBcol  18.3  MJcol  17.5  mean     0.6ms  [  1.1s cell, ETA   0.2m]
+[  8/12] franka_panda open_space    FABRIK (in-repo; native C++)   succ  21.1  PBcol  18.5  MJcol  18.3  mean     0.5ms  [  1.0s cell, ETA   0.1m]
+[  9/12] franka_panda near_singular CCD (in-repo; native C++)      succ  15.5  PBcol  17.2  MJcol  16.8  mean     0.7ms  [  1.2s cell, ETA   0.1m]
+[ 10/12] franka_panda near_singular FABRIK (in-repo; native C++)   succ  12.7  PBcol  19.3  MJcol  18.8  mean     0.5ms  [  1.0s cell, ETA   0.1m]
+[ 11/12] franka_panda cluttered     CCD (in-repo; native C++)      succ  15.0  PBcol  83.9  MJcol  83.3  mean     0.7ms  [  1.2s cell, ETA   0.1m]
+[ 12/12] franka_panda cluttered     FABRIK (in-repo; native C++)   succ  20.5  PBcol  81.1  MJcol  80.7  mean     0.5ms  [  1.0s cell, ETA   0.0m]
+
+Done in 1.0 min. Wrote results/master_10seed_fast(cpp).csv, results/master_10seed_fast(cpp).md, results/master_10seed_fast(cpp).manifest.json (66 cells).

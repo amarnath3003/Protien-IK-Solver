@@ -28,7 +28,7 @@ and competes with TRAC-IK on latency as well as success/collision.
 | **Jacobian (DLS)** | **REAL Robotics Toolbox** (Corke) Levenberg–Marquardt, single-shot from the seed |
 | **Multi-start** | **REAL Robotics Toolbox** `ik_LM` with native random restarts (`slimit=100`) |
 | **ProteinIK V1 / V4 / V4+o2 / V4-calib / V6** | **native C++/Eigen ports** of the project's own solvers (`../cpp/pik_*.hpp` → `pik_native`) — statistically identical to the Python (FK/energy parity ≤1e-11; success/collision match, only the RNG stream differs) |
-| CCD, FABRIK | **in-repo** code — *no genuine DH-native upstream exists* (see below) |
+| **CCD, FABRIK** | **native C++/Eigen ports** of the in-repo algorithm (`../cpp/pik_ccd.hpp`, `pik_fabrik.hpp` → `pik_native`) — *no genuine DH-native upstream exists* (see below), so the project's own code is compiled rather than faked as an import. Deterministic (no RNG): per-step math bit-identical to Python, quality columns match to ≤0.7 pt (`../cpp/parity_ccd_fabrik.py`) |
 | Analytical (planar3dof) | the project's **exact closed-form** |
 | PyBullet native IK | **REAL PyBullet** `calculateInverseKinematics` |
 
@@ -46,7 +46,7 @@ proves FK/energy/collision/frustration match Python to machine epsilon and each
 solver's success/collision distribution matches. `cpp_solvers.py` (here) adapts them
 to the `(spec,q0,T,rng)->SolveResult` contract so the driver runs them unchanged.
 
-### Why CCD and FABRIK are *not* swapped
+### Why CCD and FABRIK are *ported*, not swapped for an upstream
 
 Unlike TRAC-IK / KDL / Robotics Toolbox — real *robotics* libraries that accept a
 DH robot and return joint angles — the genuine reference implementations of
@@ -55,8 +55,15 @@ DH robot and return joint angles — the genuine reference implementations of
 and return bone bend-angles, not DH joint angles for a UR5 / Franka. There is no
 original-author library that solves a DH manipulator to a 6-DOF pose. Bridging one
 to these robots would itself be a reimplementation — so rather than fake a "genuine
-import", these two rows keep the repo's own code and are clearly labelled
-`(in-repo; no genuine upstream)` in the table.
+import", these two solvers keep the repo's own algorithm, but (like the ProteinIK
+family) that algorithm is now compiled to **native C++/Eigen** (`../cpp/pik_ccd.hpp`,
+`pik_fabrik.hpp`) so the speed columns are apples-to-apples with the other native
+solvers instead of penalised by the Python interpreter. Both are fully deterministic
+(no RNG); `../cpp/parity_ccd_fabrik.py` proves the per-joint update math is
+bit-identical to the Python (CCD ≤1e-13 at full budget; FABRIK ≤1e-13 per step) and
+that the benchmark quality columns match to ≤0.7 pt — only a couple of non-converged
+boundary solves per cell flip from 1-ULP numpy-vs-Eigen differences. They are
+labelled `(in-repo; native C++)` in the table.
 
 ## Faithfulness — every genuine solver solves the *identical* robot
 

@@ -1,6 +1,6 @@
 {
-  "finished_at": "2026-07-13 20:09:40",
-  "wall_seconds": 896.3,
+  "finished_at": "2026-07-14 22:11:52",
+  "wall_seconds": 23.4,
   "config": {
     "trials": 100,
     "seeds": [
@@ -39,7 +39,7 @@
     "collision_samples": 2000
   },
   "cells_total": 99,
-  "cells_run_this_invocation": 99,
+  "cells_run_this_invocation": 18,
   "n_per_cell": 300,
   "environment": {
     "python": "3.10.12",

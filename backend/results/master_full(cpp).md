@@ -2,7 +2,7 @@
 
 - **100** trials/seed × seeds **[1, 2, 3]** (n=300 per cell)  |  warm-up 8 untimed solves/cell
 - Arms: planar3dof, ur5, franka_panda  |  Scenarios: open_space, near_singular, cluttered
-- Engines: PyBullet + MuJoCo  |  generated 2026-07-13 20:09:40
+- Engines: PyBullet + MuJoCo  |  generated 2026-07-14 22:11:52
 
 Each solver runs **once** on our DH `RobotSpec` core; that `q_final` is then scored by two independent real-mesh oracles — **PB** = PyBullet, **MJ** = MuJoCo (identical URDF & non-adjacent link pairs). The capsule proxy the solvers optimize against is **not** used to evaluate them here — only real-mesh collision counts (planar3dof has no URDF, so it carries success/speed only). `PyBullet native IK` is the sim's own solver on the identical targets. Timing is wall-clock (OS noise on mean/p95/p99); success/collision/error columns are deterministic given the seed.
 
@@ -49,8 +49,8 @@ Each solver runs **once** on our DH `RobotSpec` core; that `q_final` is then sco
 | ProteinIK Raw Biology (V6) | 99.7 |   –   |   –   | 3.6 | 3.9 | 4.1 | 100 |   –   |   –   |   –   |   –   |   –   | 0.01 |
 | ProteinIK (V1) | 99.3 |   –   |   –   | 0.0 | 0.1 | 0.2 | 38 |   –   |   –   |   –   |   –   |   –   | 0.01 |
 | Jacobian DLS (real RTB LM, single-shot) | 66.3 |   –   |   –   | 0.2 | 0.2 | 0.2 | 11 |   –   |   –   |   –   |   –   |   –   | 0.00 |
-| CCD (in-repo; no genuine upstream) | 49.0 |   –   |   –   | 52.7 | 94.3 | 98.7 | 171 |   –   |   –   |   –   |   –   |   –   | 0.62 |
-| FABRIK (in-repo; no genuine upstream) | 44.0 |   –   |   –   | 39.8 | 65.5 | 66.4 | 93 |   –   |   –   |   –   |   –   |   –   | 0.77 |
+| CCD (in-repo; native C++) | 49.0 |   –   |   –   | 0.1 | 0.2 | 0.3 | 171 |   –   |   –   |   –   |   –   |   –   | 0.62 |
+| FABRIK (in-repo; native C++) | 44.0 |   –   |   –   | 0.1 | 0.1 | 0.2 | 93 |   –   |   –   |   –   |   –   |   –   | 0.77 |
 
 ## planar3dof — near_singular
 
@@ -65,8 +65,8 @@ Each solver runs **once** on our DH `RobotSpec` core; that `q_final` is then sco
 | ProteinIK Raw Biology (V6) | 99.3 |   –   |   –   | 3.7 | 3.8 | 4.0 | 100 |   –   |   –   |   –   |   –   |   –   | 0.03 |
 | ProteinIK (V1) | 83.3 |   –   |   –   | 0.1 | 0.3 | 0.3 | 95 |   –   |   –   |   –   |   –   |   –   | 0.22 |
 | Jacobian DLS (real RTB LM, single-shot) | 64.3 |   –   |   –   | 0.2 | 0.2 | 0.2 | 14 |   –   |   –   |   –   |   –   |   –   | 0.00 |
-| CCD (in-repo; no genuine upstream) | 26.0 |   –   |   –   | 73.9 | 94.6 | 99.3 | 240 |   –   |   –   |   –   |   –   |   –   | 0.75 |
-| FABRIK (in-repo; no genuine upstream) | 22.7 |   –   |   –   | 53.6 | 66.3 | 68.0 | 126 |   –   |   –   |   –   |   –   |   –   | 0.90 |
+| CCD (in-repo; native C++) | 26.0 |   –   |   –   | 0.1 | 0.2 | 0.3 | 240 |   –   |   –   |   –   |   –   |   –   | 0.75 |
+| FABRIK (in-repo; native C++) | 22.7 |   –   |   –   | 0.1 | 0.2 | 0.2 | 126 |   –   |   –   |   –   |   –   |   –   | 0.90 |
 
 ## planar3dof — cluttered
 
@@ -81,8 +81,8 @@ Each solver runs **once** on our DH `RobotSpec` core; that `q_final` is then sco
 | ProteinIK Raw Biology (V6) | 97.7 |   –   |   –   | 3.7 | 4.1 | 4.3 | 100 |   –   |   –   |   –   |   –   |   –   | 0.02 |
 | ProteinIK (V1) | 91.0 |   –   |   –   | 0.1 | 0.3 | 0.3 | 61 |   –   |   –   |   –   |   –   |   –   | 0.10 |
 | Jacobian DLS (real RTB LM, single-shot) | 67.7 |   –   |   –   | 0.2 | 0.2 | 0.2 | 12 |   –   |   –   |   –   |   –   |   –   | 0.00 |
-| FABRIK (in-repo; no genuine upstream) | 24.3 |   –   |   –   | 50.3 | 66.4 | 67.4 | 118 |   –   |   –   |   –   |   –   |   –   | 1.16 |
-| CCD (in-repo; no genuine upstream) | 21.7 |   –   |   –   | 73.7 | 94.2 | 96.1 | 240 |   –   |   –   |   –   |   –   |   –   | 0.99 |
+| FABRIK (in-repo; native C++) | 24.3 |   –   |   –   | 0.1 | 0.2 | 0.3 | 118 |   –   |   –   |   –   |   –   |   –   | 1.16 |
+| CCD (in-repo; native C++) | 21.7 |   –   |   –   | 0.1 | 0.2 | 0.3 | 240 |   –   |   –   |   –   |   –   |   –   | 0.99 |
 
 ## ur5 — open_space
 
@@ -96,8 +96,8 @@ Each solver runs **once** on our DH `RobotSpec` core; that `q_final` is then sco
 | ProteinIK Raw Biology (V6) | 99.3 | 99.3 | 99.3 | 13.6 | 14.1 | 14.7 | 100 | 13.7 | 12.0 | 0.0055 | 0.0054 | 0.224 | 0.02 |
 | ProteinIK (V1) | 97.3 | 97.3 | 97.3 | 0.1 | 0.5 | 0.7 | 44 | 29.3 | 28.3 | -0.0008 | -0.0001 | 9.008 | 0.02 |
 | Jacobian DLS (real RTB LM, single-shot) | 72.3 | 72.3 | 72.3 | 0.6 | 0.9 | 0.9 | 38 | 39.0 | 37.3 | -0.0048 | -0.0039 | 238.610 | 0.00 |
-| FABRIK (in-repo; no genuine upstream) | 49.7 | 49.7 | 49.7 | 86.9 | 139.8 | 141.8 | 94 | 43.3 | 41.3 | -0.0072 | -0.0061 | 48.643 | 0.45 |
-| CCD (in-repo; no genuine upstream) | 43.7 | 43.7 | 43.7 | 139.4 | 216.9 | 221.5 | 195 | 38.0 | 37.3 | -0.0069 | -0.0059 | 39.706 | 0.59 |
+| FABRIK (in-repo; native C++) | 49.3 | 49.3 | 49.3 | 0.3 | 0.4 | 0.4 | 95 | 43.3 | 41.3 | -0.0071 | -0.0062 | 48.803 | 0.45 |
+| CCD (in-repo; native C++) | 43.7 | 43.7 | 43.7 | 0.4 | 0.6 | 0.7 | 195 | 38.0 | 37.3 | -0.0069 | -0.0057 | 39.706 | 0.59 |
 | PyBullet native IK |   –   | 69.3 | 69.3 | 4.0 | 6.7 | 6.8 |   –   | 43.7 | 42.3 | -0.0064 | -0.0053 | 11.968 |   –   |
 
 ## ur5 — near_singular
@@ -112,8 +112,8 @@ Each solver runs **once** on our DH `RobotSpec` core; that `q_final` is then sco
 | TRAC-IK (real C++ TRACLabs) | 99.3 | 99.3 | 99.3 | 0.5 | 1.3 | 2.9 | 1 | 44.3 | 42.7 | -0.0140 | -0.0130 | 5.997 | 0.00 |
 | ProteinIK (V1) | 88.3 | 88.3 | 88.3 | 0.2 | 0.7 | 0.7 | 71 | 40.3 | 38.7 | -0.0103 | -0.0095 | 33.850 | 0.06 |
 | Jacobian DLS (real RTB LM, single-shot) | 69.7 | 69.7 | 69.7 | 0.6 | 0.9 | 0.9 | 39 | 49.0 | 47.0 | -0.0144 | -0.0135 | 224.267 | 0.00 |
-| FABRIK (in-repo; no genuine upstream) | 34.7 | 34.7 | 34.7 | 104.7 | 139.8 | 141.6 | 114 | 53.0 | 51.0 | -0.0168 | -0.0156 | 51.907 | 0.51 |
-| CCD (in-repo; no genuine upstream) | 32.0 | 32.0 | 32.0 | 160.9 | 214.4 | 218.4 | 227 | 50.0 | 48.3 | -0.0181 | -0.0172 | 37.322 | 0.61 |
+| FABRIK (in-repo; native C++) | 34.7 | 34.7 | 34.7 | 0.3 | 0.4 | 0.5 | 114 | 53.0 | 51.0 | -0.0167 | -0.0159 | 51.730 | 0.50 |
+| CCD (in-repo; native C++) | 32.0 | 32.0 | 32.0 | 0.4 | 0.6 | 0.7 | 227 | 50.0 | 48.3 | -0.0181 | -0.0170 | 37.322 | 0.61 |
 | PyBullet native IK |   –   | 46.0 | 46.0 | 5.8 | 6.8 | 7.2 |   –   | 51.3 | 50.3 | -0.0160 | -0.0148 | 13.372 |   –   |
 
 ## ur5 — cluttered
@@ -128,8 +128,8 @@ Each solver runs **once** on our DH `RobotSpec` core; that `q_final` is then sco
 | TRAC-IK (real C++ TRACLabs) | 100.0 | 100.0 | 100.0 | 0.4 | 1.0 | 1.5 | 1 | 71.3 | 70.0 | -0.0342 | -0.0331 | 0.002 | 0.00 |
 | ProteinIK (V1) | 89.3 | 89.3 | 89.3 | 0.2 | 0.7 | 0.7 | 67 | 64.7 | 63.0 | -0.0243 | -0.0234 | 22.437 | 0.06 |
 | Jacobian DLS (real RTB LM, single-shot) | 77.0 | 77.0 | 77.0 | 0.5 | 0.7 | 0.9 | 27 | 62.3 | 61.0 | -0.0278 | -0.0266 | 138.144 | 0.00 |
-| CCD (in-repo; no genuine upstream) | 41.0 | 41.0 | 41.0 | 145.6 | 215.5 | 220.2 | 204 | 70.3 | 67.7 | -0.0375 | -0.0363 | 22.268 | 0.51 |
-| FABRIK (in-repo; no genuine upstream) | 37.0 | 37.0 | 37.0 | 98.3 | 140.0 | 143.6 | 107 | 68.0 | 67.0 | -0.0328 | -0.0319 | 43.424 | 0.47 |
+| CCD (in-repo; native C++) | 41.0 | 41.0 | 41.0 | 0.4 | 0.6 | 0.6 | 204 | 70.3 | 67.7 | -0.0375 | -0.0363 | 22.269 | 0.51 |
+| FABRIK (in-repo; native C++) | 36.7 | 36.7 | 36.7 | 0.3 | 0.4 | 0.4 | 107 | 68.0 | 67.0 | -0.0327 | -0.0317 | 43.604 | 0.45 |
 | PyBullet native IK |   –   | 55.0 | 55.0 | 5.4 | 7.0 | 7.3 |   –   | 72.0 | 71.7 | -0.0369 | -0.0352 | 6.753 |   –   |
 
 ## franka_panda — open_space
@@ -144,8 +144,8 @@ Each solver runs **once** on our DH `RobotSpec` core; that `q_final` is then sco
 | TRAC-IK (real C++ TRACLabs) | 98.7 | 98.7 | 98.7 | 0.9 | 2.7 | 5.1 | 1 | 8.7 | 7.0 | 0.0148 | 0.0142 | 11.533 | 0.06 |
 | ProteinIK (V1) | 96.3 | 96.3 | 96.3 | 0.2 | 0.6 | 0.7 | 58 | 7.7 | 6.7 | 0.0148 | 0.0141 | 8.023 | 0.12 |
 | Jacobian DLS (real RTB LM, single-shot) | 28.3 | 28.3 | 28.3 | 0.7 | 1.1 | 1.1 | 36 | 12.0 | 10.0 | 0.0141 | 0.0134 | 543.450 | 0.00 |
-| CCD (in-repo; no genuine upstream) | 23.0 | 23.0 | 23.0 | 217.1 | 264.0 | 266.2 | 249 | 19.0 | 17.3 | 0.0106 | 0.0092 | 24.512 | 1.16 |
-| FABRIK (in-repo; no genuine upstream) | 18.0 | 18.0 | 18.0 | 162.1 | 196.5 | 201.9 | 131 | 20.7 | 20.0 | 0.0106 | 0.0101 | 49.261 | 1.28 |
+| CCD (in-repo; native C++) | 23.0 | 23.0 | 23.0 | 0.6 | 0.8 | 0.8 | 249 | 19.0 | 17.3 | 0.0106 | 0.0101 | 24.505 | 1.16 |
+| FABRIK (in-repo; native C++) | 18.0 | 18.0 | 18.0 | 0.5 | 0.6 | 0.6 | 131 | 20.7 | 20.0 | 0.0106 | 0.0098 | 49.261 | 1.28 |
 | PyBullet native IK |   –   | 78.0 | 78.0 | 4.4 | 9.1 | 9.7 |   –   | 32.0 | 31.0 | -0.0045 | -0.0053 | 13.261 |   –   |
 
 ## franka_panda — near_singular
@@ -160,8 +160,8 @@ Each solver runs **once** on our DH `RobotSpec` core; that `q_final` is then sco
 | Multi-start (real RTB ik_LM restarts) | 98.0 | 98.0 | 98.0 | 0.9 | 1.3 | 4.0 | 104 | 6.3 | 4.7 | 0.0158 | 0.0149 | 15.946 | 0.00 |
 | ProteinIK (V1) | 92.3 | 92.3 | 92.3 | 0.2 | 0.7 | 0.7 | 65 | 9.0 | 7.7 | 0.0147 | 0.0136 | 15.209 | 0.18 |
 | Jacobian DLS (real RTB LM, single-shot) | 31.0 | 31.0 | 31.0 | 0.7 | 1.1 | 1.1 | 34 | 10.0 | 9.0 | 0.0142 | 0.0137 | 573.806 | 0.00 |
-| CCD (in-repo; no genuine upstream) | 11.7 | 11.7 | 11.7 | 252.5 | 282.1 | 284.1 | 280 | 15.0 | 14.3 | 0.0123 | 0.0122 | 26.662 | 1.08 |
-| FABRIK (in-repo; no genuine upstream) | 11.3 | 11.3 | 11.3 | 171.4 | 184.3 | 186.1 | 141 | 20.0 | 19.7 | 0.0094 | 0.0095 | 55.857 | 1.19 |
+| CCD (in-repo; native C++) | 11.7 | 11.7 | 11.7 | 0.7 | 0.8 | 0.8 | 280 | 15.0 | 14.3 | 0.0123 | 0.0114 | 26.661 | 1.08 |
+| FABRIK (in-repo; native C++) | 11.3 | 11.3 | 11.3 | 0.5 | 0.6 | 0.6 | 141 | 20.0 | 19.7 | 0.0094 | 0.0087 | 55.857 | 1.19 |
 | PyBullet native IK |   –   | 61.7 | 61.7 | 6.8 | 9.0 | 9.2 |   –   | 22.3 | 22.0 | 0.0038 | 0.0029 | 17.523 |   –   |
 
 ## franka_panda — cluttered
@@ -175,9 +175,9 @@ Each solver runs **once** on our DH `RobotSpec` core; that `q_final` is then sco
 | TRAC-IK (real C++ TRACLabs) | 94.7 | 94.7 | 94.7 | 1.3 | 5.1 | 5.1 | 1 | 74.7 | 74.3 | -0.0449 | -0.0442 | 40.046 | 0.08 |
 | Multi-start (real RTB ik_LM restarts) | 93.7 | 93.7 | 93.7 | 1.1 | 4.1 | 6.4 | 208 | 74.3 | 74.3 | -0.0449 | -0.0442 | 45.677 | 0.00 |
 | ProteinIK (V1) | 80.7 | 80.7 | 80.7 | 0.3 | 0.8 | 0.8 | 92 | 74.0 | 72.7 | -0.0419 | -0.0409 | 45.687 | 0.39 |
-| FABRIK (in-repo; no genuine upstream) | 22.7 | 22.7 | 22.7 | 149.8 | 184.8 | 190.7 | 123 | 76.7 | 76.3 | -0.0426 | -0.0416 | 50.023 | 1.45 |
+| FABRIK (in-repo; native C++) | 22.7 | 22.7 | 22.7 | 0.5 | 0.6 | 0.6 | 123 | 76.7 | 76.3 | -0.0426 | -0.0418 | 50.023 | 1.44 |
 | Jacobian DLS (real RTB LM, single-shot) | 19.0 | 19.0 | 19.0 | 0.7 | 0.7 | 1.1 | 22 | 22.7 | 20.7 | 0.0033 | 0.0024 | 606.523 | 0.00 |
-| CCD (in-repo; no genuine upstream) | 12.3 | 12.3 | 12.3 | 236.6 | 263.5 | 264.1 | 272 | 82.7 | 82.0 | -0.0513 | -0.0500 | 18.656 | 1.71 |
+| CCD (in-repo; native C++) | 12.3 | 12.3 | 12.3 | 0.7 | 0.8 | 0.8 | 272 | 82.7 | 82.0 | -0.0512 | -0.0501 | 18.660 | 1.71 |
 | PyBullet native IK |   –   | 92.3 | 92.3 | 2.9 | 8.7 | 8.8 |   –   | 86.0 | 85.7 | -0.0644 | -0.0631 | 4.313 |   –   |
 
 ---
@@ -196,8 +196,10 @@ so the speed columns are apples-to-apples.
 | **ProteinIK V1 / V4 / V4+o2 / V4-calib / V6** | **native C++/Eigen ports** (backend/cpp/, `pik_native`) of the project's own solvers — same logic/weights/tolerances, FK & energy parity to ≤1e-11, success/collision statistically identical to the Python (only the RNG stream differs) |
 | Analytical (planar3dof) | the project's exact closed-form |
 | PyBullet native IK | REAL PyBullet `calculateInverseKinematics` |
-| CCD, FABRIK | in-repo algorithm — no genuine DH-native upstream exists |
+| **CCD, FABRIK** | **native C++/Eigen ports** (backend/cpp/`pik_ccd.hpp`, `pik_fabrik.hpp` → `pik_native`) of the in-repo algorithm — no genuine DH-native upstream library exists, so this is the project’s own code compiled, not a fake import. Deterministic (no RNG): the per-joint update math is bit-identical to the Python (CCD ≤1e-13 even at full budget; FABRIK ≤1e-13 per step). Quality columns therefore match the Python to ≤0.7 pt (≤2 trials/cell) — a couple of *non-converged* boundary solves flip success/collision from 1-ULP transcendental differences (numpy vs Eigen) compounding over the iteration budget, which for FABRIK is marginally stable by construction. Only the timing is native (~310–500× faster wall-clock). See `cpp/parity_ccd_fabrik.py`. |
 
 Homotopy (CCH-IK) and Fixed-λ are excluded from this benchmark. Numbers differ from
 `master_full.md` **by design**: native compiled solvers, not Python — e.g. ProteinIK V4
-now runs sub-millisecond and competes with TRAC-IK on speed as well as quality.
+now runs sub-millisecond and competes with TRAC-IK on speed as well as quality, and the
+CCD/FABRIK classical baselines are now compiled C++ too (same algorithm, ~10–100× faster
+wall-clock than the Python).

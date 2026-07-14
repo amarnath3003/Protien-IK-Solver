@@ -105,3 +105,20 @@ def solve_raw_cpp(spec, q0, T_target, rng, collect_steps=False) -> SolveResult:
     t0 = time.perf_counter()
     r = pn.solve_raw(R, np.asarray(q0, float), np.asarray(T_target, float), sd)
     return _finalize(spec, r, (time.perf_counter() - t0) * 1000.0, "protein_raw")
+
+
+# CCD / FABRIK are deterministic (no RNG); the seed arg is accepted but ignored
+# by the C++ binding. Same in-repo algorithm as the Python, compiled — so the
+# quality columns match the Python to float tolerance, only the timing is native.
+def solve_ccd_cpp(spec, q0, T_target, rng, collect_steps=False) -> SolveResult:
+    R = _robot(spec)
+    t0 = time.perf_counter()
+    r = pn.solve_ccd(R, np.asarray(q0, float), np.asarray(T_target, float), 0)
+    return _finalize(spec, r, (time.perf_counter() - t0) * 1000.0, "ccd")
+
+
+def solve_fabrik_cpp(spec, q0, T_target, rng, collect_steps=False) -> SolveResult:
+    R = _robot(spec)
+    t0 = time.perf_counter()
+    r = pn.solve_fabrik(R, np.asarray(q0, float), np.asarray(T_target, float), 0)
+    return _finalize(spec, r, (time.perf_counter() - t0) * 1000.0, "fabrik")
