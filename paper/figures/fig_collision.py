@@ -1,14 +1,14 @@
 """F5 -- real-mesh self-collision across both physical arms, high-success solvers.
 
 Two panels (UR5, Franka), each a grouped bar chart of PyBullet self-collision rate
-by scenario for the four >=90%-success solvers. On the non-redundant UR5 KineticFold
-has the LOWEST collision in every regime; on the redundant Franka every solver is
-statistically tied (a spare joint lets any of them dodge). Only the high-success
-field is shown -- the simple baselines fail too often for a collision rate to be
-meaningful. MuJoCo agrees to within ~1 point (CSV `mj_collision_pct`).
+by scenario for the high-success solvers plus LangevinFold. On the non-redundant UR5
+LangevinFold has the LOWEST collision of the whole field and KineticFold is the
+cleanest of the fast solvers; on the redundant Franka the field converges to a wash
+(a spare joint lets any of them dodge). The simple baselines are omitted -- they fail
+too often for a collision rate to be meaningful. MuJoCo agrees to within ~1 point.
 
-Source: 10-seed run (master_10seed_fast.csv; needs pb_collision_pct).
-Run:    python fig_collision.py [--csv path/to/master_10seed_fast.csv]
+Source: native 10-seed run (master_10seed_fast(cpp).csv; needs pb_collision_pct).
+Run:    python fig_collision.py [--csv path/to/master_10seed_fast(cpp).csv]
 """
 from __future__ import annotations
 
@@ -23,7 +23,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Patch
 
-SOLVERS = ["protein_ik", "multi_start", "trac_ik_style", "protein_fast"]
+# LangevinFold (protein_raw) is the field-lowest collision solver; include it here
+# (it is out of the success/latency figures, where it is the offline quality solver).
+SOLVERS = ["protein_ik", "multi_start", "trac_ik_style", "protein_fast", "protein_raw"]
 
 
 def panel(ax, rows, robot, solvers, scen):
@@ -63,9 +65,9 @@ def main():
         ax.set_ylim(0, 92)
 
     handles = [Patch(facecolor=S.color(s), label=S.label(s)) for s in SOLVERS]
-    fig.legend(handles=handles, ncol=4, loc="lower center", bbox_to_anchor=(0.5, -0.02))
-    fig.suptitle("Self-collision: KineticFold cleanest on the non-redundant UR5, a tie on the redundant Franka",
-                 fontsize=9.5, fontweight="bold", y=1.02)
+    fig.legend(handles=handles, ncol=5, loc="lower center", bbox_to_anchor=(0.5, -0.02))
+    fig.suptitle("Self-collision: LangevinFold lowest of the whole field; KineticFold cleanest of the fast solvers on UR5, a wash on Franka",
+                 fontsize=8.5, fontweight="bold", y=1.02)
     fig.subplots_adjust(bottom=0.20, wspace=0.06)
 
     S.save(fig, "fig_collision")

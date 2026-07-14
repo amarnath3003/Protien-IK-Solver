@@ -1,14 +1,15 @@
 """F4 -- per-solve latency across the whole solver field: median vs mean.
 
-For each arm (UR5, Franka) this draws, for every solver, its median (p50) and mean
-wall-clock latency as two grouped bars on a LOG time axis, with the millisecond
-value printed on each bar. The open-space regime is used so every solver is timed
+For each arm (UR5, Franka) this draws, for every solver, its median (p50), mean, and
+p99-tail wall-clock latency as three grouped bars on a LOG time axis, with the
+millisecond value printed on each bar (the p99 bar makes each solver's tail explicit). The open-space regime is used so every solver is timed
 on targets it actually attempts (on the harder regimes the simple baselines fail
 outright and LangevinFold carries a measurement outlier). KineticFold has the
 fastest typical solve of the practical field; LangevinFold alone runs offline-slow.
 
-Source: broad 3-seed survey (master_full.csv) -- the paper's speed source.
-Run:    python fig_latency_tail.py [--csv path/to/master_full.csv]
+Source: native 10-seed run (master_10seed_fast(cpp).csv) -- every solver native
+(real TRAC-IK, RTB baselines, C++ ProteinIK/CCD/FABRIK), so timings are apples-to-apples.
+Run:    python fig_latency.py [--csv path/to/master_10seed_fast(cpp).csv]
 """
 from __future__ import annotations
 
@@ -23,11 +24,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 SCENARIO = "open_space"
-# weak -> strong (LangevinFold excluded: offline, seconds/solve -- off the scale)
+# weak -> strong (LangevinFold excluded: ~14 ms offline solver, off the sub-ms scale)
 ORDER = ["ccd", "fabrik", "jacobian_dls", "protein_ik",
          "multi_start", "trac_ik_style", "protein_fast"]
-METRICS = [("p50_ms", "median", "#1f6f6b"), ("mean_ms", "mean", "#e08a3c")]
-FLOOR = 0.7  # ms; log-scale bar base
+METRICS = [("p50_ms", "median", "#1f6f6b"), ("mean_ms", "mean", "#e08a3c"),
+           ("p99_ms", "p99 (tail)", "#b5462f")]
+FLOOR = 0.05  # ms; log-scale bar base (native solvers run sub-millisecond)
 
 
 def _fmt(v: float) -> str:
@@ -42,9 +44,9 @@ def _fmt(v: float) -> str:
 
 def main():
     ap = argparse.ArgumentParser()
-    # Latency is reported from the broad 3-seed survey (master_full); success and
-    # collision come from the 10-seed run.
-    ap.add_argument("--csv", default=str(S.REPO / "backend" / "results" / "master_full.csv"))
+    # Latency is reported from the native 10-seed run (all solvers compiled), the same
+    # file as success and collision, so the speed comparison is apples-to-apples.
+    ap.add_argument("--csv", default=str(S.REPO / "backend" / "results" / "master_10seed_fast(cpp).csv"))
     args = ap.parse_args()
 
     S.use_paper_style()
@@ -60,12 +62,12 @@ def main():
         c = S.cell(rows, arm, SCENARIO)
         solvers = [s for s in ORDER if s in c]
         x = np.arange(len(solvers))
-        w = 0.40
+        w = 0.27
         for k, (metric, mlabel, mcolor) in enumerate(METRICS):
             vals = [c.get(s, {}).get(metric, float("nan")) for s in solvers]
             top = max([top] + [v for v in vals if v == v])
             heights = [(v - FLOOR) if v == v else float("nan") for v in vals]
-            bars = ax.bar(x + (k - 0.5) * w, heights, w, bottom=FLOOR,
+            bars = ax.bar(x + (k - (len(METRICS) - 1) / 2) * w, heights, w, bottom=FLOOR,
                           color=mcolor, edgecolor="white", linewidth=0.4,
                           label=mlabel, zorder=3)
             ax.bar_label(bars, labels=[_fmt(v) for v in vals], padding=1.5,

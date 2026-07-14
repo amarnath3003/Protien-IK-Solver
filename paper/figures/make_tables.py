@@ -83,14 +83,14 @@ def tab_latency(rows, name):
                      f1(r["mean_ms"]), f1(r["p50_ms"]), f1(r["p95_ms"]), f1(r["p99_ms"])]
             body.append(bold(cells) if sid == S.HERO else cells)
     write_table(name,
-                "Latency (ms): easy vs.\\ hard regime, KineticFold vs.\\ TRAC-IK-style.",
+                "Latency (ms): easy vs.\\ hard regime, KineticFold vs.\\ TRAC-IK.",
                 "tab:latency", "llrrrr",
                 ["Arm/scenario", "Solver", "Mean", "p50", "p95", "p99"], body,
                 note="Wall-clock; OS scheduling noise on mean/p95/p99.")
 
 
 def tab_collision(rows, name):
-    solvers = [s for s in ["protein_ik", "multi_start", "trac_ik_style", "protein_fast"]
+    solvers = [s for s in ["protein_ik", "multi_start", "trac_ik_style", "protein_fast", "protein_raw"]
                if any(r["robot"] == "ur5" and r["solver"] == s for r in rows)]
     scen = [s for s in S.SCENARIOS if S.cell(rows, "ur5", s)]
     body = []
@@ -155,7 +155,10 @@ def tab_dof(json_path, name):
                 "Single-shot clean-solve rate (\\%) vs.\\ DOF, planar arm. "
                 "Both solvers reach the target $\\approx$100\\%; the gap is self-collision.",
                 "tab:dof_scaling", "rrrr",
-                ["DOF", "KineticFold", "TRAC-IK-style", "ratio"], body)
+                ["DOF", "KineticFold", "TRAC-IK", "ratio"], body,
+                note="Native, apples-to-apples: KineticFold runs as its C++/Eigen port "
+                     "and TRAC-IK as the genuine TRACLabs C++ library (\\texttt{tracikpy}), "
+                     "each solving the identical DH chain.")
 
 
 def main():

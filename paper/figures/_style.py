@@ -15,7 +15,7 @@ Dependencies: matplotlib + numpy + stdlib csv only (no pandas).
 
 Solver id -> paper name mapping (the paper renames the code's V1/V4/V6):
     protein_ik   -> StagedFold      protein_fast -> KineticFold
-    protein_raw  -> LangevinFold    trac_ik_style-> TRAC-IK-style
+    protein_raw  -> LangevinFold    trac_ik_style-> TRAC-IK (real TRACLabs, native)
 """
 from __future__ import annotations
 
@@ -33,14 +33,15 @@ PAPER_DIR = FIG_DIR.parent                          # paper
 REPO = PAPER_DIR.parent                             # repo root
 TABLE_DIR = PAPER_DIR / "tables"                    # paper/tables
 
-# Default data locations. THE real, paper-grade benchmark is the one produced by
-# backend/bench/master_sim_benchmark.py ("solve once, score three ways" in PyBullet +
-# MuJoCo); its committed output is results/master_10seed_fast.csv (UR5 + Franka,
-# seeds 1..10, n=1000/cell). Both success/speed AND real-mesh collision come from that
-# single file. `master_full.csv` (from the older scrap/master_benchmark.py) is NOT
-# authoritative and is no longer a default. Override any of these on the CLI.
-DEFAULT_MASTER_CSV    = REPO / "backend" / "results" / "master_10seed_fast.csv"  # THE master sim benchmark
-DEFAULT_COLLISION_CSV = REPO / "backend" / "results" / "master_10seed_fast.csv"  # same file (carries pb_/mj_ collision)
+# Default data locations. THE real, paper-grade benchmark is the NATIVE re-run produced by
+# backend/native_bench/run_native_master.py ("solve once, score three ways" in PyBullet +
+# MuJoCo, every solver native: real TRAC-IK via tracikpy, RTB Jacobian-DLS/Multi-start, and
+# C++/Eigen ProteinIK + CCD/FABRIK ports); its committed output is
+# results/master_10seed_fast(cpp).csv (UR5 + Franka, seeds 1..10, n=1000/cell). Both
+# success/speed AND real-mesh collision come from that single file. The pre-native
+# `master_10seed_fast.csv` / `master_full.csv` are superseded. Override any of these on the CLI.
+DEFAULT_MASTER_CSV    = REPO / "backend" / "results" / "master_10seed_fast(cpp).csv"  # THE master sim benchmark (native)
+DEFAULT_COLLISION_CSV = REPO / "backend" / "results" / "master_10seed_fast(cpp).csv"  # same file (carries pb_/mj_ collision)
 DEFAULT_USECASE_JSON  = REPO / "backend" / "scrap"   / "usecase_results.json"    # DOF scaling (SEPARATE experiment)
 DEFAULT_LANGEVIN_CSV  = REPO / "backend" / "results" / "langevin_bench.csv"      # LangevinFold mini-benchmark (SEPARATE, small-scale)
 
@@ -51,7 +52,7 @@ LABEL = {
     "protein_ik":            "StagedFold",
     "protein_fast":          "KineticFold",
     "protein_raw":           "LangevinFold",
-    "trac_ik_style":         "TRAC-IK-style",
+    "trac_ik_style":         "TRAC-IK",
     "multi_start":           "Multi-start",
     "jacobian_dls":          "Jacobian-DLS",
     "ccd":                   "CCD",

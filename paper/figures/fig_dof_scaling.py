@@ -1,12 +1,14 @@
 """F2 (flagship) -- single-shot clean-solve rate vs planar-arm DOF (chain length).
 
 The paper's central result: as a planar arm is lengthened 4 -> 16 joints (made
-progressively more polymer-like), KineticFold's clean-solve advantage over TRAC-IK
-widens monotonically until KineticFold is the only method still producing
-collision-free folds. Both solvers reach the target ~100% of the time; the entire
-gap is self-collision avoidance.
+progressively more polymer-like), KineticFold's clean-solve advantage over genuine
+TRAC-IK holds at every length and grows through the mid-DOF range (peaking near
+3.2x at 8 DOF) until KineticFold is the only method still producing collision-free
+folds. Both solvers reach the target ~100% of the time; the entire gap is
+self-collision avoidance. Native, apples-to-apples: KineticFold runs as its
+C++/Eigen port, TRAC-IK as the genuine TRACLabs C++ library (tracikpy).
 
-Source: usecase_results.json, key "E" (EXP E).
+Source: usecase_results.json, key "E" (EXP E, native run).
 Run:    python fig_dof_scaling.py [--json path/to/usecase_results.json]
 """
 from __future__ import annotations
@@ -48,7 +50,7 @@ def main():
     ax.plot(dofs, kf, color=S.color("protein_fast"), ls="-", marker="o",
             label=S.label("protein_fast"), zorder=3)
     ax.plot(dofs, tr, color=S.color("trac_ik_style"), ls="--", marker="s",
-            label=S.label("trac_ik_style"), zorder=3)
+            label="TRAC-IK (genuine)", zorder=3)
 
     # Advantage ratio, annotated above each KineticFold point.
     for d, a, b in zip(dofs, kf, tr):
@@ -64,7 +66,7 @@ def main():
 
     ax.set_xlabel("Planar arm DOF   (chain length → polymer)")
     ax.set_ylabel("Single-shot clean-solve rate (%)")
-    ax.set_title("Advantage widens as the arm becomes a chain")
+    ax.set_title("KineticFold is the last to fold the longest chains cleanly")
     ax.set_xticks(dofs)
     ax.set_ylim(-3, max([v for v in kf if v == v]) + 16)
     ax.legend(loc="upper right")

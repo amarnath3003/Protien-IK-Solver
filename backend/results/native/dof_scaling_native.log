@@ -1,0 +1,15 @@
+[native-usecase] genuine baselines: jacobian_dls, multi_start, trac_ik_style | C++ ProteinIK: protein_fast, protein_fast_calib, protein_fast_o2, protein_ik, protein_raw | C++ classical: ccd, fabrik
+
+=== EXP E: hyper-redundant folding — clean-solve vs DOF (the protein regime) ===
+  [planar  4-DOF  ProteinIK Fast (V4)   ] solved 100.0%  CLEAN  71.7%
+  [planar  4-DOF  TRAC-IK (real C++ TRACLabs)] solved 100.0%  CLEAN  36.7%
+  [planar  6-DOF  ProteinIK Fast (V4)   ] solved 100.0%  CLEAN  63.3%
+  [planar  6-DOF  TRAC-IK (real C++ TRACLabs)] solved 100.0%  CLEAN  23.3%
+  [planar  8-DOF  ProteinIK Fast (V4)   ] solved 100.0%  CLEAN  43.3%
+  [planar  8-DOF  TRAC-IK (real C++ TRACLabs)] solved 100.0%  CLEAN  13.3%
+  [planar 12-DOF  ProteinIK Fast (V4)   ] solved 100.0%  CLEAN   7.5%
+  [planar 12-DOF  TRAC-IK (real C++ TRACLabs)] solved 100.0%  CLEAN   3.3%
+  [planar 16-DOF  ProteinIK Fast (V4)   ] solved 100.0%  CLEAN   0.8%
+  [planar 16-DOF  TRAC-IK (real C++ TRACLabs)] solved 100.0%  CLEAN   0.0%
+
+DONE in 0.9s -> results/native/dof_scaling_native.json
