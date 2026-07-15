@@ -137,11 +137,20 @@ def get_sim_model(robot: str) -> SimModel:
 
 
 def resolve_urdf_path(robot: str) -> str:
-    """Return the on-disk URDF path for ``robot`` via robot_descriptions.
+    """Return the on-disk URDF path for ``robot``.
 
-    Lazily imports robot_descriptions (downloads & caches the model on first
-    use). Raises a clear, actionable error if the package is missing.
+    Procedurally generated arms (the planar N-DOF chains of the DOF-scaling
+    study -- see ``app.sim.planar_model``) are synthetic and have no upstream
+    description package, so their generated URDF is returned directly. Every
+    other arm resolves through robot_descriptions, which lazily downloads &
+    caches the model on first use, and raises a clear, actionable error if the
+    package is missing.
     """
+    from app.sim.planar_model import GENERATED_URDFS  # lazy: avoids import cycle
+
+    if robot in GENERATED_URDFS:
+        return GENERATED_URDFS[robot]
+
     model = get_sim_model(robot)
     try:
         import importlib
