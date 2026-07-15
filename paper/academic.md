@@ -11,20 +11,23 @@ stability check — into an IK algorithm. Its individual moves are standard IK; 
 with two moves that are unusual in this setting (a target-blind first stage and a scoped-then-escalating rescue),
 constitute the contribution. StagedFold outperforms simple classical baselines but plateaus below production solvers,
 which motivates KineticFold: it adds folding's _kinetic partitioning_ as a compute schedule, attempting a cheap
-downhill fold first and paying for the full staged search only on genuinely frustrated targets. Against a strong,
-genuinely-implemented baseline field (Jacobian-DLS, CCD, FABRIK, TRAC-IK, Multi-start) KineticFold leads or ties on
-success across three arms — near 100% on UR5 and 98.4–100% on Franka, its clearest margin on the redundant arm — and,
-with every solver now compiled to native code, it is the fastest solver of the field on both arms (sub-millisecond mean)
-with a smaller tail than TRAC-IK. On self-collision the two folding solvers own the non-redundant arm: LangevinFold
-has the lowest real-mesh rate of any solver in the study, and KineticFold is the cleanest of the fast field — a ranking,
-not an absolute — while on the redundant Franka a spare joint lets every method dodge and the field converges to a wash.
+downhill fold first and paying for the full staged search only on genuinely frustrated targets. Against a baseline
+field spanning the IK literature (Jacobian-DLS, CCD, FABRIK, TRAC-IK, Multi-start), KineticFold leads or ties success
+on every arm and scenario: it holds near 100% on the non-redundant UR5 and outright leads every cell of the redundant
+Franka, where it is the only solver above 98% on all three scenarios (98.4–100%) and beats the best baseline by five to
+six points on the hardest cell. With every solver compiled to native code, it is also the fastest of the field on both
+arms — mean 0.1–0.3 ms, roughly 2–8× under TRAC-IK and Multi-start — and a latency tail within a few milliseconds
+(p99 ≤ 5.2 ms), matching or below TRAC-IK's. On self-collision the two folding solvers own the non-redundant arm: LangevinFold, the literal
+folding simulation, posts the lowest real-mesh rate of any solver in the study — at an order-of-magnitude, offline
+latency, faithful biophysics buying solution quality rather than speed — and KineticFold is the cleanest of the fast
+field, a ranking rather than an absolute, while on the redundant Franka a spare joint lets every method dodge and the
+field converges to a wash.
 Every result is validated against two independent physics simulators (PyBullet and MuJoCo): our forward kinematics agree
 with both to floating-point precision, and both engines corroborate — and appropriately shrink — our self-collision
-claims. Finally, the literal folding simulation LangevinFold produces the lowest self-collision of any solver on the
-non-redundant arm at a modest latency cost, indicating that faithful biophysics buys solution quality rather than speed. The contribution is an organizing _principle_ for IK rather than a
-new energy function, and it yields the largest gains precisely where the arm behaves most like a folding polymer — a
-per-solve advantage over the standard baseline field, against which selection-based methods (e.g. clearance-selecting
-Multi-start) remain competitive.
+claims. The advantage is largest where the arm is most protein-like: on a planar arm lengthened from 4 to 16 joints,
+KineticFold's single-shot clean-solve rate — target reached and self-collision-free — exceeds TRAC-IK's by 2–3×
+(peaking at 3.2× at 8 joints), and at 16 joints it is the only method still producing collision-free solutions
+(0.8% vs 0%).
 
 ## Keywords
 
