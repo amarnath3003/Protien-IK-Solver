@@ -106,8 +106,8 @@ the problem _becomes_ folding.
 ## 2. Related Work
 
 We review the field along the axis that matters for our argument — how each method behaves when the search stalls —
-followed by the folding theory we port and the prior crossings between the two disciplines that make the port more than
-an analogy.
+followed by the folding theory we port and the prior crossings between the two disciplines, which run in one direction
+only.
 
 **Jacobian- and optimization-based IK.** Velocity-level IK descends from resolved-motion-rate control, which maps
 end-effector rates to joint rates through the Jacobian (pseudo)inverse [2]. The raw pseudoinverse is unbounded near
@@ -121,10 +121,7 @@ Jacobian-DLS as a baseline and reuse a damped-least-squares step inside our own 
 **Sampling and restart IK.** Production solvers wrap a local core in global restarts. TRAC-IK [9] runs a joint-limited
 Newton solver — an extension of KDL [10] — concurrently with an SQP optimizer and returns the first to converge; when
 the Newton branch detects stagnation (no progress between successive iterates) it re-seeds from a fresh random
-configuration. We compare against the TRAC-IK library itself — TRACLabs' C++/KDL/NLopt implementation, via `tracikpy` — built
-on the same DH robot our solvers use, so the head-to-head is over identical kinematics; our own folding solvers are
-likewise compiled to native C++, so the comparison reflects both search strategy and implementation on equal footing.
-Multi-start applies the same idea in the open: it runs several independent seeds and keeps
+configuration. Multi-start applies the same idea in the open: it runs several independent seeds and keeps
 the best. Both are strong production methods, and both, when stuck, discard the accumulated partial solution and
 restart globally. Analytical generators such as IKFast [11] sidestep iteration by emitting closed-form solutions, but
 only for chains with special solvable structure; they do not generalize to redundant arms or arbitrary constraints.
@@ -133,39 +130,36 @@ This global-restart-on-stall behaviour is precisely what our chaperone rescue re
 
 **Heuristic IK.** Geometric heuristics trade the Jacobian for cheap per-joint updates: CCD rotates one joint at a time
 along the chain [12], and FABRIK reaches forward and backward along the links with no matrix inversion [13]. Both are
-fast on easy targets and degrade on constrained ones; we include both as baselines. CCD is also our bridge to biology,
-discussed below.
+fast on easy targets and degrade on constrained ones; we include both as baselines.
 
-**Learning-based IK.** A more recent line learns the IK map from data — IKFlow, for instance, trains a normalizing flow
-to sample the full multimodal solution set for a target pose [14]. Such methods trade an expensive, per-robot training
-phase for fast inference; they are orthogonal to our contribution, which is training-free and applies to a new arm
-immediately.
+**Learning-based IK.** A more recent line learns the IK map from data — IKFlow trains a normalizing flow to sample the
+full multimodal solution set for a target pose [14], and generative graphical IK represents the chain as a
+distance-geometric graph so that a single model transfers across manipulators [15]. Such methods trade an expensive
+training phase for fast inference; they are orthogonal to our contribution, which is training-free and applies to a new
+arm immediately.
 
 **Biology-inspired IK.** Metaheuristic solvers already borrow from biology, but they borrow a _search operator_ rather
 than a folding _process_. Memetic IK combines population-based mutation and selection with local gradient refinement
-[15], [16], and genetic-algorithm and particle-swarm variants import crossover/selection or flocking dynamics as the
-rule that proposes the next joint configuration. In every case biology supplies only the update operator; none
-organizes the solve as a staged fold with a chaperone rescue gated by kinetic partitioning. That organizing principle
-is our contribution, and by design the constituent numerical moves are standard, so any advantage must come from the
-sequencing rather than from a novel energy term.
+[16], [17], and genetic-algorithm [18] and particle-swarm [19] variants import crossover/selection or flocking dynamics
+as the rule that proposes the next joint configuration. In every case biology supplies only the update operator; none
+organizes the solve as a staged fold with a chaperone rescue gated by kinetic partitioning.
 
-**Folding theory.** The native state is the sequence-encoded free-energy minimum [17], and it cannot be reached by
-exhaustive conformational search [18]; it is reached instead by biased descent down a rugged but funnel-shaped,
-minimally frustrated landscape [19], [20], [21], [22] — the direct analog of a well-shaped IK cost basin. We port three
+**Folding theory.** The native state is the sequence-encoded free-energy minimum [20], and it cannot be reached by
+exhaustive conformational search [21]; it is reached instead by biased descent down a rugged but funnel-shaped,
+minimally frustrated landscape [22], [23], [24], [25] — the direct analog of a well-shaped IK cost basin. We port three
 mechanisms from this theory in particular: _kinetic partitioning_, in which some molecules fold directly while the rest
-are kinetically trapped and fold slowly [23] (KineticFold's compute schedule, Section 3.3); _iterative-annealing
-chaperone action_, in which GroEL rescues trapped chains by repeated partial unfolding and refolding [24], [25]
-(StagedFold's scoped rescue, Section 3.2); and _coarse-grained off-lattice bead models_ [26], with hydrophobic collapse
-as the compaction drive [27], which are the lineage of LangevinFold (Section 3.4).
+are kinetically trapped and fold slowly [26] (KineticFold's compute schedule, Section 3.3); _iterative-annealing
+chaperone action_, in which GroEL rescues trapped chains by repeated partial unfolding and refolding [27], [28]
+(StagedFold's scoped rescue, Section 3.2); and _coarse-grained off-lattice bead models_ [29], with hydrophobic collapse
+as the compaction drive [30], which are the lineage of LangevinFold (Section 3.4).
 
-**The bridge is already load-bearing in one direction.** The two fields provably share machinery. CCD, a robotics IK
+**Prior crossings between the two fields.** The two fields already share machinery. CCD, a robotics IK
 algorithm, was imported wholesale into structural biology for protein loop closure [1]; loop closure has likewise been
-solved as an analytical kinematics problem [28], building on classical chain-closure geometry [29]; robot motion
-planning has been used to map folding landscapes [30]; and a protein backbone is routinely modeled as a kinematic
-linkage whose revolute joints are its dihedral angles [31], [32]. Every one of these crossings runs robotics → biology.
+solved as an analytical kinematics problem [31], building on classical chain-closure geometry [32]; robot motion
+planning has been used to map folding landscapes [33]; and a protein backbone is routinely modeled as a kinematic
+linkage whose revolute joints are its dihedral angles [34], [35]. Every one of these crossings runs robotics → biology.
 To our knowledge, the reverse — using the folding _process itself_ (funnels, chaperones, kinetic partitioning,
-coarse-grained folding kinetics) as the computational engine of a robot-arm IK solver — has not been attempted. That
-reverse crossing is the subject of this paper.
+coarse-grained folding kinetics) as the computational engine of a robot-arm IK solver — has not been attempted.
 
 ## 3. Methodology
 
@@ -226,7 +220,7 @@ Eq. (5)      d(q) = min_{(i,j): |i−j| ≥ 2}  [ dist_seg( ℓᵢ(q), ℓⱼ(q)
 ```
 
 where `ℓᵢ(q)` is the line segment between joint origins `pᵢ` and `pᵢ₊₁` (the capsule core of link `i`), `rᵢ` its
-radius, and `dist_seg` the standard closest-point-between-segments distance [33], evaluated over every _non-adjacent_
+radius, and `dist_seg` the standard closest-point-between-segments distance [36], evaluated over every _non-adjacent_
 link pair, since adjacent links share a joint and are never meaningfully colliding. `d(q) ≥ 0` means the arm clears
 itself; `d(q) < 0` means interpenetration. A solve is _clean_ if it is both a success and satisfies `d(q) ≥ 0`. This
 proxy is deliberately cheap — fast enough to sit inside an inner optimization loop — and, as Section 5.6 shows, it is
@@ -245,8 +239,8 @@ to the calibrated constants). This objective is not convex: it has local minima 
 reduces pose error without reaching the target, singular regions where `J(q)` loses rank and the local gradient stops
 being informative, and collision-forbidden regions carved out by `d(q) < 0`. This is, structurally, a protein's
 free-energy landscape — a rugged surface over the torsional degrees of freedom of a chain, punctuated by kinetic traps
-and forbidden by excluded volume, whose global minimum is the native state [17], reachable only by biased descent down
-a funnel and not by exhaustive search [18], [19]. Figure 1 renders the mapping of Table 1 schematically: joint angles
+and forbidden by excluded volume, whose global minimum is the native state [20], reachable only by biased descent down
+a funnel and not by exhaustive search [21], [22]. Figure 1 renders the mapping of Table 1 schematically: joint angles
 are dihedral angles, link-length constraints are bond-length constraints, the target-reaching basin is the folding
 funnel, self-collision is steric exclusion, and a stuck search is a kinetically trapped molecule, rescued the way a
 chaperone rescues a misfolded chain.
@@ -382,7 +376,7 @@ must be structural, and folding already provides one.
 
 **3.3.1 The barrierless-first ensemble.** Real proteins exhibit _kinetic partitioning_: some molecules fall straight
 down a smooth funnel to the native state with no search at all ("downhill" folding), while the rest are kinetically
-trapped and require chaperone intervention [23]. KineticFold ports this as a _compute schedule_ rather than a search
+trapped and require chaperone intervention [26]. KineticFold ports this as a _compute schedule_ rather than a search
 heuristic. A single budget of `max_replicas = 6` governs two phases.
 
 _Phase A (barrierless)._ Each replica runs a cheap adaptive Levenberg–Marquardt polish (≤ 30 LM steps); replica 0 seeds
@@ -415,11 +409,11 @@ Eq. (19)   P(accept) = 1                                                    if E
 Eq. (20)   Tₜ = T₀ · (T_f / T₀)^{t / max_iters},      T₀ = 0.3,   T_f = 0.01
 ```
 
-— the standard Metropolis criterion [34] under a geometric cooling schedule, so the funnel search can climb out of
+— the standard Metropolis criterion [37] under a geometric cooling schedule, so the funnel search can climb out of
 shallow local minima early (`Tₜ` large) and freezes into greedy descent as `t → max_iters` (`Tₜ` small). Phase B is
 closed out by the same LM endgame as Eq. (18) and is further capped to stop on the first clean fold, or after at most
 two collision-aware converged folds. Attempting spontaneous folding first and invoking the chaperone only on failure is
-how GroEL operates [25]; this ordering is more faithful to folding than always running the full machinery, not a
+how GroEL operates [28]; this ordering is more faithful to folding than always running the full machinery, not a
 departure from it.
 
 **3.3.2 Allocation-light FK primitives.** Independently of the schedule, the inner loop is made cheap and bit-identical
@@ -450,7 +444,7 @@ including the phase experiments behind these choices, is deferred to a subsequen
 The arm is coarse-grained at one bead per joint origin `pᵢ(q)` (the FK chain of Eq. 2; the beads are read off the
 existing kinematics, so nothing new is introduced). Bond lengths between beads are enforced exactly by FK, so the only
 soft degrees of freedom are the joint angles `q` — precisely the Cα-level coarse-graining used in folding simulation
-[26]. Reduced units are used throughout (`k_B = 1`, friction `γ = 1`, energy in units of `ε_H`, length in units of
+[29]. Reduced units are used throughout (`k_B = 1`, friction `γ = 1`, energy in units of `ε_H`, length in units of
 `σ`).
 
 **Free energy.** A single self-consistent temperature `T` simultaneously sets the entropic weight below, the Langevin
@@ -523,7 +517,7 @@ Eq. (27)   Tₜ = max( T_glass, T_start · e^{−t/τ} )
 ```
 
 with `T_glass ≈ σ_E / √(2 ln Ω̄)` a per-robot glass-transition floor calibrated from a pre-solve landscape diagnostic
-[19]. Cooling below `T_glass` without reaching the target basin is a measured _glassy trap_, reported as a solver
+[22]. Cooling below `T_glass` without reaching the target basin is a measured _glassy trap_, reported as a solver
 outcome rather than silently patched.
 
 **Endgame.** As `T → 0` in Eq. (26) the noise term vanishes and the dynamics reduce to the deterministic flow
@@ -563,7 +557,7 @@ results are traceable to a named committed benchmark run.
 | ------------------ | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Planar 3-DOF (RRR) | 3   | link lengths `[0.4, 0.3, 0.2]` m; has an exact closed-form IK solution — the ground-truth validator for every numerical solver                                                                                                                                                                                                                                                                                                                                                 |
 | UR5                | 6   | non-redundant; standard-DH; the primary tuning and validation arm                                                                                                                                                                                                                                                                                                                                                                                                              |
-| Franka Panda       | 7   | redundant; requires the modified/Craig DH convention (Eq. 1's reordering, Section 3.1); using the standard-DH transform instead placed the computed end-effector ≈1.4 m from the real robot, a correctness defect we identified and corrected; verified against the `panda_link8` frame in franka_ros's official URDF [35] to ≈1e-7 m via PyBullet; tight, asymmetric joint limits, including joint 4 permanently confined to `[−3.07, −0.07]` rad (the elbow-down constraint) |
+| Franka Panda       | 7   | redundant; requires the modified/Craig DH convention (Eq. 1's reordering, Section 3.1); using the standard-DH transform instead placed the computed end-effector ≈1.4 m from the real robot, a correctness defect we identified and corrected; verified against the `panda_link8` frame in franka_ros's official URDF [38] to ≈1e-7 m via PyBullet; tight, asymmetric joint limits, including joint 4 permanently confined to `[−3.07, −0.07]` rad (the elbow-down constraint) |
 
 ### 4.2 Scenarios (target generators)
 
@@ -670,8 +664,8 @@ and restart count. A solve is _clean_ if and only if it is a success and collisi
 ### 4.6 Validation harness: solve once, score three ways
 
 Every solver's final configuration `q*` from every trial is re-scored independently by two full-mesh physics engines it
-never queried while solving: PyBullet [36] and MuJoCo [37], both loading the same URDF (resolved via the
-robot_descriptions package [38] — the standard UR5 description and Franka's official franka_ros URDF [35]; MuJoCo loads
+never queried while solving: PyBullet [39] and MuJoCo [40], both loading the same URDF (resolved via the
+robot_descriptions package [41] — the standard UR5 description and Franka's official franka_ros URDF [38]; MuJoCo loads
 it through a URDF-to-MJCF-compatible rewrite that preserves fixed-joint links as separate bodies rather than fusing
 them). Both queries are purely kinematic — PyBullet via `resetJointState` + `getLinkState`,
 MuJoCo via a direct `qpos` write followed by `mj_kinematics` — so neither engine steps a physics simulation or resolves
@@ -1041,75 +1035,86 @@ Models_, vol. 73, no. 5, pp. 243–260, 2011, doi: 10.1016/j.gmod.2011.05.003.
 [14] B. Ames, J. Morgan, and G. Konidaris, "IKFlow: Generating diverse inverse kinematics solutions," _IEEE Robot.
 Autom. Lett._, vol. 7, no. 3, pp. 7177–7184, 2022, doi: 10.1109/LRA.2022.3181374.
 
-[15] S. Starke, N. Hendrich, and J. Zhang, "Memetic evolution for generic full-body inverse kinematics in robotics and
+[15] O. Limoyo, F. Marić, M. Giamou, P. Alexson, I. Petrović, and J. Kelly, "Generative graphical inverse kinematics,"
+_IEEE Trans. Robot._, vol. 41, pp. 1002–1018, 2025, doi: 10.1109/TRO.2024.3521862.
+
+[16] S. Starke, N. Hendrich, and J. Zhang, "Memetic evolution for generic full-body inverse kinematics in robotics and
 animation," _IEEE Trans. Evol. Comput._, vol. 23, no. 3, pp. 406–420, 2019, doi: 10.1109/TEVC.2018.2867601.
 
-[16] P. Ruppel, N. Hendrich, S. Starke, and J. Zhang, "Cost functions to specify full-body motion and multi-goal
+[17] P. Ruppel, N. Hendrich, S. Starke, and J. Zhang, "Cost functions to specify full-body motion and multi-goal
 manipulation tasks," in _Proc. 2018 IEEE Int. Conf. Robot. Autom. (ICRA)_, 2018, pp. 3152–3159,
 doi: 10.1109/ICRA.2018.8460799.
 
-[17] C. B. Anfinsen, "Principles that govern the folding of protein chains," _Science_, vol. 181, no. 4096,
+[18] J. K. Parker, A. R. Khoogar, and D. E. Goldberg, "Inverse kinematics of redundant robots using genetic
+algorithms," in _Proc. 1989 IEEE Int. Conf. Robot. Autom. (ICRA)_, vol. 1, 1989, pp. 271–276,
+doi: 10.1109/ROBOT.1989.100000.
+
+[19] H.-C. Huang, C.-P. Chen, and P.-R. Wang, "Particle swarm optimization for solving the inverse kinematics of 7-DOF
+robotic manipulators," in _Proc. 2012 IEEE Int. Conf. Syst., Man, Cybern. (SMC)_, 2012, pp. 3105–3110,
+doi: 10.1109/ICSMC.2012.6378268.
+
+[20] C. B. Anfinsen, "Principles that govern the folding of protein chains," _Science_, vol. 181, no. 4096,
 pp. 223–230, 1973, doi: 10.1126/science.181.4096.223.
 
-[18] C. Levinthal, "How to fold graciously," in _Mössbauer Spectroscopy in Biological Systems_, P. Debrunner,
+[21] C. Levinthal, "How to fold graciously," in _Mössbauer Spectroscopy in Biological Systems_, P. Debrunner,
 J. C. M. Tsibris, and E. Münck, Eds. Urbana, IL, USA: Univ. Illinois Press, 1969, pp. 22–24.
 
-[19] J. D. Bryngelson and P. G. Wolynes, "Spin glasses and the statistical mechanics of protein folding," _Proc. Natl.
+[22] J. D. Bryngelson and P. G. Wolynes, "Spin glasses and the statistical mechanics of protein folding," _Proc. Natl.
 Acad. Sci. USA_, vol. 84, no. 21, pp. 7524–7528, 1987, doi: 10.1073/pnas.84.21.7524.
 
-[20] J. D. Bryngelson, J. N. Onuchic, N. D. Socci, and P. G. Wolynes, "Funnels, pathways, and the energy landscape of
+[23] J. D. Bryngelson, J. N. Onuchic, N. D. Socci, and P. G. Wolynes, "Funnels, pathways, and the energy landscape of
 protein folding: A synthesis," _Proteins_, vol. 21, no. 3, pp. 167–195, 1995, doi: 10.1002/prot.340210302.
 
-[21] J. N. Onuchic, Z. Luthey-Schulten, and P. G. Wolynes, "Theory of protein folding: The energy landscape
+[24] J. N. Onuchic, Z. Luthey-Schulten, and P. G. Wolynes, "Theory of protein folding: The energy landscape
 perspective," _Annu. Rev. Phys. Chem._, vol. 48, pp. 545–600, 1997, doi: 10.1146/annurev.physchem.48.1.545.
 
-[22] K. A. Dill and H. S. Chan, "From Levinthal to pathways to funnels," _Nat. Struct. Biol._, vol. 4, no. 1,
+[25] K. A. Dill and H. S. Chan, "From Levinthal to pathways to funnels," _Nat. Struct. Biol._, vol. 4, no. 1,
 pp. 10–19, 1997, doi: 10.1038/nsb0197-10.
 
-[23] Z. Guo and D. Thirumalai, "Kinetics of protein folding: Nucleation mechanism, time scales, and pathways,"
+[26] Z. Guo and D. Thirumalai, "Kinetics of protein folding: Nucleation mechanism, time scales, and pathways,"
 _Biopolymers_, vol. 36, no. 1, pp. 83–102, 1995, doi: 10.1002/bip.360360108.
 
-[24] M. J. Todd, G. H. Lorimer, and D. Thirumalai, "Chaperonin-facilitated protein folding: Optimization of rate and
+[27] M. J. Todd, G. H. Lorimer, and D. Thirumalai, "Chaperonin-facilitated protein folding: Optimization of rate and
 yield by an iterative annealing mechanism," _Proc. Natl. Acad. Sci. USA_, vol. 93, no. 9, pp. 4030–4035, 1996,
 doi: 10.1073/pnas.93.9.4030.
 
-[25] D. Thirumalai and G. H. Lorimer, "Chaperonin-mediated protein folding," _Annu. Rev. Biophys. Biomol. Struct._,
+[28] D. Thirumalai and G. H. Lorimer, "Chaperonin-mediated protein folding," _Annu. Rev. Biophys. Biomol. Struct._,
 vol. 30, pp. 245–269, 2001, doi: 10.1146/annurev.biophys.30.1.245.
 
-[26] J. D. Honeycutt and D. Thirumalai, "Metastability of the folded states of globular proteins," _Proc. Natl. Acad.
+[29] J. D. Honeycutt and D. Thirumalai, "Metastability of the folded states of globular proteins," _Proc. Natl. Acad.
 Sci. USA_, vol. 87, no. 9, pp. 3526–3529, 1990, doi: 10.1073/pnas.87.9.3526.
 
-[27] W. Kauzmann, "Some factors in the interpretation of protein denaturation," _Adv. Protein Chem._, vol. 14,
+[30] W. Kauzmann, "Some factors in the interpretation of protein denaturation," _Adv. Protein Chem._, vol. 14,
 pp. 1–63, 1959, doi: 10.1016/S0065-3233(08)60608-7.
 
-[28] E. A. Coutsias, C. Seok, M. P. Jacobson, and K. A. Dill, "A kinematic view of loop closure," _J. Comput. Chem._,
+[31] E. A. Coutsias, C. Seok, M. P. Jacobson, and K. A. Dill, "A kinematic view of loop closure," _J. Comput. Chem._,
 vol. 25, no. 4, pp. 510–528, 2004, doi: 10.1002/jcc.10416.
 
-[29] N. Gō and H. A. Scheraga, "Ring closure and local conformational deformations of chain molecules,"
+[32] N. Gō and H. A. Scheraga, "Ring closure and local conformational deformations of chain molecules,"
 _Macromolecules_, vol. 3, no. 2, pp. 178–187, 1970, doi: 10.1021/ma60014a012.
 
-[30] N. M. Amato and G. Song, "Using motion planning to study protein folding pathways," _J. Comput. Biol._, vol. 9,
+[33] N. M. Amato and G. Song, "Using motion planning to study protein folding pathways," _J. Comput. Biol._, vol. 9,
 no. 2, pp. 149–168, 2002, doi: 10.1089/10665270252935395.
 
-[31] B. Gipson, D. Hsu, L. E. Kavraki, and J.-C. Latombe, "Computational models of protein kinematics and dynamics:
+[34] B. Gipson, D. Hsu, L. E. Kavraki, and J.-C. Latombe, "Computational models of protein kinematics and dynamics:
 Beyond simulation," _Annu. Rev. Anal. Chem._, vol. 5, pp. 273–291, 2012, doi: 10.1146/annurev-anchem-062011-143024.
 
-[32] K. Noonan, D. O'Brien, and J. Snoeyink, "Probik: Protein backbone motion by inverse kinematics," _Int. J. Robot.
+[35] K. Noonan, D. O'Brien, and J. Snoeyink, "Probik: Protein backbone motion by inverse kinematics," _Int. J. Robot.
 Res._, vol. 24, no. 11, pp. 971–982, 2005, doi: 10.1177/0278364905059108.
 
-[33] C. Ericson, _Real-Time Collision Detection_. San Francisco, CA, USA: Morgan Kaufmann, 2004.
+[36] C. Ericson, _Real-Time Collision Detection_. San Francisco, CA, USA: Morgan Kaufmann, 2004.
 
-[34] N. Metropolis, A. W. Rosenbluth, M. N. Rosenbluth, A. H. Teller, and E. Teller, "Equation of state calculations
+[37] N. Metropolis, A. W. Rosenbluth, M. N. Rosenbluth, A. H. Teller, and E. Teller, "Equation of state calculations
 by fast computing machines," _J. Chem. Phys._, vol. 21, no. 6, pp. 1087–1092, 1953, doi: 10.1063/1.1699114.
 
-[35] Franka Emika, "franka_ros: ROS integration for Franka Emika research robots," GitHub. [Online]. Available:
+[38] Franka Emika, "franka_ros: ROS integration for Franka Emika research robots," GitHub. [Online]. Available:
 https://github.com/frankaemika/franka_ros
 
-[36] E. Coumans and Y. Bai, "PyBullet, a Python module for physics simulation for games, robotics and machine
+[39] E. Coumans and Y. Bai, "PyBullet, a Python module for physics simulation for games, robotics and machine
 learning," 2016–2021. [Online]. Available: http://pybullet.org
 
-[37] E. Todorov, T. Erez, and Y. Tassa, "MuJoCo: A physics engine for model-based control," in _Proc. 2012 IEEE/RSJ
+[40] E. Todorov, T. Erez, and Y. Tassa, "MuJoCo: A physics engine for model-based control," in _Proc. 2012 IEEE/RSJ
 Int. Conf. Intell. Robots Syst. (IROS)_, 2012, pp. 5026–5033, doi: 10.1109/IROS.2012.6386109.
 
-[38] S. Caron et al., "robot_descriptions.py: Robot descriptions in Python," GitHub. [Online]. Available:
+[41] S. Caron et al., "robot_descriptions.py: Robot descriptions in Python," GitHub. [Online]. Available:
 https://github.com/robot-descriptions/robot_descriptions.py
