@@ -72,18 +72,18 @@ Scenario & Criterion & Threshold & \texttt{max\_tries} \\
 % ---------------------------------------------------------------------
 \begin{table*}[t]
 \centering
-\caption{Baseline hyperparameters, verified against the committed implementation.}
+\caption{Baseline configurations --- genuine imported and native implementations.}
 \label{tab:baselines}
 \small
 \begin{tabular}{@{}lp{0.30\linewidth}llp{0.28\linewidth}@{}}
 \toprule
 Solver & Update rule & Iteration budget & Damping / population & Stagnation response \\
 \midrule
-Jacobian-DLS & Eq.~(13) DLS step, \texttt{step\_scale}=1.0 & \texttt{max\_iters}=200 & $\lambda=0.05$ & none --- single trajectory \\
-CCD & one-joint base$\to$tip rotation; wrist joints blend $0.5\times$ orientation & \texttt{max\_iters}=300 sweeps & n/a & none \\
-FABRIK & forward/backward reaching; wrist nudged $0.6\times$ & \texttt{max\_iters}=150 & n/a & none \\
-TRAC-IK-style & DLS ($\lambda=0.05$), attempts of 50 & \texttt{max\_total}=300 & n/a & global reseed if \texttt{combined} improves $<$1e-5 over 8 iters \\
-Multi-start & Eq.~(13) DLS per member, 60/member & $60\times8$ members & \texttt{pop}=8 & best of 8, preferring converged \\
+Jacobian-DLS & Robotics Toolbox \texttt{ik\_LM} (Corke), single-shot from $q_0$ & \texttt{ilimit}=200, \texttt{slimit}=1 & none & none --- single trajectory \\
+CCD & native C++/Eigen port; one-joint base$\to$tip rotation; wrist blends $0.5\times$ orientation & \texttt{max\_iters}=300 sweeps & n/a & none \\
+FABRIK & native C++/Eigen port; forward/backward reaching; wrist nudged $0.6\times$ & \texttt{max\_iters}=150 & n/a & none \\
+TRAC-IK & genuine TRACLabs C++/KDL/NLopt (\texttt{tracikpy}), \texttt{solve\_type}=Speed & 5\,ms timeout, $\epsilon$=1e-5 & KDL-Newton + NLopt-SQP & library-native random reseed on stall \\
+Multi-start & Robotics Toolbox \texttt{ik\_LM} (Corke) from random seeds & \texttt{ilimit}=30/search & up to \texttt{slimit}=100 restarts & best converged of the set \\
 Analytical (planar) & closed-form trigonometric IK & exact & --- & --- \\
 \bottomrule
 \end{tabular}
