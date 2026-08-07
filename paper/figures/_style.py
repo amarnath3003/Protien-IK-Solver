@@ -40,8 +40,8 @@ TABLE_DIR = PAPER_DIR / "tables"                    # paper/tables
 # results/master_10seed_fast(cpp).csv (UR5 + Franka, seeds 1..10, n=1000/cell). Both
 # success/speed AND real-mesh collision come from that single file. The pre-native
 # `master_10seed_fast.csv` / `master_full.csv` are superseded. Override any of these on the CLI.
-DEFAULT_MASTER_CSV    = REPO / "backend" / "results" / "master_10seed_fast(cpp).csv"  # THE master sim benchmark (native)
-DEFAULT_COLLISION_CSV = REPO / "backend" / "results" / "master_10seed_fast(cpp).csv"  # same file (carries pb_/mj_ collision)
+DEFAULT_MASTER_CSV    = REPO / "backend" / "results" / "master_full(cpp).csv"         # success + latency (3 seeds, adds planar)
+DEFAULT_COLLISION_CSV = REPO / "backend" / "results" / "master_10seed_fast(cpp).csv"  # real-mesh collision only (10 seeds)
 DEFAULT_USECASE_JSON  = REPO / "backend" / "scrap"   / "usecase_results.json"    # DOF scaling (SEPARATE experiment)
 DEFAULT_LANGEVIN_CSV  = REPO / "backend" / "results" / "langevin_bench.csv"      # LangevinFold mini-benchmark (SEPARATE, small-scale)
 

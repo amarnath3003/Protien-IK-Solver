@@ -70,7 +70,7 @@ def main():
                for s in S.SCENARIOS]
     fig.legend(handles=handles, ncol=3, loc="lower center",
                bbox_to_anchor=(0.5, -0.02), title="scenario (harder →)")
-    fig.suptitle("KineticFold leads or ties the field on success across both arms",
+    fig.suptitle("KineticFold ties the saturated UR5 field and leads every Franka cell on success",
                  fontsize=10, fontweight="bold", y=1.02)
     fig.subplots_adjust(bottom=0.30, wspace=0.06)
 

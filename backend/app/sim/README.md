@@ -9,6 +9,77 @@ widely-trusted simulator becomes the source of truth for the robot model, the
 forward kinematics, and self-collision — the three things that are currently our
 own private definitions.
 
+## IK Studio — interactive native MuJoCo app (the main viewer)
+
+`ik_studio.py` is a full interactive **MuJoCo application**: one native window showing
+the *real* UR5 / Panda meshes on a studio floor (checker ground, gradient sky, soft
+lights, shadows), driven by the same in-process solvers the API/benchmarks use.
+
+```bash
+cd backend
+.venv/Scripts/python.exe -m pip install mujoco glfw robot_descriptions trimesh pycollada  # one-time
+.venv/Scripts/python.exe -m app.sim.ik_studio                       # UR5, ProteinIK
+.venv/Scripts/python.exe -m app.sim.ik_studio franka_panda multi_start
+.venv/Scripts/python.exe -m app.sim.ik_studio --selftest --save-dir .  # headless checks + PNGs
+```
+
+Controls (shown in-window, toggle with **H**):
+
+| Input | Action |
+|---|---|
+| **Ctrl + Click** | place the IK target on the robot/floor → solves & animates there |
+| L-drag / R-drag / scroll | orbit / pan / zoom |
+| **R** | new random reachable target (current solver) |
+| **C** | compare **all** solvers on the current target → ranked table overlay |
+| **[** / **]** | cycle the active solver |
+| **1** / **2** | switch robot (UR5 / Franka Panda) |
+| SPACE / H / ESC | replay · toggle help · quit |
+
+Live metrics (phase, iteration, position/orientation error, self-clearance, success,
+solve time) update in the bottom-left as the arm solves. Rendering uses the URDF's
+**visual** meshes (`.dae`→`.obj` via trimesh, one colored geom per Collada part); the
+model is the DH-validated one, so the arm's end-effector lands on the target marker
+(the `--selftest` asserts `rendered_EE_to_marker == solver_pos_error`). The scene is
+built by `studio_scene.build_studio_model`.
+
+## Live viewer — watch a real arm solve, in a native window
+
+`live_viewer.py` opens a native **MuJoCo** window rendering the **actual UR5 / Panda
+meshes** (the same URDF this oracle layer validated), driven live by the *same solver
+code* the API and benchmarks use — run **in-process**, so no backend server and no
+websocket are needed. This is the real-engine replacement for the web dashboard's
+stylised cylinder *proxy*.
+
+MuJoCo installs from a prebuilt wheel (no compiler) on Python 3.10–3.13, so — unlike
+the PyBullet oracle — the viewer runs in the **core** `.venv`, not `.venv-sim`:
+
+```bash
+cd backend
+.venv/Scripts/python.exe -m pip install mujoco robot_descriptions   # one-time
+
+# UR5, ProteinIK Fast (V4)                     ← defaults
+.venv/Scripts/python.exe -m app.sim.live_viewer
+# Franka Panda, Multi-start, harder distribution
+.venv/Scripts/python.exe -m app.sim.live_viewer franka_panda multi_start --scenario cluttered
+# keep generating fresh targets; slow the playback down
+.venv/Scripts/python.exe -m app.sim.live_viewer ur5 protein_ik --loop --speed 0.5
+# headless end-to-end check (no display needed)
+.venv/Scripts/python.exe -m app.sim.live_viewer --selftest
+```
+
+Args: `[robot] [solver]` positional (`robot` ∈ `ur5`, `franka_panda`; `solver` = any
+id in `SOLVER_REGISTRY` except the planar-only analytical one); `--scenario`
+`open_space|near_singular|cluttered`; `--seed`; `--speed` playback multiplier;
+`--loop`; `--selftest`.
+
+The target pose is drawn as a sphere + RGB orientation triad at `Rz(base_offset)·T`
+(the constant Phase-1 DH→URDF offset: UR5 `Rz(180°)`, Panda identity). Because that
+offset is exact to float noise, on a converged solve the rendered end-effector lands
+on the marker — the selftest asserts `rendered_EE_to_marker == solver_pos_error`.
+Rendering uses each link's **collision** mesh (the URDF's `.dae` *visual* meshes can't
+be loaded by MuJoCo; see `_rewrite_urdf_for_mujoco`) — full-detail for UR5, the
+chunkier convex meshes for Franka, but the real model either way.
+
 ## Status
 
 | Phase | What | State |

@@ -62,8 +62,8 @@ from app.sim.pybullet_backend import SimScore  # reuse the oracle-verdict datacl
 OFFSET_RESIDUAL_TOL = 1e-4
 
 
-def _mujoco_urdf(robot: str) -> str:
-    """Rewrite ``robot``'s URDF into a MuJoCo-loadable form and return the path.
+def _rewrite_urdf_for_mujoco(urdf: str, tag: str) -> str:
+    """Rewrite the URDF at ``urdf`` into a MuJoCo-loadable form and return the path.
 
     MuJoCo's URDF importer can't resolve ROS ``package://`` URIs and rejects the
     ``.dae`` meshes UR/Franka use for *visual* geometry. We therefore:
@@ -74,9 +74,12 @@ def _mujoco_urdf(robot: str) -> str:
          fixed-joint links (``tool0``, ``ee_link``, ``panda_link8`` ...) survive as
          their own bodies -- we read the EE link frame for FK parity.
 
-    The cleaned URDF is written beside a temp path; the original cache is untouched.
+    ``tag`` names the temp output file (``proteinik_mj_<tag>.urdf``). The cleaned
+    URDF is written to a temp path; the original cache is untouched. Factored out of
+    ``_mujoco_urdf`` so other consumers (e.g. the live viewer) can rewrite an
+    explicitly-resolved URDF without going through ``resolve_urdf_path``.
     """
-    urdf = resolve_urdf_path(robot).replace("\\", "/")
+    urdf = urdf.replace("\\", "/")
     text = open(urdf).read()
 
     # Resolve every distinct ``package://<pkg>/`` prefix to ``<...>/<pkg>/`` by
@@ -103,9 +106,15 @@ def _mujoco_urdf(robot: str) -> str:
     })
     root.insert(0, mj)
 
-    out = os.path.join(tempfile.gettempdir(), f"proteinik_mj_{robot}.urdf")
+    out = os.path.join(tempfile.gettempdir(), f"proteinik_mj_{tag}.urdf")
     ET.ElementTree(root).write(out)
     return out
+
+
+def _mujoco_urdf(robot: str) -> str:
+    """Resolve ``robot``'s pinned URDF and rewrite it for MuJoCo (behavior
+    unchanged; see ``_rewrite_urdf_for_mujoco`` for the rewrite rationale)."""
+    return _rewrite_urdf_for_mujoco(resolve_urdf_path(robot), robot)
 
 
 @dataclass(frozen=True)

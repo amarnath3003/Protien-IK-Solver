@@ -90,7 +90,7 @@ def tab_latency(rows, name):
 
 
 def tab_collision(rows, name):
-    solvers = [s for s in ["protein_ik", "multi_start", "trac_ik_style", "protein_fast", "protein_raw"]
+    solvers = [s for s in ["protein_ik", "multi_start", "trac_ik_style", "protein_fast"]
                if any(r["robot"] == "ur5" and r["solver"] == s for r in rows)]
     scen = [s for s in S.SCENARIOS if S.cell(rows, "ur5", s)]
     body = []

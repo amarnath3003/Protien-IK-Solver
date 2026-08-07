@@ -4,12 +4,12 @@ For each arm (UR5, Franka) this draws, for every solver, its median (p50), mean,
 p99-tail wall-clock latency as three grouped bars on a LOG time axis, with the
 millisecond value printed on each bar (the p99 bar makes each solver's tail explicit). The open-space regime is used so every solver is timed
 on targets it actually attempts (on the harder regimes the simple baselines fail
-outright and LangevinFold carries a measurement outlier). KineticFold has the
-fastest typical solve of the practical field; LangevinFold alone runs offline-slow.
+outright). KineticFold has the fastest typical solve of the field.
 
-Source: native 10-seed run (master_10seed_fast(cpp).csv) -- every solver native
-(real TRAC-IK, RTB baselines, C++ ProteinIK/CCD/FABRIK), so timings are apples-to-apples.
-Run:    python fig_latency.py [--csv path/to/master_10seed_fast(cpp).csv]
+Source: S.DEFAULT_MASTER_CSV -- the 3-seed native survey, the same file as success --
+every solver native (real TRAC-IK, RTB baselines, C++ ProteinIK/CCD/FABRIK), so
+timings are apples-to-apples.
+Run:    python fig_latency.py [--csv path/to/master_full(cpp).csv]
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 SCENARIO = "open_space"
-# weak -> strong (LangevinFold excluded: ~14 ms offline solver, off the sub-ms scale)
+# weak -> strong
 ORDER = ["ccd", "fabrik", "jacobian_dls", "protein_ik",
          "multi_start", "trac_ik_style", "protein_fast"]
 METRICS = [("p50_ms", "median", "#1f6f6b"), ("mean_ms", "mean", "#e08a3c"),
@@ -44,9 +44,9 @@ def _fmt(v: float) -> str:
 
 def main():
     ap = argparse.ArgumentParser()
-    # Latency is reported from the native 10-seed run (all solvers compiled), the same
-    # file as success and collision, so the speed comparison is apples-to-apples.
-    ap.add_argument("--csv", default=str(S.REPO / "backend" / "results" / "master_10seed_fast(cpp).csv"))
+    # Latency is reported from the same native survey as success, so the speed
+    # comparison is apples-to-apples.
+    ap.add_argument("--csv", default=str(S.DEFAULT_MASTER_CSV))
     args = ap.parse_args()
 
     S.use_paper_style()
@@ -82,7 +82,7 @@ def main():
     for ax in axes:
         ax.set_ylim(FLOOR, top * 3.0)
     axes[0].legend(loc="upper right", title="per-solve latency")
-    fig.suptitle("KineticFold has the fastest typical solve of the practical solver field",
+    fig.suptitle("KineticFold has the fastest typical solve of the native solver field",
                  fontsize=10, fontweight="bold", y=1.02)
     fig.subplots_adjust(bottom=0.24, wspace=0.06)
 
