@@ -1,5 +1,5 @@
 """
-Phase 4 (sim_migration_plan.md §5): the MuJoCo **second oracle**.
+Phase 4 (docs/archive/dev-log/sim_migration_plan.md §5): the MuJoCo **second oracle**.
 
 Phase 2 built the PyBullet oracle; this is its independent cross-check. The point
 of a second simulator is confidence: if our DH forward kinematics, PyBullet, *and*

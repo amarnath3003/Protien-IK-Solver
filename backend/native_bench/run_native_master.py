@@ -9,8 +9,13 @@ the exact analytical planar solver, PyBullet native IK) are left untouched — f
 them the repo's own code *is* the original.
 
 Usage (inside WSL, from backend/):
-    PYTHONPATH=. python3 native_bench/run_native_master.py --quick --out results/native/quick
-    PYTHONPATH=. python3 native_bench/run_native_master.py --out results/native/master_full_native
+    PYTHONPATH=. python3 native_bench/run_native_master.py --quick --out results/quick
+    PYTHONPATH=. python3 native_bench/run_native_master.py --out "results/master_full(cpp)"
+
+The two committed paper-grade sweeps are ``results/master_full(cpp)`` (3 seeds,
+all three arms) and ``results/master_10seed_fast(cpp)`` (10 seeds, UR5+Franka);
+see ``results/README.md`` for which claim each one backs, and docs/REPRODUCE.md
+for the full command lines.
 """
 from __future__ import annotations
 

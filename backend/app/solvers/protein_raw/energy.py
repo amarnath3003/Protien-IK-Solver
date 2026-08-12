@@ -1,7 +1,7 @@
 """
 Raw (V6) energy terms — Phase 1: van der Waals (LJ 6-12); Phase 2: directional H-bond.
 
-Faithful to the coarse-grained Cα folding model (see ``raw_math.md`` §3.1):
+Faithful to the coarse-grained Cα folding model (see ``docs/design/langevinfold-math.md`` §3.1):
 the arm's joint origins are treated as beads, and every NON-ADJACENT bead
 pair interacts via a FULL 6-12 Lennard-Jones potential
 
@@ -128,7 +128,7 @@ def lj_energy_and_grad(spec: RobotSpec, q: np.ndarray,
                        attractive: bool = True) -> tuple[float, np.ndarray]:
     """Return (E_LJ, dE_LJ/dq) with the gradient computed analytically.
 
-    Derivation (raw_math.md §3.1):
+    Derivation (docs/design/langevinfold-math.md §3.1):
         ∂E/∂q_k = Σ_pairs (dE/dd)·(∂d_ij/∂q_k)
         dE/dd   = (24ε/d)·( S2·(σ/d)^6 − 2·(σ/d)^12 )
         ∂d_ij/∂q_k = û_ij·(∂p_i/∂q_k − ∂p_j/∂q_k),  û_ij = (p_i − p_j)/d
@@ -171,7 +171,7 @@ def lj_energy_and_grad(spec: RobotSpec, q: np.ndarray,
 
 
 # ---------------------------------------------------------------------------
-# Phase 2 — directional hydrogen bond (raw_math.md §3.2)
+# Phase 2 — directional hydrogen bond (docs/design/langevinfold-math.md §3.2)
 # ---------------------------------------------------------------------------
 # Each INTERIOR bead carries a local backbone normal — the unit normal to the
 # plane of its triplet (p_{i-1}, p_i, p_{i+1}). This is the faithful CG H-bond
@@ -256,7 +256,7 @@ def hbond_energy_and_grad(spec: RobotSpec, q: np.ndarray, d0: float,
                           epsilon_hb: float = 1.0, directional: bool = True,
                           fd_eps: float = 1e-6) -> tuple[float, np.ndarray]:
     """(E_HB, dE_HB/dq) with the force by central finite differences
-    (raw_math.md §3.2: FD first, analytic later). 2n FK passes per call —
+    (docs/design/langevinfold-math.md §3.2: FD first, analytic later). 2n FK passes per call —
     acceptable for the research solver, like V5's FD constraint gradient."""
     E = hbond_energy(spec, q, d0, sigma_d, kappa, epsilon_hb, directional)
     n = spec.n_joints
@@ -287,7 +287,7 @@ def calibrate_hbond_d0(spec: RobotSpec, rng: np.random.Generator,
 
 
 # ---------------------------------------------------------------------------
-# Phase 3 — configurational entropy  S = log Omega  (raw_math.md §3.3)
+# Phase 3 — configurational entropy  S = log Omega  (docs/design/langevinfold-math.md §3.3)
 # ---------------------------------------------------------------------------
 # The hydrophobic / free-energy term. The hydrophobic effect is entropic; in a
 # coarse-grained chain the favourable SOLVENT entropy is already folded into the

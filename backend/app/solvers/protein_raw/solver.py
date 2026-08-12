@@ -6,7 +6,7 @@ the robot arm. It minimises the FREE ENERGY
 
     F(q; T) = E_task + E_LJ + E_HB − T · S_conf(q)
 
-by overdamped Langevin dynamics (raw_math.md §4), cooling from an unfolded high
+by overdamped Langevin dynamics (docs/design/langevinfold-math.md §4), cooling from an unfolded high
 temperature toward the REM glass temperature T_glass (§5). The native state is
 reached by the dynamics' own T→0 limit — a damped-Newton consolidation, NOT a
 foreign finisher (§4b) — and accepted only if it passes a kinetic stability gate
@@ -71,7 +71,7 @@ def free_energy(spec, q, T_target, p: RawParams, T, m_entropy=24):
 
 
 # ---------------------------------------------------------------------------
-# Native-state consolidation — the T→0 limit (raw_math.md §4b)
+# Native-state consolidation — the T→0 limit (docs/design/langevinfold-math.md §4b)
 # ---------------------------------------------------------------------------
 
 def _consolidate(spec, q, T_target, pos_tol, ori_tol, max_steps=40, lam0=0.05):

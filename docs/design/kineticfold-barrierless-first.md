@@ -4,7 +4,7 @@ How "ProteinIK Fast" was made *actually* fast — the fastest of the protein
 lineup and, on the easy regime, competitive with (or faster than) TRAC-IK —
 without leaving the protein-folding domain.
 
-Solver: [`backend/app/solvers/protein_fast/solver.py`](backend/app/solvers/protein_fast/solver.py).
+Solver: [`backend/app/solvers/protein_fast/solver.py`](../../backend/app/solvers/protein_fast/solver.py).
 Reproduce every number below with `python backend/master_benchmark.py`.
 
 ---

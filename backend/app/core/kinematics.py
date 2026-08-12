@@ -40,7 +40,7 @@ class RobotSpec:
         Here (a_i, alpha_i) are the *previous* link's params (a_{i-1}, alpha_{i-1}).
 
     Feeding a modified-DH table to a standard-DH FK (or vice versa) yields a
-    DIFFERENT robot — the Panda parity failure in sim_migration_plan.md Phase 1
+    DIFFERENT robot — the Panda parity failure in docs/archive/dev-log/sim_migration_plan.md Phase 1
     was exactly this. Both FK, the joint-origin chain, and the geometric
     Jacobian below honor ``dh_convention`` so the model stays physically correct.
 
@@ -106,7 +106,7 @@ def franka_panda_spec() -> RobotSpec:
     table (Franka documentation + Gaz et al. 2019), so the arrays below are the
     modified-DH (a_{i-1}, alpha_{i-1}, d_i) sequence and MUST be evaluated with
     the modified-DH transform (``dh_convention="modified"`` on the returned spec).
-    Verified against the franka_ros URDF via PyBullet in sim_migration_plan.md
+    Verified against the franka_ros URDF via PyBullet in docs/archive/dev-log/sim_migration_plan.md
     Phase 1: our EE pose matches panda_link8 to ~1e-7 with identity offset. (An
     earlier version evaluated these with the standard-DH transform, which put the
     EE ~1.4 m off the real robot — see backend/app/sim/parity.py.)

@@ -20,9 +20,12 @@ WSL, not the Windows dev venv -- see native_bench/README.md).
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
+
+BENCH_DIR = Path(__file__).resolve().parent.parent / "bench"
 
 from app.core.kinematics import ROBOT_REGISTRY, self_collision_min_distance
 from app.sim import planar_model
@@ -47,7 +50,9 @@ def _reset(dof: int) -> str:
 @pytest.mark.parametrize("dof", DOFS)
 def test_spec_matches_usecase_experiments(dof: int):
     """The sim layer's arm is byte-for-byte the experiment's arm."""
-    sys.path.insert(0, "backend/scrap")
+    # Resolved from this file, not the CWD, so the check runs whether pytest is
+    # invoked from the repo root or from backend/.
+    sys.path.insert(0, str(BENCH_DIR))
     usecase = pytest.importorskip("usecase_experiments")
 
     ours = planar_model.planar_ndof_spec(dof)

@@ -1,5 +1,5 @@
 """
-Phase-1 parity guard (sim_migration_plan.md §5-Phase-1): permanently pin the
+Phase-1 parity guard (docs/archive/dev-log/sim_migration_plan.md §5-Phase-1): permanently pin the
 DH <-> URDF forward-kinematics agreement so a future edit to a DH table or a
 model swap can't silently break the "the model we solve is the model we
 benchmark" guarantee.

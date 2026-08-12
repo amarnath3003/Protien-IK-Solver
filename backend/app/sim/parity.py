@@ -1,5 +1,5 @@
 """
-Phase 1 (sim_migration_plan.md §5): DH <-> URDF forward-kinematics parity.
+Phase 1 (docs/archive/dev-log/sim_migration_plan.md §5): DH <-> URDF forward-kinematics parity.
 
 **This is the real deliverable of the whole migration.** For ~10k random joint
 configurations we compare our hand-typed DH forward kinematics

@@ -10,7 +10,7 @@ its own proxy-based magnitude claim.
 
 Averaged over all solvers in each cell (so it measures the proxy, not one solver).
 Source: master CSV (needs our_collision_pct + pb_collision_pct + mj_collision_pct).
-Run:    python fig_validation.py [--csv path/to/master_full.csv]
+Run:    python fig_validation.py [--csv path/to/master_full(cpp).csv]
 """
 from __future__ import annotations
 

@@ -8,8 +8,8 @@ folds. Both solvers reach the target ~100% of the time; the entire gap is
 self-collision avoidance. Native, apples-to-apples: KineticFold runs as its
 C++/Eigen port, TRAC-IK as the genuine TRACLabs C++ library (tracikpy).
 
-Source: usecase_results.json, key "E" (EXP E, native run).
-Run:    python fig_dof_scaling.py [--json path/to/usecase_results.json]
+Source: results/dof_scaling/dof_scaling_native.json, key "E" (EXP E, native run).
+Run:    python fig_dof_scaling.py [--json path/to/dof_scaling_native.json]
 """
 from __future__ import annotations
 

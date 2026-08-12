@@ -9,7 +9,7 @@ high-success + low-collision at moderate latency -> planning/offline; the simple
 baselines sit low-success; TRAC-IK is fast but collides more on this hard cell.
 
 Single source, single definition per axis. Source: master CSV.
-Run:    python fig_deployment.py [--csv path/to/master_full.csv] [--scenario cluttered]
+Run:    python fig_deployment.py [--csv path/to/master_full(cpp).csv] [--scenario cluttered]
 """
 from __future__ import annotations
 

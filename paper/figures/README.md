@@ -3,35 +3,52 @@
 Every figure and results table is generated from the committed benchmark files, so
 after a fresh benchmark run they regenerate verbatim. Nothing is hand-transcribed.
 
-**The one authoritative benchmark** is `backend/bench/master_sim_benchmark.py`
-("solve once, score three ways" — PyBullet + MuJoCo), whose committed output is
-`backend/results/master_10seed_fast.csv` (UR5 + Franka, seeds 1..10, n=1000/cell).
-All success / speed / collision / validation figures read that single file. The
-older `master_full.csv` is **not** authoritative and is no longer a default. The
-DOF-scaling figure is the one exception — it comes from a *separate* experiment
-(`usecase_experiments.py` → `usecase_results.json`), which the master sweep doesn't
-cover (it needs planar N-DOF arms).
+**The authoritative benchmark** is `backend/bench/master_sim_benchmark.py` ("solve
+once, score three ways" — capsule proxy + PyBullet + MuJoCo), run through
+`backend/native_bench/run_native_master.py` so every solver is native compiled code.
+It has two committed sweeps, and figures read whichever one the paper reads:
+
+| Source file | What it carries | Used by |
+| :-- | :-- | :-- |
+| `backend/results/master_full(cpp).csv` | 3 seeds, `n=300`/cell, **all three arms** — success + latency | success, latency, validation, deployment |
+| `backend/results/master_10seed_fast(cpp).csv` | 10 seeds, `n=1000`/cell, UR5 + Franka — **real-mesh collision** | collision |
+| `backend/results/dof_scaling/dof_scaling_native.json` | separate DOF-scaling study, `n=120`/cell, planar 4→16 DOF | DOF scaling (flagship) |
+
+The pre-native Python runs under `backend/results/archive/python-run/` are
+**superseded** and must never be used for paper numbers. See
+[`backend/results/README.md`](../../backend/results/README.md) for the full
+claim → file map.
 
 ## What's here
 
-| Script | Output | Reads | Priority |
+| Script | Output | Reads | In `academic.md` |
 | :-- | :-- | :-- | :-- |
-| `fig_dof_scaling.py`     | `fig_dof_scaling.{pdf,png}`     | `usecase_results.json` (E) | **P0 flagship** |
-| `fig_qualitative_fold.py`| `fig_qualitative_fold.{pdf,png}`| runs the solvers | **P0** |
-| `fig_success.py`         | `fig_success.{pdf,png}`         | master CSV | P1 |
-| `fig_latency_tail.py`    | `fig_latency_tail.{pdf,png}`    | master CSV | P1 |
-| `fig_collision_ur5.py`   | `fig_collision_ur5.{pdf,png}`   | 10-seed collision CSV | P1 |
-| `fig_validation.py`      | `fig_validation.{pdf,png}`      | master CSV | P2 |
-| `fig_deployment.py`      | `fig_deployment.{pdf,png}`      | master CSV | P2 |
-| `fig_energy_trace.py`    | `fig_energy_trace.{pdf,png}`    | runs a solve (`collect_steps`) | P2 |
-| `fig_langevin.py`        | `fig_langevin.{pdf,png}`        | `langevin_bench.csv` (separate run) | mini |
-| `make_tables.py`         | `../tables/tab_*.tex`           | master + collision + langevin CSV, usecase JSON | — |
-| `../tables/tables_static.tex` | hand-authored T1–T4 (isomorphism, robots, thresholds, baselines) | — | — |
+| `fig_pipeline.svg` → `.pdf`/`.png` | KineticFold's compute schedule | hand-authored vector art | **Fig. 1** |
+| `fig_success.py` | `fig_success.{pdf,png}` | 3-seed survey CSV | **Fig. 2** |
+| `fig_latency.py` | `fig_latency.{pdf,png}` | 3-seed survey CSV | **Fig. 3** |
+| `fig_collision.py` | `fig_collision.{pdf,png}` | 10-seed collision CSV | **Fig. 4** |
+| `fig_dof_scaling.py` | `fig_dof_scaling.{pdf,png}` | DOF-scaling JSON (key `E`) | §5.4 currently ships as **Table 5**; the figure is built and available |
+| `fig_validation.py` | `fig_validation.{pdf,png}` | 3-seed survey CSV (FK / collision agreement) | §4.6/5.6 report it in prose |
+| `fig_deployment.py` | `fig_deployment.{pdf,png}` | 3-seed survey CSV (clean-goal yield) | §5.5 reports it in prose |
+| `fig_qualitative_fold.py` | `fig_qualitative_fold.{pdf,png}` | runs the solvers | not placed |
+| `fig_energy_trace.py` | `fig_energy_trace.{pdf,png}` | runs one solve (`collect_steps=True`) | not placed |
+| `fig_langevin.py` | `fig_langevin.{pdf,png}` | `langevin_bench.csv` | **parked** (future-work solver) |
+| `make_tables.py` | `../tables/tab_*.tex` | survey + collision CSV, DOF JSON | Table 5 + supplements |
+| `../tables/tables_static.tex` | hand-authored Tables 1–4 (isomorphism, robots, thresholds, baselines) | — | Tables 1–4 |
 
-`_style.py` holds the shared style, the fixed **solver → colour** map (colour
-follows the solver entity across every figure; Okabe–Ito colour-blind-safe), and the
-CSV loader. It also holds the **code-id → paper-name** map:
-`protein_ik→StagedFold`, `protein_fast→KineticFold`, `protein_raw→LangevinFold`.
+The four "not placed / in prose" figures are kept generated deliberately: they back
+claims the current draft states in text, and are the drop-ins if a reviewer asks to
+see them plotted.
+
+`_style.py` holds the shared style, the fixed **solver → colour** map (colour follows
+the solver entity across every figure; Okabe–Ito colour-blind-safe), the default input
+paths, and the **code-id → paper-name** map:
+
+| Code id | Paper name |
+| :-- | :-- |
+| `protein_ik` | StagedFold |
+| `protein_fast` | KineticFold |
+| `protein_raw` | LangevinFold (future work) |
 
 ## Setup
 
@@ -40,49 +57,45 @@ cd backend
 .venv/Scripts/python -m pip install -r ../paper/figures/requirements-figures.txt   # matplotlib
 ```
 
-`make_tables.py` needs neither matplotlib nor numpy (stdlib only), so tables build
-even without the install above.
+`make_tables.py` needs neither matplotlib nor numpy (stdlib only), so the tables
+build even without that install.
 
 ## Run
 
 ```bash
 # from paper/figures, with the backend venv python (so `app` imports for the
-# solver-driven figures):
-python build_all.py                 # all CSV/JSON figures + all LaTeX tables
+# two solver-driven figures):
+python build_all.py                 # every CSV/JSON figure + all LaTeX tables
 python build_all.py --with-solvers  # + qualitative fold + energy trace
 
 # or individually, with explicit inputs:
-python fig_dof_scaling.py   --json ../../backend/scrap/usecase_results.json
-python fig_success.py       --csv  ../../backend/results/master_10seed_fast.csv
-python fig_collision_ur5.py --csv  ../../backend/results/master_10seed_fast.csv
-python make_tables.py       --csv ... --collision-csv ... --json ...
+python fig_dof_scaling.py --json ../../backend/results/dof_scaling/dof_scaling_native.json
+python fig_success.py     --csv  "../../backend/results/master_full(cpp).csv"
+python fig_collision.py   --csv  "../../backend/results/master_10seed_fast(cpp).csv"
+python make_tables.py     --csv ... --collision-csv ... --json ...
 ```
 
-## LangevinFold mini-benchmark (separate, small-scale)
+`fig_pipeline` is the one non-generated figure: it is hand-authored vector art
+(`fig_pipeline.svg`, exported to `.pdf`/`.png`), with its content spec kept beside it
+in `fig_pipeline_SPEC.md` / `fig_pipeline_CONTEXT.md` / `fig_pipeline_PROMPT.md`.
+
+## LangevinFold mini-benchmark (parked)
 
 LangevinFold (`protein_raw`) costs ~seconds/solve, so it is excluded from the master
-sweep and gets its own small run — but scored the *same* three-way way (it reuses the
-master harness). Run it on your sim env, then rebuild the figure/table:
+sweep and gets its own small run — scored the *same* three-way way (it reuses the
+master harness). It is future work in the current paper (§6), so `build_all.py` does
+not build its figure. To run it:
 
 ```bash
 cd backend
-PYTHONPATH=. .venv-sim/Scripts/python -m bench.langevin_benchmark          # -> results/langevin_bench.{csv,md}
+PYTHONPATH=. .venv-sim/Scripts/python -m bench.langevin_benchmark   # -> results/langevin_bench.{csv,md}
 # then, from paper/figures:
 python fig_langevin.py       # -> fig_langevin.{pdf,png}
 python make_tables.py        # -> ../tables/tab_langevin.tex  (auto-picks up langevin_bench.csv)
 ```
 
-`fig_langevin.py` / `tab_langevin` self-skip with a message until `langevin_bench.csv`
-exists, so `build_all.py` never fails when the run hasn't happened yet.
-
-## Default input paths (override on the CLI)
-
-- master benchmark (success / speed / collision / validation), from
-  `bench/master_sim_benchmark.py`: `backend/results/master_10seed_fast.csv`
-- DOF scaling, from `usecase_experiments.py`: `backend/scrap/usecase_results.json`
-
-Point the flags at whatever `--out` stem you actually run
-(`master_sim_benchmark.py --out results/<stem>` writes `<stem>.csv`).
+`fig_langevin.py` / `tab_langevin` self-skip with a message until
+`langevin_bench.csv` exists, so nothing fails when the run hasn't happened yet.
 
 ## LaTeX preamble
 
@@ -94,4 +107,5 @@ The generated tables use `booktabs`; the static tables also use `makecell`/`arra
 \usepackage{array}
 ```
 
-Figures are vector PDF — include with `\includegraphics[width=\columnwidth]{figures/fig_dof_scaling.pdf}`.
+Figures are vector PDF — include with
+`\includegraphics[width=\columnwidth]{figures/fig_dof_scaling.pdf}`.

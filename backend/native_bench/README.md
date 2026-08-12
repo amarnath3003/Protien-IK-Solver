@@ -1,7 +1,9 @@
 # `native_bench` — `master_full.md`, re-run ENTIRELY as native compiled code
 
 This directory reproduces the whole master benchmark
-([`results/master_full.md`](../results/master_full.md)) **in the native system** —
+(the pre-native Python run, kept at
+[`results/archive/python-run/master_full.md`](../results/archive/python-run/master_full.md))
+**in the native system** —
 the WSL environment where the real TRAC-IK C++ library lives — with **every solver
 running as native compiled code, no interpreted Python**:
 
@@ -17,8 +19,9 @@ same dual real-mesh scoring in **PyBullet + MuJoCo**. Because *nothing* is inter
 the speed columns are finally apples-to-apples — e.g. ProteinIK V4 runs sub-millisecond
 and competes with TRAC-IK on latency as well as success/collision.
 
-> Numbers differ from `master_full.md` **by design**: native compiled solvers are not
-> the Python originals. The point is the *same algorithms*, run natively.
+> Numbers differ from the archived Python `master_full.md` **by design**: native
+> compiled solvers are not the Python originals. The point is the *same algorithms*,
+> run natively.
 
 ## Every solver is native compiled code
 
@@ -97,9 +100,16 @@ Genuine solver + scoring libraries, all confirmed importable in one process:
 
 - `genuine_solvers.py` — thin adapters wrapping each genuine library to the repo's
   `SolveResult` contract (build chain from DH → solve → score with repo DH machinery).
-- `run_native_master.py` — swaps the genuine adapters into `SOLVER_REGISTRY` and runs
-  the repo's own `bench/master_sim_benchmark.py` driver unchanged.
-- `merge_slow.py` — folds the carried-over slow already-genuine rows into the table.
+- `cpp_solvers.py` — the same adapter layer for the `pik_native` C++/Eigen ports
+  (ProteinIK V1/V4/o2/calib/V6 + CCD/FABRIK).
+- `run_native_master.py` — swaps the genuine + native adapters into `SOLVER_REGISTRY`
+  and runs the repo's own `bench/master_sim_benchmark.py` driver unchanged.
+- `run_native_usecase.py` — same swap for `bench/usecase_experiments.py` (paper
+  Table 5, the DOF-scaling sweep, EXP E).
+- `run_dof_sim_scored.py` — re-scores the DOF sweep in PyBullet + MuJoCo through the
+  generated planar URDFs (`app/sim/planar_model.py`), capsule *and* cylinder solids.
+- `_strip_solvers.py` — deletes named solver rows from an existing output CSV so
+  `--resume` re-runs exactly those cells.
 - `_env.py` — WSL path + URDF-resolver setup (ur5 module was renamed in
   robot_descriptions 3.0.0; we point at the identical cached original URDF).
 - `test_genuine.py` — FK-parity + solve smoke test for the genuine baselines.
@@ -107,12 +117,26 @@ Genuine solver + scoring libraries, all confirmed importable in one process:
 ## Run
 
 ```bash
-# inside WSL Ubuntu-2204, from backend/
-export ROBOT_DESCRIPTIONS_CACHE="/mnt/c/Users/Amarnath/.cache/robot_descriptions"
-PYTHONPATH=. python3 native_bench/run_native_master.py \
+# inside WSL Ubuntu-2204, from backend/ (system python3.10, NOT .venv-sim)
+export ROBOT_DESCRIPTIONS_CACHE="$HOME/.cache/robot_descriptions"
+
+# 1. build the C++ module once
+bash cpp/build_native.sh                    # -> cpp/pik_native.cpython-310-*.so
+
+# 2. the 3-seed survey — success + latency, all three arms
+PYTHONPATH=. python3 native_bench/run_native_master.py --resume \
   --solvers jacobian_dls ccd fabrik trac_ik_style multi_start \
-            protein_ik protein_fast protein_fast_o2 protein_fast_calib analytical_planar3dof \
-  --out results/native/master_full_native
-# fold in the carried V6/homotopy rows and write the final deliverable:
-PYTHONPATH=. python3 native_bench/merge_slow.py     # -> results/master_full(cpp).md
+            protein_ik protein_fast protein_fast_o2 protein_fast_calib \
+            protein_raw analytical_planar3dof \
+  --out "results/master_full(cpp)"
+
+# 3. the 10-seed collision sweep — UR5 + Franka only
+PYTHONPATH=. python3 native_bench/run_native_master.py --resume \
+  --seeds 1 2 3 4 5 6 7 8 9 10 --robots ur5 franka_panda \
+  --out "results/master_10seed_fast(cpp)"
 ```
+
+`--resume` skips cells already present in the output CSV, so a crashed overnight
+run picks up where it stopped; to force specific cells to re-run, strip their rows
+first with `_strip_solvers.py`. Full command lines, including the DOF sweep and the
+figure/table rebuild, are in [`docs/REPRODUCE.md`](../../docs/REPRODUCE.md).

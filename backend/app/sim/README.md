@@ -2,7 +2,7 @@
 
 Validates the ProteinIK solver family against a **real robotics simulator**
 instead of only our own DH forward kinematics. Full rationale and phasing:
-[`sim_migration_plan.md`](../../../sim_migration_plan.md).
+[`docs/archive/dev-log/sim_migration_plan.md`](../../../docs/archive/dev-log/sim_migration_plan.md).
 
 The solvers are **not** touched. This is an adapter + oracle around them: a
 widely-trusted simulator becomes the source of truth for the robot model, the
@@ -212,7 +212,9 @@ it localizes to the tight forearm↔wrist cluster** (UR5: 73% of false-clears ar
 `forearm_link|wrist_2_link`; Franka: 73% are `panda_link5|panda_link7`), exactly
 where a thin joint-axis capsule can't represent the bulky link mesh. No single
 safety margin `δ` rescues it — the conclusion that the collision *rate* from the
-proxy can't be trusted (only the *ordering* survives; see `sim_oracle_findings.md`).
+proxy can't be trusted (only the *ordering* survives; see
+[`results/validation/collision_parity.md`](../../results/validation/collision_parity.md)
+and the development record in `backend/archive/sim_oracle_findings.md`).
 
 ## Running the second oracle + cross-check (Phase 4 — MuJoCo)
 

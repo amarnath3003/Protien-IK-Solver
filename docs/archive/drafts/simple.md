@@ -1,6 +1,6 @@
 # The paper, in plain words
 
-> A no-jargon retelling of the paper, kept **in step with** [paper/paper_final.md](paper/paper_final.md): it only
+> A no-jargon retelling of the paper, kept **in step with** [paper/paper_final.md](paper_final.md): it only
 > covers the sections we've actually written, and grows as we write more. Right now that's the **Abstract**,
 > **Section 1 (Introduction)**, and **Section 2 (Related work)**.
 

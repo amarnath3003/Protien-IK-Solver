@@ -1,5 +1,5 @@
 """
-Phase 4 (sim_migration_plan.md §5): PyBullet vs MuJoCo vs our-DH cross-check.
+Phase 4 (docs/archive/dev-log/sim_migration_plan.md §5): PyBullet vs MuJoCo vs our-DH cross-check.
 
 A second, independent simulator is only worth building if it can *disagree*. This
 runner puts PyBullet and MuJoCo side by side on the **same URDF model** and asks
@@ -261,7 +261,7 @@ def main(argv=None) -> int:
     ap.add_argument("--collision-samples", type=int, default=2000)
     ap.add_argument("--trials", type=int, default=60, help="solver trials per seed per cell")
     ap.add_argument("--seeds", type=int, nargs="+", default=[1, 2])
-    ap.add_argument("--out", default="sim_crosscheck")
+    ap.add_argument("--out", default="results/validation/sim_crosscheck")
     args = ap.parse_args(argv)
 
     fk_out: dict[str, dict] = {}

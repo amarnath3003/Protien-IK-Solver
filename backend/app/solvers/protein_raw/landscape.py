@@ -4,7 +4,7 @@ Raw (V6) — Phase 4: landscape topology (Σ ratio + glass temperature).
 The 4th raw contribution: an IK difficulty predictor measured from the energy
 LANDSCAPE *before* solving, not from trial-and-error (no IK equivalent — IK
 difficulty is read from point quantities like manipulability/condition number,
-or learned). It is the Bryngelson–Wolynes foldability criterion (raw_math.md §6):
+or learned). It is the Bryngelson–Wolynes foldability criterion (docs/design/langevinfold-math.md §6):
 
     Σ = σ_E / ΔE          σ_E = std of E over random configs
                           ΔE  = mean(E over random) − E_native
@@ -15,7 +15,7 @@ or learned). It is the Bryngelson–Wolynes foldability criterion (raw_math.md �
 the solution we are solving for), so we use a cheap warm-start (a few Jacobian
 steps) as the native-energy proxy — the one IK-specific departure, stated openly.
 
-The cooling target (raw_math.md §5):
+The cooling target (docs/design/langevinfold-math.md §5):
     T_glass ≈ σ_E / sqrt(2 · S₀)     S₀ = configurational entropy scale (REM)
 """
 

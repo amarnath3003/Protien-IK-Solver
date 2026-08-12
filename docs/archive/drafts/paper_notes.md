@@ -5,7 +5,7 @@
 > paper *from* this file and iterate section contents on top of it.
 >
 > **Companion files:** [outline_simple.md](outline_simple.md) (plain-English section plan) ·
-> [methodology.md](methodology.md) (deep technical Methods). **Superseded:** `research_direction.md` is an
+> [methodology.md](../../METHODOLOGY.md) (deep technical Methods). **Superseded:** `research_direction.md` is an
 > *outdated* pre-audit framing (wrong "V3" label, "V4 = numerically identical," V5 "94% vs 90%") — **do not cite it.**
 >
 > **Venue:** full conference paper first → then the thesis absorbs everything.

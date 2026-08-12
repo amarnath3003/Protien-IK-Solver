@@ -1,4 +1,4 @@
-"""Run the use-case experiments (``scrap/usecase_experiments.py``) — in
+"""Run the use-case experiments (``bench/usecase_experiments.py``) — in
 particular the DOF-scaling sweep, EXP E — with every borrowed solver replaced
 by its genuine / native-compiled implementation, exactly like
 ``run_native_master.py`` does for the master benchmark.
@@ -22,11 +22,12 @@ reused verbatim.
 Usage (inside WSL Ubuntu-2204, from backend/):
     export ROBOT_DESCRIPTIONS_CACHE=/mnt/c/Users/Amarnath/.cache/robot_descriptions
     PYTHONPATH=. python3 native_bench/run_native_usecase.py --only E \
-        --out results/native/dof_scaling_native.json
+        --out results/dof_scaling/dof_scaling_native.json
 """
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 from native_bench._env import apply
 apply()
@@ -77,8 +78,9 @@ print("[native-usecase] genuine baselines:", ", ".join(sorted(GENUINE)),
       "| C++ ProteinIK:", ", ".join(sorted(CPP_PROTEIN)),
       "| C++ classical:", ", ".join(sorted(CPP_CLASSICAL)), flush=True)
 
-# usecase_experiments lives in backend/scrap/; make it importable.
-sys.path.insert(0, "/mnt/c/Coding Projects/Protien IK/backend/scrap")
+# usecase_experiments lives in backend/bench/; make it importable by module name
+# (relative to this file, so the runner is not tied to one checkout path).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "bench"))
 import usecase_experiments as U  # noqa: E402
 
 

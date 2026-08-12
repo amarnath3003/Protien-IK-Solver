@@ -1,5 +1,5 @@
 """
-Phase 2 (sim_migration_plan.md §4-§5): the PyBullet **evaluation oracle**.
+Phase 2 (docs/archive/dev-log/sim_migration_plan.md §4-§5): the PyBullet **evaluation oracle**.
 
 Phase 1 (``parity.py``) proved our DH forward kinematics matches the URDF up to a
 *constant* frame offset (UR5: a base ``Rz(180 deg)``; Panda: identity). This module

@@ -1,0 +1,49 @@
+cff-version: 1.2.0
+title: "ProteinIK: Inverse Kinematics as a Protein-Folding Process"
+message: >-
+  If you use this software or its results, please cite both the software
+  (this file) and the paper (see `preferred-citation` below).
+type: software
+authors:
+  # TODO: replace the placeholders below before publishing the repository.
+  - family-names: "<TODO: FAMILY NAME>"
+    given-names: "<TODO: GIVEN NAMES>"
+    email: "<TODO: CONTACT EMAIL>"
+    affiliation: "<TODO: AFFILIATION>"
+    orcid: "https://orcid.org/<TODO: ORCID>"
+abstract: >-
+  Inverse kinematics and protein folding are structurally the same search
+  problem: a chain of rigid segments whose only free variables are the
+  rotations between neighbouring segments, searching a rugged, constrained
+  landscape for a configuration that satisfies its boundary conditions. This
+  repository builds IK solvers from the process proteins use to fold —
+  StagedFold (folding's ordered stages) and KineticFold (kinetic partitioning
+  as a compute schedule) — and benchmarks them against a baseline field
+  spanning the IK literature (Jacobian-DLS, CCD, FABRIK, TRAC-IK,
+  Multi-start), with every result independently re-scored in PyBullet and
+  MuJoCo.
+keywords:
+  - inverse kinematics
+  - protein folding
+  - kinetic partitioning
+  - self-collision avoidance
+  - simulated annealing
+  - redundant manipulators
+  - robotics
+license: MIT
+repository-code: "https://github.com/amarnath3003/Protien-IK---An-IK-Solver-inspired-by-protein-folding"
+version: "0.1.0-draft"
+date-released: "2026-08-12"
+
+preferred-citation:
+  type: article        # TODO: change to conference-paper / update venue once submitted
+  title: "ProteinIK: Inverse Kinematics as a Protein-Folding Process"
+  authors:
+    - family-names: "<TODO: FAMILY NAME>"
+      given-names: "<TODO: GIVEN NAMES>"
+      affiliation: "<TODO: AFFILIATION>"
+  year: 2026
+  status: preprint     # TODO: update on acceptance
+  notes: >-
+    Draft manuscript in this repository at paper/academic.md.
+    TODO: add journal/conference, volume, pages and DOI on acceptance.

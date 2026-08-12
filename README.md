@@ -1,281 +1,423 @@
-# ProteinIK — IK Solver Inspired by Protein Folding
+# ProteinIK — Inverse Kinematics as a Protein-Folding Process
 
 [![CI](https://github.com/amarnath3003/Protien-IK---An-IK-Solver-inspired-by-protein-folding/actions/workflows/ci.yml/badge.svg)](https://github.com/amarnath3003/Protien-IK---An-IK-Solver-inspired-by-protein-folding/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Paper](https://img.shields.io/badge/paper-draft-informational)](paper/academic.md)
 
-> A protein-folding-inspired inverse kinematics solver that has grown from a single staged-fold algorithm into a multi-version research platform supporting three robot configurations, ten solvers, and a live benchmarking dashboard.
+**A robot arm and a protein backbone are the same kind of object**: a chain of rigid
+segments whose only freedom is the rotation between neighbours, searching a rugged,
+constrained landscape for a configuration that satisfies its boundary conditions. This
+repository takes that correspondence literally and builds an inverse-kinematics solver
+out of the *process* proteins use to fold — then benchmarks it against the IK
+literature and validates every number on two independent physics engines.
 
----
+This is the research-code repository for the paper
+**[*ProteinIK: Inverse Kinematics as a Protein-Folding Process*](paper/academic.md)**
+(draft). It contains the solvers, the baseline field, the benchmark harness, every
+committed result file, and the generators for every figure and table in the manuscript.
 
-## Versions at a Glance
-
-| Version | Solver ID | Name | Status | Core Idea |
-| :---: | :--- | :--- | :---: | :--- |
-| **V1** | `protein_ik` | ProteinIK | Live | 5-stage biology-mimicking fold (blind relax → collapse → funnel → chaperone → stability gate) |
-| **V4** | `protein_fast` | ProteinIK Fast | Live | Barrierless-first folding ensemble (kinetic partitioning): cheap downhill fold first, escalate to the full stochastic fold + chaperone only on frustrated seeds. Fastest of the protein lineup; ties/beats TRAC-IK on the easy regime |
-| **V5** | `protein_homotopy` | CCH-IK | Live | Conflict-Controlled Homotopy: λ advances based on cosine conflict between task and constraint gradients |
-| **V6** | `protein_raw` | ProteinIK Raw Biology | Live | Coarse-grained protein-folding *simulation*: overdamped Langevin on a free energy `F = E_task + E_LJ + E_HB − T·S_conf`, cooling to the glass transition, with a `T→0` native-state consolidation endgame |
-
-All three live versions run simultaneously on the same target in the frontend dashboard so you can compare them head-to-head in real time.
-
----
-
-## What This Project Is
-
-An honest, research-oriented comparison platform. The core claim is that biology-inspired sequencing — specifically the staged structure of protein folding — can be a useful design principle for constrained iterative IK, not just a metaphor. Each version of ProteinIK tests a different interpretation of that principle. The baselines (Jacobian DLS, CCD, FABRIK, TRAC-IK-style, Multi-start) are included with the same interface so no result is cherry-picked against a weak field.
-
-### Headline finding
-
-**ProteinIK V1 consistently beats simple classical baselines** (Jacobian DLS, CCD, FABRIK) on success rate. It does **not** beat the two production-style baselines (TRAC-IK-style, Multi-start) on success rate or raw speed in any tested scenario. It does show a modest, consistent edge in self-collision avoidance. **ProteinIK Fast (V4)** keeps that success/collision edge while closing the speed gap — its barrierless-first ensemble matches or beats TRAC-IK on the easy regime (UR5 open_space) and stays the fastest of the protein family across all three arms. CCH-IK (V5) extends the line with a theoretically grounded homotopy path and a novel conflict-index diagnostic.
-
-*The frontend's footer states this plainly rather than spinning it.*
+| I want to… | Go to |
+| :-- | :-- |
+| read the paper | [`paper/academic.md`](paper/academic.md) — or the plain-English mirror, [`paper/academic_simple.md`](paper/academic_simple.md) |
+| see which file backs which claim | [`backend/results/README.md`](backend/results/README.md) |
+| reproduce the results | [`docs/REPRODUCE.md`](docs/REPRODUCE.md) |
+| read the algorithms in detail | paper §3, or [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) |
+| find the solver code | [`backend/app/solvers/`](backend/app/solvers) (Python reference) · [`backend/cpp/`](backend/cpp) (native ports) |
 
 ---
 
-## Robots Supported
+## Contents
 
-| Robot | DOF | Notes |
-| :--- | :---: | :--- |
-| **Planar 3-DOF** | 3 | 3-link planar RRR arm. Includes a gold-standard closed-form analytical solver for ground-truth comparison. |
-| **UR5** | 6 | Universal Robots UR5. The primary benchmark arm; all five stages of the biology analogy were developed and tuned here. |
-| **Franka Panda** | 7 | Redundant 7-DOF arm. The null space is exploited for joint-limit avoidance in the redundant direction. *(Measured caveat: under the capsule self-collision proxy, the 7th DOF gives **no** self-collision-clearance headroom — clearance is structurally pinned by the elbow pair, so null-space motion cannot reduce it. A real mesh-collision model is needed to test redundant self-collision avoidance fairly; see `sim_migration_plan.md`.)* |
-
-All three robots are selectable in the frontend via the robot picker. Solvers that are robot-specific (e.g., the analytical solver is only valid on Planar 3-DOF) are filtered automatically.
-
----
-
-## All Solvers
-
-### Classical Baselines
-| Solver | ID | Role |
-| :--- | :--- | :--- |
-| Jacobian DLS | `jacobian_dls` | Damped-least-squares Jacobian pseudoinverse |
-| CCD | `ccd` | Cyclic Coordinate Descent |
-| FABRIK | `fabrik` | Forward-And-Backward Reaching IK |
-| TRAC-IK style | `trac_ik_style` | Global random restart with DLS |
-| Multi-start | `multi_start` | Multiple independent random seeds |
-| Analytical (Planar 3-DOF) | `analytical_planar3dof` | Exact closed-form — ground truth for planar arm |
-
-### ProteinIK Family
-| Solver | ID | Role |
-| :--- | :--- | :--- |
-| ProteinIK V1 | `protein_ik` | Original staged-fold algorithm |
-| ProteinIK Fast (V4) | `protein_fast` | Speed-optimized fold — barrierless-first kinetic-partitioning ensemble |
-| CCH-IK (V5) | `protein_homotopy` | Conflict-Controlled Homotopy |
-| Fixed-λ Baseline | `fixed_lambda_ik` | V5 ablation baseline — same energy as CCH-IK but no conflict detection |
-| ProteinIK Raw Biology (V6) | `protein_raw` | Coarse-grained folding simulation — Langevin on a biophysical free energy |
+- [The idea](#the-idea)
+- [The three solvers](#the-three-solvers)
+- [The baseline field](#the-baseline-field)
+- [Headline results](#headline-results)
+- [How the results are validated](#how-the-results-are-validated)
+- [Repository layout](#repository-layout)
+- [Quickstart](#quickstart)
+- [Running the benchmarks](#running-the-benchmarks)
+- [Tests and CI](#tests-and-ci)
+- [Scope and limitations](#scope-and-limitations)
+- [Citing this work](#citing-this-work)
 
 ---
 
-## Version Details
+## The idea
 
-### V1 — ProteinIK
+Classical IK treats the arm as a single objective to be minimised from the first
+iteration — damped least squares, cyclic coordinate descent, reaching heuristics,
+restart-based search — driving pose error down a landscape they treat as one basin to
+descend. A protein does not fold that way. It folds in *stages*, and it decides *how
+much search to spend* per molecule.
 
-The original contribution. Rather than minimizing one fixed energy function from iteration 1 (as every classical energy-based IK method does), V1 replicates the staged, sequenced character of real protein folding:
+The correspondence is structural, not a metaphor:
 
-| Stage | Biological Analog | What It Does |
-| :---: | :--- | :--- |
-| 1 | Secondary structure (helices, strands) | Local-blind relaxation: joints settle using only neighbor and joint-limit energy, no target consulted at all |
-| 2 | Hydrophobic collapse | Coarse, low-precision pull of the chain toward the target's general direction |
-| 3 | Folding funnel | Main refinement: target attraction + collision + smoothness, perturbation radius decays over iterations |
-| 4 | Molecular chaperone (GroEL/GroES) | Scoped stuck-rescue: perturbs only the joints contributing most to high energy, leaves the rest untouched |
-| 5 | Kinetic native-state stability | Stability-gated termination: jitters the candidate and rejects it if energy jumps (knife-edge point check) |
+| Protein folding | Inverse kinematics |
+| :-- | :-- |
+| Backbone dihedral angles φ/ψ (soft DOF) | Joint angles `q` (the DOF) |
+| Rigid bonds / fixed bond lengths | Fixed link lengths (FK constraints) |
+| Native (folded) state | The IK solution configuration |
+| Free-energy funnel | Convergence basin to the target |
+| Rugged landscape / kinetic traps | Local minima / failed solves |
+| Excluded volume (sterics) | Self-collision avoidance |
+| Hydrophobic collapse | Coarse approach to the target region |
+| Secondary structure (local order) | Local joint settling |
+| Molecular chaperone (GroEL) | Restart / rescue from a stuck state |
+| Kinetic partitioning (fast vs. slow folders) | Easy vs. hard targets |
 
-The scoped rescue in Stage 4 is the key design difference from TRAC-IK: rather than a global random restart, only the "misfolded" substructure is perturbed.
+Algorithms already cross between the two fields — CCD, a robotics IK method, was
+adopted into structural biology for protein loop closure — but **every prior crossing
+runs robotics → biology, and carries one *move* at a time**. This work runs the other
+way and carries the *process*: the ordered sequence nature uses to fold becomes the
+engine of the solver. Every numerical ingredient is standard IK, so any advantage comes
+from the **sequencing and the schedule**, not from a new energy function.
 
----
+## The three solvers
 
-### V4 — ProteinIK Fast
+| Paper name | Solver id | Idea | Status |
+| :-- | :-- | :-- | :-- |
+| **StagedFold** | `protein_ik` | Folding's ordered *sequence*: local settling **before the target is consulted** → coarse collapse → funnelled narrowing search → scoped chaperone rescue → native-state stability gate | evaluated (§3.2) |
+| **KineticFold** | `protein_fast` | StagedFold **plus kinetic partitioning as a compute schedule**: try a cheap downhill fold first, and pay for the full staged search only on genuinely frustrated targets | evaluated — the paper's main solver (§3.3) |
+| **LangevinFold** | `protein_raw` | The correspondence at its physical limit: the arm coarse-grained to one bead per joint origin and evolved by overdamped **Langevin dynamics** on `F = E_task + E_LJ + E_HB − T·S_conf`, cooled to a glass transition | future work (§6) — runs, but excluded from the compared field |
 
-The goal: be the **fastest of the protein lineup and competitive with TRAC-IK**, using the protein-folding architecture *plus* optimization — not a pivot away from it. V4 reaches it in two layers. (Full writeup: [`fast_optimization.md`](fast_optimization.md).)
+Two moves are, to our knowledge, new in this setting: a **target-blind first stage**
+(the arm settles into a relaxed, in-limits pose before it is ever told where to go) and
+a **scoped-then-escalating rescue** (when stuck, re-randomise only a contiguous window
+of joints centred on the misfolded one, escalating to a global reseed only as a last
+resort — where TRAC-IK's stall response is *always* a full random restart).
 
-**Diagnosis — the problem was the tail, not the per-step cost.** An earlier bit-identical micro-pass (fused `_fast_pose_jac`, fewer allocations) already gave V4 a *median* that tied TRAC-IK (~11 ms vs ~10 ms on UR5), but its *mean* was wrecked by a tail: on the ~10% of targets where the barrierless fast-path missed, the solver fell into a full ensemble of stochastic Metropolis folds, and those solves ate ~57% of total wall time. A per-step micro-opt can't move a tail like that (measured: 1.1–1.4× only).
+**KineticFold's schedule** is the contribution that makes it competitive:
 
-**Layer 1 — barrierless-first ensemble (the tail killer).** This is the **kinetic partitioning mechanism** of folding: a population splits into a fast fraction that descends a smooth funnel directly to the native state (barrierless / "downhill" folding) and a slow fraction that is kinetically trapped and needs an activated search with chaperone (GroEL / iterative-annealing) rescue. So each replica **first attempts a cheap barrierless (LM) fold**; only a *frustrated* seed (LM fails to reach a sterically clean native state) escalates to the full stochastic funnel + chaperone. The cheap path resolves the bulk of targets in ~TRAC-IK time; the expensive protein machinery fires only where frustration demands it. Gating the chaperone behind "spontaneous folding failed" is how GroEL actually works, so this order is *more* faithful than always running the full machinery, not less. A single budget (`max_replicas`) governs both phases.
+- **Phase A (barrierless)** — up to 6 replicas run a cheap adaptive
+  Levenberg–Marquardt polish (≤30 steps); the first replica that converges *clash-free*
+  wins and the solve ends. This path takes **79% of targets** across the two physical
+  arms (93% on UR5 open-space, down to 50% on Franka cluttered) — the gate tracks
+  scenario difficulty rather than firing at a fixed rate.
+- **Phase B (the full staged fold)** — fires only when no converged Phase-A replica is
+  clash-free, i.e. the target is *frustrated*. It runs StagedFold's stages with a
+  Metropolis-accepted funnel under geometric cooling and an analytic rescue that reads
+  its joint off the already-computed Jacobian.
 
-**Layer 2 — allocation-light FK primitives (the per-step floor).** `_fast_chain` builds the DH chain with no per-joint `np.array` literals; `_incremental_chain` rebuilds only the suffix when the Metropolis sweep perturbs one joint; a shared constant identity replaces per-step `np.eye(6)`. All verified **bit-identical** to the reference FK (0.0 difference over 9000 configs across all three arms; locked by tests).
+The diagnosis behind it: StagedFold's problem was never the average solve, it was the
+tail — the slowest ~10% of targets consumed ~57% of total wall time. Micro-optimising
+the inner loop bought only 1.1–1.4×, because the cost is not *how* the per-fold search
+runs but *whether a target enters it at all*. Naive budget cuts (cap replicas, bail
+earlier) destroyed the result: at `cap_replicas = 2`, Franka open-space success falls to
+71.7% against ~100%. Full write-up:
+[`docs/design/kineticfold-barrierless-first.md`](docs/design/kineticfold-barrierless-first.md).
 
-**Result.** Unlike the earlier micro-pass, Layer 1 *changes behavior* — so V4 is validated by the metrics that matter, not bit-identity: success and self-collision rate held at or above the prior staged-fold Fast, with mean/tail latency cut **1.1–4.3× across UR5 / Franka / Planar**. On UR5 open_space it now runs ~9–14 ms mean (p50 ~3 ms), matching or beating TRAC-IK's pure-numerical core while keeping 100% success and a lower self-collision rate.
+## The baseline field
 
-**Rejected alternative (kept honest):** naive tail-edits — capping replicas / earlier bail / fewer iterations, leaving the order intact — bought little speed and *destroyed the headline win* (Franka success collapsed to 71.7% at `cap replicas=2`), because the cost is the per-fold search, not the fold count. See [`fast_optimization.md`](fast_optimization.md).
+Six baselines spanning the IK literature. **Every solver in the reported sweeps runs as
+native compiled code**, so the latency comparison is apples-to-apples:
 
----
+| Baseline | Implementation |
+| :-- | :-- |
+| **TRAC-IK** | genuine TRACLabs C++/KDL/NLopt via `tracikpy`, `solve_type=Speed`, 5 ms timeout |
+| **Jacobian-DLS** | genuine Robotics Toolbox (Corke) `ik_LM`, single-shot from `q0` |
+| **Multi-start** | genuine Robotics Toolbox `ik_LM` with up to 100 random restarts |
+| **CCD** / **FABRIK** | in-repo algorithm compiled to native C++/Eigen |
+| **Analytical (planar)** | exact closed form — the ground-truth validator |
+| **PyBullet native IK** | the simulator's own `calculateInverseKinematics`, on identical targets |
 
-### V5 — CCH-IK (Conflict-Controlled Homotopy IK)
+CCD and FABRIK are *ported*, not imported, for a stated reason: no upstream library
+solves a DH manipulator to a 6-DOF pose — the reference implementations (Caliko,
+Wang & Chen) are graphics point-solvers that return bone bend-angles. Bridging one
+would itself be a reimplementation, so the repo's own algorithm is compiled instead and
+labelled `(in-repo; native C++)`. Both are deterministic and verified bit-identical per
+step against the Python (≤1e-13).
 
-A theoretically distinct approach. Instead of the staged folding metaphor, V5 is grounded in homotopy path-following for constrained optimization.
+The ProteinIK solvers are likewise C++/Eigen ports (`backend/cpp/` → `pik_native`),
+FK- and energy-parity-checked against the Python reference to ≤1e-11.
 
-**Core idea:** Define a combined energy `E(q, λ) = (1-λ)·E_task + λ·E_constraints` and follow the solution path as λ sweeps from 0 (task only) to 1 (full constraints). The key innovation is that λ does not advance on a fixed schedule — it advances only when the gradient conflict between task and constraint components is low (cosine similarity below a threshold). When gradients conflict, λ is held until the solver finds a local resolution.
+## Headline results
 
-**Theoretical basis:** The Implicit Function Theorem (Allgower & Georg 1990) guarantees a locally smooth solution path q(λ) exists when the Hessian is non-singular. The path breaks at kinematic singularities; no global convergence claim is made.
+Three arms (planar 3-DOF, UR5 6-DOF, Franka Panda 7-DOF redundant) × three scenarios
+(`open_space`, `near_singular`, `cluttered`, the latter two reject-sampled against a
+hardness criterion). Every solver sees the identical target draw.
 
-**Biological motivation (honest):** The minimal frustration principle — proteins fold fast because their energy landscapes minimize gradient conflicts between native interactions. This is the design intuition only. All algorithmic decisions are justified by the optimization theory.
+### Success — single-shot, ‖Δp‖ < 1 mm and ‖Δω‖ < 10 mrad
 
-**Novel diagnostic outputs:**
+3-seed survey, `n = 300` per cell, from `master_full(cpp).md`:
 
-| Output | Range | Meaning |
-| :--- | :---: | :--- |
-| `conflict_index` (C) | [-1, 1] | Full-vector cosine between task and constraint gradients at solution. C < 0: cooperative; C ≈ 0: orthogonal; C > 0: conflicted |
-| `lambda_final` (λ) | [0, 1] | How far constraints were introduced. λ < 0.8 means constraints were not fully active at convergence |
+| Solver | UR5 open / near-sing. / cluttered | Franka open / near-sing. / cluttered |
+| :-- | :-- | :-- |
+| **KineticFold** | 99.7 / **100** / **100** | **100** / **100** / **98.3** |
+| TRAC-IK | **100** / 99.3 / **100** | 98.7 / 99.0 / 94.7 |
+| Multi-start | **100** / **100** / **100** | 99.3 / 98.0 / 93.7 |
+| StagedFold | 97.3 / 88.3 / 89.3 | 96.3 / 92.3 / 80.7 |
+| Jacobian-DLS | 72.3 / 69.7 / 77.0 | 28.3 / 31.0 / 19.0 |
+| FABRIK | 49.3 / 34.7 / 36.7 | 18.0 / 11.3 / 22.7 |
+| CCD | 43.7 / 32.0 / 41.0 | 23.0 / 11.7 / 12.3 |
 
-The `fixed_lambda_ik` solver uses the same energy function but advances λ linearly (no conflict detection), isolating V5's contribution to the ablation.
+The field splits in two. The single-trajectory baselines collapse on the hard scenarios
+— exactly the single-basin failure mode the design predicts for methods with no restart
+mechanism. **UR5 is a saturated tie** at the top (99.3–100%), so the easy arm does not
+separate the leaders. **The redundant Franka does**: KineticFold is the only solver
+above 98% on all three cells, and its worst case (98.3% on `cluttered`) tops the best
+baseline there by **3.7 points**. StagedFold — folding's process *without* its schedule
+— clears every simple baseline but plateaus below the production ones, which is the gap
+kinetic partitioning closes.
 
----
+### Speed — with the whole field compiled
 
-### V6 — Raw Biology
+Mean / p99 ms per solve, `open_space`:
 
-The deepest level of the spectrum: biology in the **energy function itself**. Rather than
-sequencing standard IK operations (V1) or extracting one principle (V5), V6 is an actual
-**coarse-grained, off-lattice, implicit-solvent protein-folding simulation** (the Honeycutt–
-Thirumalai / Enciso–Rey lineage) whose polymer happens to be the robot arm — the joint origins
-are the Cα beads, the links are rigid virtual bonds, the joint angles are the backbone torsions.
+| Solver | UR5 | Franka |
+| :-- | :-- | :-- |
+| **KineticFold** | **0.1** / **1.5** | **0.1** / **1.4** |
+| TRAC-IK | 0.5 / 2.6 | 0.9 / 5.1 |
+| Multi-start | 0.6 / 1.0 | 0.8 / 1.9 |
+| CCD | 0.4 / 0.7 | 0.6 / 0.8 |
+| FABRIK | 0.3 / 0.4 | 0.5 / 0.6 |
+| PyBullet native IK | 4.0 / 6.8 | 4.4 / 9.7 |
 
-It minimises a biophysical **free energy** by overdamped **Langevin dynamics**, cooling from an
-unfolded high temperature toward the REM glass temperature, and reaches the native state by the
-dynamics' own `T→0` limit (a damped-Newton consolidation — the physical endpoint of the same
-equation, not a bolted-on solver). Each term was filtered to have **no existing IK equivalent**:
+KineticFold has the fastest typical solve of the field on both arms — roughly 1.7–7×
+under TRAC-IK and Multi-start — with its median near the measurement floor (≈0.04 ms on
+UR5). Its **worst p99 anywhere in the survey is 4.7 ms** (Franka `cluttered`), below
+TRAC-IK's 5.1 ms there. The small tail is the direct signature of Phase A: most targets
+never enter the expensive fold. Wall-clock columns carry OS scheduling noise; success,
+collision and error columns are deterministic given the seed.
 
-| Term | What it is | Why it has no IK equivalent |
-| :--- | :--- | :--- |
-| `E_LJ` | Full Lennard-Jones 6-12 between link pairs, **with attraction** | Every IK self-collision model keeps only the repulsive wall; the attractive well gives emergent inter-link spacing |
-| `E_HB` | Directional hydrogen-bond coupling (distance **and** axis orientation, via the triplet-plane normal) | The Jacobian captures influence, not preferred geometry; an ideal H-bond is 55× stronger than a misoriented contact |
-| `−T·S_conf` | Configurational entropy `S = log Ω` (clash-free accessible volume), **target-blind & collision-aware** | It is *not* manipulability (measured: corr(clearance, S)≈+0.9 vs manipulability≈0); the hydrophobic free-energy term, opposing collapse |
-| `Σ` | Bryngelson–Wolynes landscape funnel/glass diagnostic, measured **before** solving | Reported as a diagnostic (sets the cooling target `T_glass`); complementary to V5's during-solve conflict |
+### Self-collision — real mesh, and conditional on redundancy
 
-**Honest scope.** Everything except `E_task` (the imposed EE target — folding is target-blind)
-follows the folding mechanism exactly. Raw is the **slowest** of the family by design — its
-thesis is solution quality and physical faithfulness, not speed. Each term is independently
-unit-tested, and its contribution is validated by a standalone experiment
-(`backend/raw_phase{1..4}_experiment.py`); the design rationale and a faithfulness×rawness audit
-are in `raw_design.md`, `raw_math.md`, and `raw_audit.md`.
+10-seed sweep, `n = 1000` per cell, PyBullet real-mesh rate (MuJoCo agrees within ~1
+point and preserves every ranking):
 
----
+| Solver | UR5 open / near-sing. / cluttered | Franka cluttered |
+| :-- | :-- | :-- |
+| **KineticFold** | **26.2** / **40.4** / **56.4** | 82.4 |
+| StagedFold | 32.9 / 43.4 / 64.6 | 77.3 |
+| TRAC-IK | 35.3 / 49.9 / 74.2 | **77.1** |
+| Multi-start | 35.8 / 47.6 / 74.7 | **77.0** |
 
-## Project Layout
+On the **non-redundant UR5** KineticFold is the cleanest of the field in every regime —
+1.24–1.35× lower than TRAC-IK — while matching the top of the success field, and it
+penetrates about half as deeply when it does clash. On the **redundant Franka** the
+field converges into a wash: a spare 7th joint gives every method a null-space
+direction to dodge with, so collision-directed search has much less room to matter.
+**That conditionality is evidence for the mechanism, not against it** — the edge appears
+where the chain has nowhere to hide from its own search.
+
+Counting only *clean* goals (a success that is also collision-free on real mesh), on
+UR5 `cluttered` KineticFold returns **43.6 usable goals per 100 attempts against 25.8
+(TRAC-IK) and 25.3 (Multi-start)**.
+
+### The result that tests the thesis — scaling into a polymer
+
+Lengthen a planar arm from 4 to 16 joints, making it progressively more polymer-like,
+and measure single-shot clean-solve rate (`n = 120` per cell). Both solvers reach the
+target ~100% of the time — the entire gap is self-collision avoidance:
+
+| DOF | KineticFold clean% | TRAC-IK clean% | ratio |
+| --: | --: | --: | --: |
+| 4 | 71.7 | 36.7 | 2.0× |
+| 6 | 63.3 | 23.3 | 2.7× |
+| 8 | 43.3 | 13.3 | 3.2× |
+| 12 | 7.5 | 3.3 | 2.2× |
+| 16 | 0.8 | 0.0 | KineticFold only |
+
+The advantage holds at every chain length, peaks in the mid-DOF range, and at 16 joints
+KineticFold is the only one of the two still producing collision-free folds. **The
+advantage is largest exactly where the arm behaves most like a folding chain** — which
+is the point: the method wins because the problem *becomes* folding. (See
+[limitations](#scope-and-limitations) — the 12/16-DOF rows are not yet statistically
+significant at `n = 120`.)
+
+## How the results are validated
+
+**Solve once, score three ways.** Each solver runs a single time on the shared DH
+`RobotSpec` core, and that identical `q_final` is then judged by three independent
+evaluators: our capsule proxy (what the solvers optimise against) and two full-mesh
+physics engines the solvers never query — **PyBullet** and **MuJoCo**, loading the same
+URDF over the same non-adjacent link pairs. Both engine queries are purely kinematic
+(`resetJointState`/`getLinkState`; `qpos` + `mj_kinematics`), so no dynamics rollout is
+being compared against a kinematic model.
+
+What that buys, concretely:
+
+- **Forward kinematics agree to floating-point noise** — DH↔PyBullet 9.5e-7 m (UR5) and
+  6.6e-7 m (Franka), DH↔MuJoCo 4.2e-8 and 8.7e-16, engine↔engine ≈4–6e-8 m. This is
+  load-bearing: a target generated from a wrong FK gets "solved" successfully against
+  that same error, so only a second model can expose it. It also independently confirms
+  the Franka's **modified (Craig) DH** table — feeding it through the standard-DH
+  transform silently places the end effector ≈1.4 m from the real robot.
+- **The two oracles corroborate each other** — collide/clear sign-agreement 97.8% (UR5)
+  to 99.0% (Franka), correlation 0.88–0.99 — so a proxy-vs-oracle disagreement is
+  attributable to the proxy, not to noise between engines.
+- **The validation corrects our own claim.** The capsule proxy is systematically
+  *optimistic*: real meshes collide 36.5% of the time on UR5 where the proxy says
+  16.9%. So collision is reported only as a **ranking** of solvers, never as an absolute
+  rate, and the UR5 margin over TRAC-IK is stated at the real-mesh 1.24–1.35× rather
+  than the larger number the proxy suggests.
+
+Artifacts: [`backend/results/validation/`](backend/results/validation) ·
+harness: [`backend/app/sim/`](backend/app/sim) ·
+runner: [`backend/bench/master_sim_benchmark.py`](backend/bench/master_sim_benchmark.py).
+
+## Repository layout
 
 ```
-protein-ik/
-├── backend/               # FastAPI + NumPy solver suite
-│   ├── app/
-│   │   ├── core/          # DH kinematics, Jacobian, collision distance (shared)
-│   │   ├── solvers/       # All solvers behind a uniform interface
-│   │   │   ├── protein_ik.py               # V1
-│   │   │   ├── protein_fast/               # V4 (package)
-│   │   │   ├── protein_homotopy/           # V5 — CCH-IK (package)
-│   │   │   ├── fixed_lambda_ik.py          # V5 ablation baseline
-│   │   │   ├── jacobian_dls.py
-│   │   │   ├── ccd.py
-│   │   │   ├── fabrik.py
-│   │   │   ├── trac_ik_style.py
-│   │   │   ├── multi_start.py
-│   │   │   ├── analytical_planar3dof.py
-│   │   │   └── registry.py                # Uniform solver dispatch
-│   │   └── api/           # Schemas, quaternion utils, scenario generators
-│   └── tests/
-└── frontend/              # React + Three.js dashboard (Vite)
-    └── src/
-        ├── components/    # RobotArm, EnergyFunnel, BenchmarkPanel, SolverCard
-        ├── hooks/         # useLiveSolve (WebSocket management)
-        └── lib/           # Client-side DH kinematics, solver metadata, API client
+paper/
+  academic.md              THE PAPER (canonical draft)
+  academic_simple.md       plain-English mirror, sentence by sentence
+  figures/                 every figure + its generator (reads the committed results)
+  tables/                  generated LaTeX tables + the hand-authored static ones
+
+backend/
+  app/
+    core/                  DH kinematics, Jacobian, capsule self-collision  (the shared core)
+    solvers/               all solvers, one uniform (spec, q0, T_target, rng) -> SolveResult
+      protein_ik.py          StagedFold
+      protein_fast/          KineticFold (+ o2 / calibrated variants)
+      protein_raw/           LangevinFold (future work)
+      protein_homotopy/      CCH-IK — not part of this paper
+      ccd.py fabrik.py jacobian_dls.py multi_start.py trac_ik_style.py
+      analytical_planar3dof.py
+      registry.py            solver id -> callable, and per-robot compatibility
+    sim/                   the validation harness: PyBullet + MuJoCo backends, mesh
+                           collision, FK/collision parity, planar URDF generator,
+                           live viewer + interactive MuJoCo IK Studio
+    api/ main.py           FastAPI service behind the dashboard
+  cpp/                     C++/Eigen ports of every in-repo solver -> pik_native (pybind11)
+                           + the parity checkers that prove they match the Python
+  bench/                   the authoritative benchmark drivers
+    master_sim_benchmark.py  "solve once, score three ways" — the paper's sweep
+    usecase_experiments.py   the DOF-scaling study (EXP E -> Table 5)
+    sim_crosscheck.py        PyBullet vs MuJoCo vs DH oracle agreement
+    collision_parity.py      capsule proxy vs real mesh
+  native_bench/            runs those drivers with every solver swapped for its
+                           genuine/native implementation (this is what the paper reports)
+  results/                 every committed result file — see results/README.md
+  tests/                   pytest suite (sim tests skip cleanly without PyBullet/MuJoCo)
+
+frontend/                  React + Three.js dashboard: several solvers on one target,
+                           live arm, energy funnel, metric panel
+
+docs/
+  REPRODUCE.md             clean checkout -> rebuilt paper, three levels of fidelity
+  METHODOLOGY.md           the deep methods write-up
+  design/                  per-solver design records (KineticFold, LangevinFold)
+  archive/                 development history: drafts, research notes, the V5 line,
+                           the dev log. Kept for the technical report; nothing here is
+                           authoritative for the paper.
 ```
 
----
+## Quickstart
 
-## Running the Backend
+```bash
+# API + solvers (Python 3.11)
+cd backend
+python -m venv .venv && .venv/Scripts/python -m pip install -r requirements.txt
+PYTHONPATH=. .venv/Scripts/python -m uvicorn app.main:app --reload        # :8000
 
-Requires **Python 3.10+**.
+# dashboard
+cd ../frontend
+npm install && npm run dev                                               # :5173
+```
+
+Solve one target from Python:
+
+```python
+import numpy as np
+from app.core.kinematics import get_robot_spec, end_effector_pose
+from app.solvers.registry import run_solver
+
+spec = get_robot_spec("ur5")
+rng  = np.random.default_rng(0)
+q0   = np.zeros(spec.n_joints)
+T_target = end_effector_pose(spec, rng.uniform(*spec.joint_limits.T))   # reachable by construction
+
+res = run_solver("protein_fast", spec, q0, T_target, rng)   # KineticFold
+print(res.success, res.pos_error, res.iterations)
+```
+
+Every solver shares that signature, so swapping `"protein_fast"` for `"trac_ik_style"`,
+`"ccd"`, `"protein_ik"`, … changes nothing else. `get_solvers_for_robot(robot)` lists the
+ids valid for an arm.
+
+Interactive MuJoCo IK Studio (real meshes, click-to-place targets):
+
+```bash
+cd backend && PYTHONPATH=. .venv-sim/Scripts/python -m app.sim.ik_studio
+```
+
+## Running the benchmarks
+
+The reported numbers come from the **native** sweeps — genuine baseline libraries plus
+C++/Eigen ports — run under WSL2 Ubuntu 22.04 / Python 3.10:
 
 ```bash
 cd backend
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+bash cpp/build_native.sh                                  # build pik_native
+PYTHONPATH=. python3 cpp/parity_native.py                 # prove the port matches Python
+PYTHONPATH=. python3 native_bench/run_native_master.py --resume \
+    --out "results/master_full(cpp)"                      # the 3-seed survey
 ```
 
-Verify it's up:
-```bash
-curl http://localhost:8000/api/robots
-```
+The driver is crash-safe (CSV rewritten after every cell) and `--resume` skips completed
+cells, so an interrupted overnight run just gets relaunched. Full command lines for all
+four sweeps, plus the environment and the figure rebuild, are in
+**[`docs/REPRODUCE.md`](docs/REPRODUCE.md)**.
 
-### Backend Tests
-```bash
-py -3.11 -m pytest tests/ -v
-```
-
-### API Endpoints
-
-All under `http://localhost:8000`:
-
-| Method | Path | Description |
-| :--- | :--- | :--- |
-| `GET` | `/api/robots` | List all available robot arms |
-| `GET` | `/api/robot?robot=ur5` | DH spec for a specific robot |
-| `GET` | `/api/solvers?robot=ur5` | Solvers valid for that robot |
-| `POST` | `/api/random-target` | Generate a random reachable target pose |
-| `POST` | `/api/solve` | Run one solver once (optional step trace) |
-| `POST` | `/api/benchmark` | Batch-run N trials across solvers; returns aggregated metrics |
-| `WS` | `/ws/solve` | Live step-by-step streaming of a single solve |
-
-Interactive docs auto-served at `http://localhost:8000/docs`.
-
-### Benchmark Scenarios
-
-| Scenario | Description |
-| :--- | :--- |
-| `open_space` | Uniform random targets, no obstacle bias |
-| `near_singular` | Targets biased toward low-manipulability configurations |
-| `cluttered` | Targets biased toward tight, near-self-collision configurations |
-
----
-
-## Running the Frontend
-
-Requires **Node 18+**.
+Rebuild every figure and table from the committed results in about a minute:
 
 ```bash
-cd frontend
-npm install
-npm run dev     # Dev server at http://localhost:5173
-npm test        # Kinematics unit tests (Vitest)
-npm run build   # Production build
+cd paper/figures && python build_all.py
 ```
 
-The frontend expects the backend at `http://localhost:8000`. To point it elsewhere:
+## Tests and CI
 
-```env
-# frontend/.env.local
-VITE_API_BASE=http://localhost:8000
+```bash
+cd backend && PYTHONPATH=. python -m pytest tests/ -v     # kinematics, solvers, planar sim model, raw energy
+cd frontend && npm test                                   # JS kinematics parity
 ```
 
-If the frontend can't reach the backend it shows a banner with the exact command to start it — no silent failure.
+[CI](.github/workflows/ci.yml) runs both suites and the frontend production build on
+every push. Tests that need PyBullet or MuJoCo skip cleanly when those are absent.
 
----
+## Scope and limitations
 
-## Frontend Features
+Stated up front, because a reviewer should not have to find them:
 
-- **Robot selector** — switch between Planar 3-DOF, UR5, and Franka Panda live; solver list updates automatically
-- **Live solve grid** — all active solvers run simultaneously on the same target, rendered side by side in Three.js
-- **Focused solver view** — click any solver card to expand it with a full energy funnel readout and phase trace
-- **Energy funnel visual** — the signature diagnostic: live error narrowing toward convergence with per-phase annotations (including CCH-IK's λ-advancement and conflict-hold phases)
-- **Batch benchmark panel** — run N trials (default 60) per scenario and compare success rate, mean/p50/p95 solve time, collision rate, and convergence across all solvers in a table
-- **Collision proximity glow** — robot links color-shift based on self-collision clearance
+- **Self-collision only.** No solver here reasons about workspace obstacles. An
+  `E_obstacle` term folds into the same staged, kinetically partitioned machinery
+  without changing either solver's logic, and is the immediate next step.
+- **All results are in simulation.** No hardware experiments.
+- **The collision proxy is hand-tuned**, not derived from CAD, and is optimistic
+  relative to real mesh — hence the ranking-only reporting above.
+- **The DOF-scaling tail is under-powered.** At `n = 120`, the 4/6/8-DOF rows are
+  overwhelming (Fisher exact `p < 0.0001`) but the 12- and 16-DOF rows are not
+  significant (`p = 0.25`, `p = 1.00`); the 16-DOF headline rests on a single clean
+  solve. Re-running those cells at higher `n` is an open to-do.
+- **TRAC-IK is wall-clock budgeted** in the DOF sweep (5 ms `Speed` call), so its clean
+  rate moves up to 1.7 pp with machine load; KineticFold's is deterministic.
+- **The DOF-scaling comparison is single-shot against one baseline.** A
+  clearance-selecting Multi-start (solve K times, keep the cleanest) is competitive on
+  redundant planar arms, and such wrappers lift every solver.
+- **Incremental-FK bit-identity** for the Python reference covers UR5 and the planar arm
+  (500 configurations each), not Franka.
+- **LangevinFold is future work.** It runs and is scored, but it is excluded from the
+  compared field and no §5 claim rests on it — at 13–22 ms per solve it is two orders of
+  magnitude off the real-time solvers. Its rows do appear in the committed CSVs; see
+  [`backend/results/README.md`](backend/results/README.md) for how to read them.
+- **CCH-IK / V5** (`protein_homotopy`, `fixed_lambda_ik`) ships in the codebase and in
+  the dashboard but is not part of this paper; its research record is in
+  [`docs/archive/v5-cchik/`](docs/archive/v5-cchik).
 
----
+## Citing this work
 
-## Architecture Notes
+See [`CITATION.cff`](CITATION.cff). The manuscript is a draft — author and venue
+metadata carry `TODO` placeholders until it is submitted.
 
-**Backend concurrency:** The solver code is synchronous NumPy. All solve and benchmark calls run in a thread-pool executor (`ThreadPoolExecutor`, sized to CPU count), keeping the asyncio event loop free for concurrent WebSocket connections. Benchmarks with many trials never block live solve streams.
+## License
 
-**Shared kinematics core:** `app/core/kinematics.py` provides DH-based forward kinematics, the geometric Jacobian, pose error, and self-collision distance. Every solver uses the same primitives. The Jacobian is verified against finite-difference checks; the V4 fused version is verified to be bit-identical to the reference.
+[MIT](LICENSE). The UR5 and Franka Panda URDFs and meshes are resolved at runtime from
+[`robot_descriptions`](https://github.com/robot-descriptions/robot_descriptions.py) and
+remain under their own upstream licenses; they are not vendored here.
 
-**Uniform solver interface:** Every solver is registered as `(spec, q0, T_target, rng, collect_steps) -> SolveResult`. The API and benchmark runner have no solver-specific branching.
+## Acknowledgements
 
-**Client-side kinematics:** `src/lib/kinematics.js` is a faithful JS port of the DH math, used only for rendering joint positions in Three.js. All actual solving is server-side.
-
----
-
-## Honesty in This Codebase
-
-Several comments in `protein_ik.py`, `protein_homotopy/solver.py`, and `fabrik.py` document mechanisms that were tried, benchmarked, and either kept or reverted based on measured results — including negative results (rotamer bias, vectorial/domain-decomposition folding variants, fixed-λ schedule). These are left in place deliberately so the reasoning is auditable, not just the conclusion.
-
-[`fast_optimization.md`](fast_optimization.md) does the same for V4: it records both the rejected naive tail-edits (capping replicas / iterations collapsed Franka success to 71.7% for almost no speed gain) and the fact that bit-identical micro-optimization alone could not move the latency tail — the measured dead-ends that motivated the barrierless-first redesign.
-
-V5's solver docstring explicitly distinguishes what is claimed (conflict-controlled λ advancement as an algorithmic contribution), what is theoretical grounding (IFT), and what is design intuition only (biological motivation).
+The benchmark leans on work by other people: TRAC-IK (Beeson & Ames, TRACLabs), the
+Robotics Toolbox for Python (Peter Corke), Orocos KDL, PyBullet, and MuJoCo. The
+folding theory this borrows from is cited in full in the paper's reference list.

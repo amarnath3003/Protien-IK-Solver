@@ -6,7 +6,7 @@ two production baselines (Multi-start, TRAC-IK-style) and KineticFold hold near
 100%. Bars are coloured by scenario on a difficulty ramp (light=open -> dark=cluttered).
 
 Source: master CSV (default: 3-seed all-arms sim run).
-Run:    python fig_success.py [--csv path/to/master_full.csv]
+Run:    python fig_success.py [--csv path/to/master_full(cpp).csv]
 """
 from __future__ import annotations
 

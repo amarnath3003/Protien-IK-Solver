@@ -37,13 +37,15 @@ TABLE_DIR = PAPER_DIR / "tables"                    # paper/tables
 # backend/native_bench/run_native_master.py ("solve once, score three ways" in PyBullet +
 # MuJoCo, every solver native: real TRAC-IK via tracikpy, RTB Jacobian-DLS/Multi-start, and
 # C++/Eigen ProteinIK + CCD/FABRIK ports); its committed output is
-# results/master_10seed_fast(cpp).csv (UR5 + Franka, seeds 1..10, n=1000/cell). Both
-# success/speed AND real-mesh collision come from that single file. The pre-native
-# `master_10seed_fast.csv` / `master_full.csv` are superseded. Override any of these on the CLI.
-DEFAULT_MASTER_CSV    = REPO / "backend" / "results" / "master_full(cpp).csv"         # success + latency (3 seeds, adds planar)
-DEFAULT_COLLISION_CSV = REPO / "backend" / "results" / "master_10seed_fast(cpp).csv"  # real-mesh collision only (10 seeds)
-DEFAULT_USECASE_JSON  = REPO / "backend" / "scrap"   / "usecase_results.json"    # DOF scaling (SEPARATE experiment)
-DEFAULT_LANGEVIN_CSV  = REPO / "backend" / "results" / "langevin_bench.csv"      # LangevinFold mini-benchmark (SEPARATE, small-scale)
+# results/master_full(cpp).csv (3 seeds, all three arms -> success + latency) and
+# results/master_10seed_fast(cpp).csv (UR5 + Franka, seeds 1..10, n=1000/cell -> real-mesh
+# collision). The pre-native runs under results/archive/python-run/ are superseded and must
+# not be used for paper numbers. Override any of these on the CLI.
+RESULTS = REPO / "backend" / "results"
+DEFAULT_MASTER_CSV    = RESULTS / "master_full(cpp).csv"         # success + latency (3 seeds, adds planar)
+DEFAULT_COLLISION_CSV = RESULTS / "master_10seed_fast(cpp).csv"  # real-mesh collision only (10 seeds)
+DEFAULT_USECASE_JSON  = RESULTS / "dof_scaling" / "dof_scaling_native.json"  # DOF scaling (SEPARATE experiment)
+DEFAULT_LANGEVIN_CSV  = RESULTS / "langevin_bench.csv"           # LangevinFold mini-benchmark (SEPARATE, small-scale)
 
 # --------------------------------------------------------------------------- #
 # Paper-facing names + fixed per-solver colours

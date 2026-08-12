@@ -1,5 +1,5 @@
 """Procedural URDF models for the planar N-DOF arms of the DOF-scaling study
-(``scrap/usecase_experiments.py`` EXP E / paper Table 5).
+(``bench/usecase_experiments.py`` EXP E / paper Table 5).
 
 Why this exists
 ---------------
@@ -77,7 +77,8 @@ def planar_ndof_spec(n: int, total_reach: float = TOTAL_REACH,
 
     Byte-for-byte the spec ``usecase_experiments.planar_ndof_spec`` builds; it
     lives here too so the sim layer can construct the arm by name without
-    importing from ``scrap/``. ``test_planar_parity.py`` asserts the two agree.
+    importing from ``bench/``. ``tests/test_planar_sim_model.py`` asserts the
+    two agree.
     """
     a = np.full(n, total_reach / n)
     d = np.zeros(n)

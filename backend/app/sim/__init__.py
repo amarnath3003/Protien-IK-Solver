@@ -1,5 +1,5 @@
 """
-Simulator adapter + oracle layer (see ``sim_migration_plan.md``).
+Simulator adapter + oracle layer (see ``docs/archive/dev-log/sim_migration_plan.md``).
 
 The solvers are already decoupled from our in-house kinematic sim: every one
 consumes a ``RobotSpec`` and depends only on ``app.core.kinematics``. This

@@ -1,0 +1,38 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.venv-*/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Node / frontend ---
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# --- Editors / OS ---
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Agent / tooling scratch ---
+.claude/worktrees/
+
+# --- Build & run artifacts ---
+# The committed pik_native .so is deliberate (see docs/REPRODUCE.md B.2): it lets the
+# native sweeps be re-run without a C++ toolchain. Any OTHER extension build is local.
+*.so
+!backend/cpp/pik_native.cpython-310-x86_64-linux-gnu.so
+*.o
+*.obj
+
+# Local benchmark scratch output (committed results live in backend/results/ and are
+# added explicitly).
+backend/master_benchmark_results.*

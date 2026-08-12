@@ -1,5 +1,5 @@
 """
-Phase 3 (sim_migration_plan.md §5): quantify capsule-proxy vs real-mesh collision.
+Phase 3 (docs/archive/dev-log/sim_migration_plan.md §5): quantify capsule-proxy vs real-mesh collision.
 
 Phase 2 compared collision at the *rate* level (what fraction of a solver's
 solutions collide, proxy vs real). This is the *config* level: for the same random
@@ -15,7 +15,7 @@ Phase-3 task, and it produces two things:
      "proxy clearance > δ" implies "really clear" with high probability. Feeding
      that δ (or a recalibrated per-link radius) back into the collision energy is
      how V4's collision term can be made to track reality instead of an optimistic
-     surrogate. See sim_oracle_findings.md §7.
+     surrogate. See backend/archive/sim_oracle_findings.md §7.
 
 Runs headless; needs PyBullet, so execute in ``.venv-sim``:
 
@@ -212,8 +212,9 @@ def main(argv) -> int:
         print(report(r), flush=True)
         print(flush=True)
 
-    write_markdown(results, "collision_parity.md")
-    print("Wrote collision_parity.md", flush=True)
+    out = "results/validation/collision_parity.md"
+    write_markdown(results, out)
+    print(f"Wrote {out}", flush=True)
     return 0
 
 

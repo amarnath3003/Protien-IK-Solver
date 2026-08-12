@@ -57,3 +57,30 @@ jobs:
 
       - name: Build production bundle
         run: npm run build
+
+  # ─── Paper: every figure + table rebuilds from the committed results ─────────
+  # Guards the property the paper rests on: nothing is hand-transcribed, so the
+  # generators must run green against the checked-in benchmark files.
+  paper-artifacts:
+    name: Paper (figures + tables)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: paper/figures/requirements-figures.txt
+
+      - name: Install figure dependencies
+        run: pip install -r paper/figures/requirements-figures.txt numpy
+
+      - name: Build all data-driven figures and LaTeX tables
+        working-directory: paper/figures
+        run: python build_all.py
+
+      - name: Report any drift in generated tables
+        run: git --no-pager diff --stat -- paper/tables paper/figures

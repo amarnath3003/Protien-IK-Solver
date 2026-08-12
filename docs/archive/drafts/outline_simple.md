@@ -7,7 +7,7 @@
 > **Angle:** the *concept* is the star — "inverse kinematics is, structurally, a protein-folding problem" — and the
 > **data backs it up**.
 >
-> **Companion file:** the deep technical version now lives in **[methodology.md](methodology.md)** (detailed, but
+> **Companion file:** the deep technical version now lives in **[methodology.md](../../METHODOLOGY.md)** (detailed, but
 > still written to be readable).
 
 ---
@@ -227,7 +227,7 @@ Where a reviewer could attack, and how we answer *inside the paper*:
    mechanism explained.
 4. **Positioning** — ✅ present the planning/offline niche gracefully, woven into "where it wins" (no blunt
    "not real-time" disclaimer).
-5. **Next** — ✅ **detailed methodology written → [methodology.md](methodology.md).**
+5. **Next** — ✅ **detailed methodology written → [methodology.md](../../METHODOLOGY.md).**
 
 ---
 

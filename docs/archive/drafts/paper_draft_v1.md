@@ -1,7 +1,7 @@
 # ProteinIK: Inverse Kinematics as a Protein-Folding Process
 
 > **Working draft — conference paper.** Source of truth for claims/numbers: [paper_notes.md](paper_notes.md);
-> deep Methods: [methodology.md](methodology.md); plain-English plan: [outline_simple.md](outline_simple.md).
+> deep Methods: [methodology.md](../../METHODOLOGY.md); plain-English plan: [outline_simple.md](outline_simple.md).
 > **Numbers status.** Success and speed are locked from the distinct-target sweeps `v1v4_full_benchmark`
 > (UR5/planar) and `franka_corrected_benchmark` (Franka). UR5 self-collision is locked from the corrected 10-seed
 > real-mesh sweep `backend/results/ur5_collision_fixed.*` (seeds 1–10, n=1000/cell = 1000 distinct targets,
@@ -122,7 +122,7 @@ LangevinFold.
 ## 3. StagedFold — the folding process as an algorithm
 
 StagedFold runs the arm through the same ordered stages a protein uses to fold. Every individual move is standard IK;
-the **order** is the idea. (Full formulas and parameters: [methodology.md](methodology.md) §3.)
+the **order** is the idea. (Full formulas and parameters: [methodology.md](../../METHODOLOGY.md) §3.)
 
 **Stage 1 — local-blind relaxation** *(secondary-structure analog).* Gradient-free coordinate descent that minimizes a
 **target-blind** local energy (neutral-pose anchor + neighbour smoothness + joint-limit barrier); the target pose is

@@ -1,5 +1,5 @@
 """
-Phase 0 (sim_migration_plan.md §5): acquire & pin the robot models that the
+Phase 0 (docs/archive/dev-log/sim_migration_plan.md §5): acquire & pin the robot models that the
 simulator uses as the *source-of-truth* oracle, and tie each one back to the
 hand-typed DH ``RobotSpec`` in ``app.core.kinematics``.
 
@@ -131,7 +131,7 @@ def get_sim_model(robot: str) -> SimModel:
         raise ValueError(
             f"No sim model pinned for robot '{robot}'. "
             f"Available: {list(SIM_MODELS)} (planar3dof is analytically validated, "
-            f"no URDF — see sim_migration_plan.md §7)."
+            f"no URDF — see docs/archive/dev-log/sim_migration_plan.md §7)."
         )
     return SIM_MODELS[robot]
 

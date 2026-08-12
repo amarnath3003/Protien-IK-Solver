@@ -13,10 +13,17 @@ with the paper's benchmark. Self-collision is the capsule proxy (no environment
 obstacles) — stated honestly; for the high-DOF folding experiment self-collision
 IS the right metric (it is the protein-folding analog).
 
-Run:
-    python usecase_experiments.py --smoke      # tiny, ~1 min, validates plumbing
-    python usecase_experiments.py              # full run
-    python usecase_experiments.py --only E     # single experiment
+Run (from backend/):
+    PYTHONPATH=. python bench/usecase_experiments.py --smoke   # tiny, ~1 min, validates plumbing
+    PYTHONPATH=. python bench/usecase_experiments.py           # full run
+    PYTHONPATH=. python bench/usecase_experiments.py --only E  # single experiment
+
+NOTE: paper Table 5 (EXP E, DOF scaling) is NOT produced by this file directly --
+the committed number comes from the *native* re-run, which swaps in real TRAC-IK
+and the C++/Eigen KineticFold port before reusing this same loop:
+
+    PYTHONPATH=. python3 native_bench/run_native_usecase.py --only E \
+        --out results/dof_scaling/dof_scaling_native.json
 """
 from __future__ import annotations
 

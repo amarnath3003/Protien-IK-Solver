@@ -12,7 +12,8 @@ collision solids are exactly the proxy's capsules.
 It reproduces ``usecase_experiments.exp_E``'s loop verbatim -- identical target
 stream (``default_rng(1000 + seed)``) and identical per-solve RNG
 (``default_rng(seed * 1_000_003 + i)``) -- so the proxy column here must equal
-the committed ``usecase_results.json``. Any drift means the replication is wrong,
+the committed ``results/dof_scaling/dof_scaling_native.json``. Any drift means
+the replication is wrong,
 and the runner asserts that rather than quietly reporting different numbers.
 
 Two geometries, answering two different questions
@@ -30,7 +31,7 @@ Two geometries, answering two different questions
 
 Run (WSL Ubuntu-2204, from backend/):
     PYTHONPATH=. python3 native_bench/run_dof_sim_scored.py \
-        --out results/native/dof_scaling_sim_scored.json
+        --out results/dof_scaling/dof_scaling_sim_scored.json
 """
 from __future__ import annotations
 
@@ -100,7 +101,7 @@ def run_cell(spec, solver: str, backends: dict) -> dict:
     return dict(
         n=tot,
         solved_pct=pct(solved_n),
-        clean_pct=pct(clean["proxy"]),          # name matches usecase_results.json
+        clean_pct=pct(clean["proxy"]),          # name matches dof_scaling_native.json
         clean_pct_pybullet=pct(clean["pb"]),
         clean_pct_mujoco=pct(clean["mj"]),
         verdict_disagree_pb_pct=pct(disagree["pb"]),
@@ -112,7 +113,7 @@ def run_cell(spec, solver: str, backends: dict) -> dict:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default="results/native/dof_scaling_sim_scored.json")
+    ap.add_argument("--out", default="results/dof_scaling/dof_scaling_sim_scored.json")
     ap.add_argument("--geoms", default=",".join(GEOMS))
     ap.add_argument("--dofs", default=",".join(str(d) for d in DOFS))
     args = ap.parse_args(argv)

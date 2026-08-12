@@ -1,7 +1,7 @@
 # ProteinIK: Inverse Kinematics as a Protein-Folding Process
 
-*Final build — assembled section by section from [outline_simple.md](../outline_simple.md), with numbers locked to the
-committed result files ([paper_notes.md](../paper_notes.md) is the claim→evidence spine; [methodology.md](../methodology.md)
+*Final build — assembled section by section from [outline_simple.md](outline_simple.md), with numbers locked to the
+committed result files ([paper_notes.md](paper_notes.md) is the claim→evidence spine; [methodology.md](../../METHODOLOGY.md)
 is the deep Methods). This Markdown is the working master; it converts to LaTeX once the sections are settled.*
 
 <!-- ============================ BUILD TRACKER ============================
@@ -263,7 +263,7 @@ link-length constraints are bond-length constraints, the target-reaching basin i
 is steric exclusion, and — the mapping we build solvers around in §3.2–§3.4 — a stuck search is a kinetically trapped
 molecule, rescued the way a chaperone rescues a misfolded chain.
 
-![Figure 1 — The protein-folding / inverse-kinematics correspondence.](figures/fig1_correspondence.svg)
+![Figure 1 — The protein-folding / inverse-kinematics correspondence.](../../../paper/figures/fig1_correspondence.svg)
 
 **Figure 1.** A protein backbone and a robot arm are both chains of rigid segments whose only free variables are the
 rotations between neighbours (dihedral angles φ/ψ vs. joint angles `q`). Both search a rugged landscape — free energy
