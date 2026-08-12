@@ -269,10 +269,11 @@ What that buys, concretely:
   no CAD, so they are re-emitted as URDFs and re-scored in both engines under *two*
   solids: capsules (which equal the proxy by construction — an implementation check, not
   a geometry one) and flat-capped **cylinders**, a genuinely different idealisation.
-  Under cylinders every solver gains 0–4.7 pp, so the capsule model is the stricter
-  reading — and across all **84 comparisons** (2 solids × 2 engines × 7 chain lengths ×
-  2 baselines) KineticFold leads every single one. The scaling advantage is not an
-  artifact of the capsule caps.
+  Cylinders raise the clean-solve rate in 38 of 42 solver–engine cells (by up to
+  4.7 pp), so the capsule model is the stricter reading — and across all
+  **56 comparisons** (2 solids × 2 engines × 7 chain lengths × 2 baselines)
+  KineticFold leads every single one. The scaling advantage is not an artifact of the
+  capsule caps.
 
 Artifacts: [`backend/results/validation/`](backend/results/validation) ·
 harness: [`backend/app/sim/`](backend/app/sim) ·

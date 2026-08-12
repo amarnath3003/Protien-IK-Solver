@@ -805,31 +805,27 @@ Multi-start moves, by 0.14 pp.) The same effect is why this sweep reproduces the
 every cell while TRAC-IK drifts by up to 1.7 pp, and why the pilot's two committed artifacts disagree with each other
 on 8-DOF TRAC-IK (13.3% against 10.8%).
 
-The planar chain is synthetic and carries no manufacturer CAD, so we put the whole sweep through the same
-"solve once, score three ways" discipline as the physical arms: we emit its collision solids as a URDF and re-score
-every solved configuration in PyBullet and in MuJoCo, at the sweep's own `n = 1000`, for all three solvers.
+The planar chain is synthetic and carries no manufacturer CAD, so we emit its collision solids as a URDF and re-score
+every solved configuration in PyBullet and in MuJoCo, at the sweep's own `n = 1000` and for all three solvers. Under
+the capsules of Eq. (5) both engines reproduce the proxy exactly: 21 cells, 21,000 configurations, no verdict
+disagreement and a worst distance gap of `8e-14`. That identity holds by construction — a capsule's surface gap is the
+proxy's segment distance less the two radii — so it validates the collision _implementation_, not the geometry.
 
-Under the capsules of Eq. (5) both engines reproduce the proxy exactly — 21 cells, 21,000 configurations, no verdict
-disagreement anywhere and a worst distance gap of `8e-14`. That identity holds by construction, a capsule's surface gap
-being the proxy's segment distance less the two radii, so it validates the collision _implementation_ rather than the
-geometry, and we read it only that way.
+Testing the geometry requires a different solid. Re-emitting the same arm with flat-capped cylinders raises the
+clean-solve rate in 38 of 42 solver–engine cells, by up to 4.7 pp, and lowers it in two by 0.1 pp: the capsule proxy
+over-reports collision, and Table 5 carries the harsher of the two readings. The ordering, however, does not move.
+Across all 56 comparisons — two solids × two engines × seven chain lengths × two baselines — KineticFold leads every
+one. Over 4–12 DOF, where the baselines return enough clean solves to support a ratio, the cylinder-scored advantage is
+1.9–4.2× over TRAC-IK on PyBullet and 1.9–4.4× on MuJoCo, and 1.7–2.6× over Multi-start; beyond 12 DOF six of the eight
+baseline cells fall to single-digit counts, as few as one clean solve per 1000, too few to quote a ratio from. The
+advantage is not an artifact of the capsule caps.
 
-The geometry question needs a different solid, so we re-emit the same arm with flat-capped cylinders and score it
-again. Two things follow. First, the capsule model is _conservative_: every solver gains under cylinders, by 0 to
-4.7 pp, so the proxy over-reports collision and the rates in Table 5 are the harsher of the two readings. Second, and
-this is what the cross-check exists to establish, the ordering does not move. Across all 84 comparisons — two solids ×
-two engines × seven chain lengths × two baselines — KineticFold leads every one. Over 4–12 DOF, where the baselines
-return enough clean solves to support a ratio, the cylinder-scored advantage is 1.9–4.2× over TRAC-IK on PyBullet and
-1.9–4.4× on MuJoCo, and 1.7–2.5× over Multi-start; at 14 and 16 DOF the baselines return one to eight clean solves per
-1000 under cylinders, too few to quote a ratio from. The advantage is therefore not an artifact of the capsule caps.
-
-Two caveats we state rather than absorb. The engines agree with each other exactly under capsules but differ by up to
-2.4 pp under cylinders (mean 0.89 pp), which is the expected cost of a genuinely harder narrow-phase and a reminder
-that the capsule agreement is arithmetic rather than corroboration. And because the runner re-solves under each solid,
-only KineticFold's capsule-to-cylinder deltas are pure geometry — it is deterministic, so it returns the identical
-configurations both times. The two library baselines re-solve under their wall-clock budgets, so their deltas mix the
-change of solid with the run-to-run movement of Section 5.4's repeat analysis. That confound is visible at 12 DOF,
-where Multi-start gains 3.0–4.0 pp under cylinders; we do not attribute that gain to the geometry alone.
+Two caveats. The engines agree exactly under capsules but differ by up to 2.4 pp under cylinders (mean 0.89 pp) — the
+expected cost of a harder narrow-phase, and a reminder that the capsule agreement is arithmetic rather than
+corroboration. And because the runner re-solves under each solid, only KineticFold's capsule-to-cylinder deltas are
+pure geometry: it is deterministic and returns the identical configurations both times, whereas the
+wall-clock-budgeted baselines mix the change of solid with the run-to-run movement above. The confound is visible at
+12 DOF, where Multi-start gains 3.0–4.0 pp under cylinders; we do not attribute that gain to geometry alone.
 
 ### 5.5 Deployment roles
 
