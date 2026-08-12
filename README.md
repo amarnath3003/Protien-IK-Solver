@@ -206,23 +206,32 @@ UR5 `cluttered` KineticFold returns **43.6 usable goals per 100 attempts against
 ### The result that tests the thesis — scaling into a polymer
 
 Lengthen a planar arm from 4 to 16 joints, making it progressively more polymer-like,
-and measure single-shot clean-solve rate (`n = 120` per cell). Both solvers reach the
-target ~100% of the time — the entire gap is self-collision avoidance:
+and measure single-shot clean-solve rate (`n = 1000` per cell, seeds 1–10) against both
+production baselines. All three solvers reach the target ~100% of the time — the entire
+gap is self-collision avoidance:
 
-| DOF | KineticFold clean% | TRAC-IK clean% | ratio |
-| --: | --: | --: | --: |
-| 4 | 71.7 | 36.7 | 2.0× |
-| 6 | 63.3 | 23.3 | 2.7× |
-| 8 | 43.3 | 13.3 | 3.2× |
-| 12 | 7.5 | 3.3 | 2.2× |
-| 16 | 0.8 | 0.0 | KineticFold only |
+| DOF | KineticFold % [95% CI] | TRAC-IK % | Multi-start % | ×TI | ×MS | feasible % |
+| --: | --: | --: | --: | --: | --: | --: |
+| 4 | **74.8** [72.0, 77.4] | 37.5 | 44.1 | 2.0× | 1.7× | 89.9 |
+| 6 | **61.1** [58.0, 64.1] | 24.9 | 30.7 | 2.5× | 1.9× | 94.6 |
+| 8 | **40.1** [37.1, 43.2] | 11.0 | 17.6 | 3.6× | 2.1× | 94.5 |
+| 10 | **23.6** [21.1, 26.3] | 5.1 | 8.7 | 4.8× | 2.8× | 95.0 |
+| 12 | **9.3** [7.7, 11.3] | 2.0 | 3.3 | 5.2× | 2.7× | 97.0 |
+| 14 | **4.5** [3.4, 6.0] | 0.7 | 1.0 | **6.4×** | **4.5×** | 93.9 |
+| 16 | **1.1** [0.6, 2.0] | 0.0 | 0.5 | — | 2.2×† | 75.1 |
 
-The advantage holds at every chain length, peaks in the mid-DOF range, and at 16 joints
-KineticFold is the only one of the two still producing collision-free folds. **The
-advantage is largest exactly where the arm behaves most like a folding chain** — which
-is the point: the method wins because the problem *becomes* folding. (See
-[limitations](#scope-and-limitations) — the 12/16-DOF rows are not yet statistically
-significant at `n = 120`.)
+The advantage holds at every chain length against both baselines and **widens as the
+chain lengthens** — 2.0×→6.4× over TRAC-IK, 1.7×→4.5× over Multi-start, from 4 to 14
+joints. Every cell is significant (Fisher exact `p < 0.05`) except `†` (16 DOF vs.
+Multi-start, `p = 0.21`).
+
+The falling absolute rates are a *search* limit, not a geometric one: the `feasible`
+column is the fraction of targets for which a restart oracle can still demonstrate some
+clean fold, and it stays at 89.9–97.0% through 14 joints and 75% at 16. Clean folds remain
+available for three targets in four at 16 DOF while every method's single shot finds at
+most one in a hundred. **The advantage is largest exactly where the arm behaves most
+like a folding chain** — which is the point: the method wins because the problem
+*becomes* folding.
 
 ## How the results are validated
 
@@ -386,15 +395,20 @@ Stated up front, because a reviewer should not have to find them:
 - **All results are in simulation.** No hardware experiments.
 - **The collision proxy is hand-tuned**, not derived from CAD, and is optimistic
   relative to real mesh — hence the ranking-only reporting above.
-- **The DOF-scaling tail is under-powered.** At `n = 120`, the 4/6/8-DOF rows are
-  overwhelming (Fisher exact `p < 0.0001`) but the 12- and 16-DOF rows are not
-  significant (`p = 0.25`, `p = 1.00`); the 16-DOF headline rests on a single clean
-  solve. Re-running those cells at higher `n` is an open to-do.
-- **TRAC-IK is wall-clock budgeted** in the DOF sweep (5 ms `Speed` call), so its clean
-  rate moves up to 1.7 pp with machine load; KineticFold's is deterministic.
-- **The DOF-scaling comparison is single-shot against one baseline.** A
-  clearance-selecting Multi-start (solve K times, keep the cleanest) is competitive on
-  redundant planar arms, and such wrappers lift every solver.
+- **The 16-DOF cell does not separate KineticFold from Multi-start.** At `n = 1000` the
+  lead there is resolved against TRAC-IK (11 clean solves vs. 0, `p = 9.5e-4`) but not
+  against Multi-start (11 vs. 5, `p = 0.21`). No 16-DOF claim is made over Multi-start.
+- **Both library baselines are wall-clock budgeted** in the DOF sweep, so their clean
+  rates move with machine load (TRAC-IK up to 0.8 pp, Multi-start up to 3.3 pp across
+  five sweep repeats); KineticFold is bit-identical across all five.
+- **The DOF-scaling comparison is single-shot.** A clearance-selecting wrapper (solve K
+  times, keep the cleanest) lifts every solver — the feasibility oracle above is that
+  wrapper at its limit, recovering clean folds for 75–97% of targets. The claim is a
+  per-solve advantage, and does not by itself predict the ordering under a large
+  restart budget.
+- **The DOF sweep's engine cross-check has not been re-run at `n = 1000`.** The
+  PyBullet/MuJoCo re-scoring of the planar chains (capsule and cylinder solids) was run
+  on the superseded `n = 120` pilot.
 - **Incremental-FK bit-identity** for the Python reference covers UR5 and the planar arm
   (500 configurations each), not Franka.
 - **LangevinFold is future work.** It runs and is scored, but it is excluded from the

@@ -12,7 +12,8 @@ It has two committed sweeps, and figures read whichever one the paper reads:
 | :-- | :-- | :-- |
 | `backend/results/master_full(cpp).csv` | 3 seeds, `n=300`/cell, **all three arms** — success + latency | success, latency, validation, deployment |
 | `backend/results/master_10seed_fast(cpp).csv` | 10 seeds, `n=1000`/cell, UR5 + Franka — **real-mesh collision** | collision |
-| `backend/results/dof_scaling/dof_scaling_native.json` | separate DOF-scaling study, `n=120`/cell, planar 4→16 DOF | DOF scaling (flagship) |
+| `backend/results/dof_scaling/dof_scaling_full.json` | separate DOF-scaling sweep, `n=1000`/cell, planar 4→16 DOF in 7 steps, three solvers, 5 repeats, CIs + Fisher + feasibility oracle | DOF scaling (flagship) |
+| `backend/results/dof_scaling/dof_scaling_native.json` | **superseded** `n=120` pilot of the same sweep — kept reproducible, not a paper source | — |
 
 The pre-native Python runs under `backend/results/archive/python-run/` are
 **superseded** and must never be used for paper numbers. See

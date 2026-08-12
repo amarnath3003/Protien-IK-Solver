@@ -42,13 +42,52 @@ as success does — which is why it gets the extra seeds (§4.4).
 
 ## The DOF-scaling study — `dof_scaling/`
 
-A separate experiment (`bench/usecase_experiments.py`, EXP E), because the master
-sweep does not cover planar N-DOF arms. **n = 120 per cell**, planar arms of 4, 6, 8,
-12 and 16 joints, KineticFold vs. TRAC-IK only.
+A separate experiment, because the master sweep does not cover planar N-DOF arms.
+
+### `dof_scaling_full.json` — the authoritative sweep (**Table 5**, **Figure 5**)
+
+**n = 1000 per cell** (seeds `[1 … 10]` × 100, the same 10-seed protocol the collision
+sweep uses — clean-solve is collision-gated, hence the seed-sensitive measure),
+**seven** DOF points (4, 6, 8, 10, 12, 14, 16), and **three** solvers: the C++/Eigen
+KineticFold port, genuine TRAC-IK (`tracikpy`), and genuine Robotics Toolbox
+Multi-start (`ik_LM`) — the *stronger* baseline, whose absence §5.7 used to confess.
+Produced by `native_bench/run_dof_scaling_full.py`; summarise with
+`native_bench/report_dof_full.py`.
+
+It carries four things the n = 120 pilot could not support:
+
+- **Wilson 95% intervals** per cell, correct near 0% where the normal approximation
+  crosses the boundary.
+- **Five full sweep repeats.** The per-solve RNG depends only on `(seed, index)`, so
+  it is identical across repeats and any movement is *purely* the wall-clock
+  nondeterminism of the two library baselines. Measured, not assumed: KineticFold is
+  bit-identical across all five; TRAC-IK moves up to ~1.2 pp and Multi-start up to
+  ~3.3 pp.
+- **Fisher exact** per cell against *both* baselines.
+- **A union feasibility oracle** — every target attacked from its own `q0` plus
+  hundreds of random restarts by all three solvers, to separate "the solver failed"
+  from "no clean solution exists". Feasible counts are lower bounds (a `True` is a
+  proof; a `False` is only failure-to-find), and the per-cell field
+  `clean_missed_by_oracle` reports how loose that bound is by counting single-shot
+  clean solves the oracle could not re-find.
+
+Its replication block re-derives the committed n = 120 numbers exactly: seeds 1–2 ×
+the first 60 targets are literally the pilot's trial set, and KineticFold reproduces
+all five DOF cells bit-for-bit. TRAC-IK does not — which is the point.
+
+### `dof_scaling_native.json` — the superseded n = 120 pilot
+
+`bench/usecase_experiments.py` EXP E: **n = 120 per cell**, 4/6/8/12/16 joints,
+KineticFold vs. TRAC-IK only. Kept reproducible, but **not** a source for paper
+numbers: its 16-DOF cell is a single solve, and its "peak at 8 DOF" shape does not
+survive n = 1000.
 
 | File | Backs |
 | :-- | :-- |
-| `dof_scaling_native.json` | **Table 5** — clean-solve % vs. DOF. Native: genuine TRAC-IK (`tracikpy`) vs. the C++/Eigen KineticFold port. Produced by `native_bench/run_native_usecase.py --only E`. |
+| `dof_scaling_full.json` | **Table 5**, **Figure 5**, all of **§5.4**. |
+| `dof_scaling_full_pass1.json` | the same sweep with a **48-restart** oracle instead of 384 — backs §5.4's sentence that the weaker oracle put 16-DOF feasibility at 24.2% and looked like a geometric floor. Reproduce with `--oracle-scale 1`. |
+| `dof_scaling_native.json` | superseded pilot; produced by `native_bench/run_native_usecase.py --only E`. |
+| `dof_scaling_sim_scored.json` | PyBullet/MuJoCo re-scoring — still at the pilot's `n = 120` (§5.4's last paragraph says so explicitly). |
 | `dof_scaling_sim_scored.json` | **§5.4's last paragraph** — the same sweep re-scored in PyBullet *and* MuJoCo through generated planar URDFs (`app/sim/planar_model.py`), under two collision solids: `capsule` (equals the proxy to ~1e-16 **by construction**, so it validates the implementation, not the geometry) and `cylinder` (a genuinely different idealisation; the proxy is conservative by 1–6 pp and every ranking holds). Produced by `native_bench/run_dof_sim_scored.py`. |
 | `dof_scaling_native.log` | console transcript of the native run |
 

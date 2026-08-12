@@ -1,0 +1,75 @@
+[native-usecase] genuine baselines: jacobian_dls, multi_start, trac_ik_style | C++ ProteinIK: protein_fast, protein_fast_calib, protein_fast_o2, protein_ik, protein_raw | C++ classical: ccd, fabrik
+[dof-full] DOF=[4, 6, 8, 10, 12, 14, 16] solvers=['protein_fast', 'trac_ik_style', 'multi_start']
+[dof-full] n=1000/cell (10 seeds x 100), repeats=5
+
+=== repeat 1/5 ===
+/usr/lib/python3/dist-packages/scipy/__init__.py:146: UserWarning: A NumPy version >=1.17.3 and <1.25.0 is required for this version of SciPy (detected version 1.26.4
+  warnings.warn(f"A NumPy version >={np_minversion} and <{np_maxversion}"
+  [planar  4-DOF]  protein_fast: 74.80%  trac_ik_style: 37.40%  multi_start: 45.00%
+  [planar  6-DOF]  protein_fast: 61.10%  trac_ik_style: 24.90%  multi_start: 31.90%
+  [planar  8-DOF]  protein_fast: 40.10%  trac_ik_style: 11.20%  multi_start: 19.00%
+  [planar 10-DOF]  protein_fast: 23.60%  trac_ik_style:  4.90%  multi_start:  8.50%
+  [planar 12-DOF]  protein_fast:  9.30%  trac_ik_style:  1.80%  multi_start:  3.40%
+  [planar 14-DOF]  protein_fast:  4.50%  trac_ik_style:  0.70%  multi_start:  1.00%
+  [planar 16-DOF]  protein_fast:  1.10%  trac_ik_style:  0.00%  multi_start:  0.50%
+
+=== repeat 2/5 ===
+  [planar  4-DOF]  protein_fast: 74.80%  trac_ik_style: 37.10%  multi_start: 43.10%
+  [planar  6-DOF]  protein_fast: 61.10%  trac_ik_style: 25.30%  multi_start: 31.30%
+  [planar  8-DOF]  protein_fast: 40.10%  trac_ik_style: 11.40%  multi_start: 17.10%
+  [planar 10-DOF]  protein_fast: 23.60%  trac_ik_style:  5.40%  multi_start:  8.60%
+  [planar 12-DOF]  protein_fast:  9.30%  trac_ik_style:  1.90%  multi_start:  3.40%
+  [planar 14-DOF]  protein_fast:  4.50%  trac_ik_style:  0.60%  multi_start:  0.80%
+  [planar 16-DOF]  protein_fast:  1.10%  trac_ik_style:  0.00%  multi_start:  0.60%
+
+=== repeat 3/5 ===
+  [planar  4-DOF]  protein_fast: 74.80%  trac_ik_style: 37.80%  multi_start: 44.20%
+  [planar  6-DOF]  protein_fast: 61.10%  trac_ik_style: 24.80%  multi_start: 28.70%
+  [planar  8-DOF]  protein_fast: 40.10%  trac_ik_style: 10.70%  multi_start: 17.40%
+  [planar 10-DOF]  protein_fast: 23.60%  trac_ik_style:  5.10%  multi_start:  8.60%
+  [planar 12-DOF]  protein_fast:  9.30%  trac_ik_style:  2.20%  multi_start:  3.00%
+  [planar 14-DOF]  protein_fast:  4.50%  trac_ik_style:  0.80%  multi_start:  1.00%
+  [planar 16-DOF]  protein_fast:  1.10%  trac_ik_style:  0.00%  multi_start:  0.60%
+
+=== repeat 4/5 ===
+  [planar  4-DOF]  protein_fast: 74.80%  trac_ik_style: 37.90%  multi_start: 44.40%
+  [planar  6-DOF]  protein_fast: 61.10%  trac_ik_style: 24.90%  multi_start: 29.50%
+  [planar  8-DOF]  protein_fast: 40.10%  trac_ik_style: 11.00%  multi_start: 18.40%
+  [planar 10-DOF]  protein_fast: 23.60%  trac_ik_style:  5.50%  multi_start:  9.10%
+  [planar 12-DOF]  protein_fast:  9.30%  trac_ik_style:  1.90%  multi_start:  2.50%
+  [planar 14-DOF]  protein_fast:  4.50%  trac_ik_style:  0.70%  multi_start:  1.00%
+  [planar 16-DOF]  protein_fast:  1.10%  trac_ik_style:  0.00%  multi_start:  0.20%
+
+=== repeat 5/5 ===
+  [planar  4-DOF]  protein_fast: 74.80%  trac_ik_style: 37.50%  multi_start: 43.80%
+  [planar  6-DOF]  protein_fast: 61.10%  trac_ik_style: 24.70%  multi_start: 32.00%
+  [planar  8-DOF]  protein_fast: 40.10%  trac_ik_style: 10.70%  multi_start: 16.20%
+  [planar 10-DOF]  protein_fast: 23.60%  trac_ik_style:  4.80%  multi_start:  8.90%
+  [planar 12-DOF]  protein_fast:  9.30%  trac_ik_style:  2.20%  multi_start:  4.30%
+  [planar 14-DOF]  protein_fast:  4.50%  trac_ik_style:  0.80%  multi_start:  1.10%
+  [planar 16-DOF]  protein_fast:  1.10%  trac_ik_style:  0.00%  multi_start:  0.40%
+
+=== replication vs committed n=120 (seeds 1-2, first 60 each) ===
+  OK   4-DOF protein_fast    committed 71.667  now 71.667 (+0.000)
+  OK   4-DOF trac_ik_style   committed 36.667  now 36.667 (+0.000)
+  OK   6-DOF protein_fast    committed 63.333  now 63.333 (+0.000)
+  DRIFT  6-DOF trac_ik_style   committed 23.333  now 24.167 (+0.833)
+  OK   8-DOF protein_fast    committed 43.333  now 43.333 (+0.000)
+  DRIFT  8-DOF trac_ik_style   committed 13.333  now 12.500 (-0.833)
+  OK  12-DOF protein_fast    committed  7.500  now  7.500 (+0.000)
+  DRIFT 12-DOF trac_ik_style   committed  3.333  now  4.167 (+0.833)
+  OK  16-DOF protein_fast    committed  0.833  now  0.833 (+0.000)
+  OK  16-DOF trac_ik_style   committed  0.000  now  0.000 (+0.000)
+
+[dof-full] merging oracle flags from results/dof_scaling/dof_scaling_full_pass1.json (DOF [])
+
+=== feasibility oracle (union, 384 restarts/target + own q0) ===
+  [planar  4-DOF] feasible  899/1000 =  89.90%  [87.88, 91.62]  (oracle alone 899, +0 from single-shot; 19s)
+  [planar  6-DOF] feasible  946/1000 =  94.60%  [93.02, 95.84]  (oracle alone 946, +0 from single-shot; 10s)
+  [planar  8-DOF] feasible  945/1000 =  94.50%  [92.91, 95.75]  (oracle alone 945, +0 from single-shot; 12s)
+  [planar 10-DOF] feasible  950/1000 =  95.00%  [93.47, 96.19]  (oracle alone 950, +0 from single-shot; 13s)
+  [planar 12-DOF] feasible  970/1000 =  97.00%  [95.75, 97.89]  (oracle alone 970, +0 from single-shot; 13s)
+  [planar 14-DOF] feasible  939/1000 =  93.90%  [92.24, 95.22]  (oracle alone 939, +0 from single-shot; 33s)
+  [planar 16-DOF] feasible  751/1000 =  75.10%  [72.33, 77.68]  (oracle alone 751, +0 from single-shot; 131s)
+
+DONE in 354.4s -> results/dof_scaling/dof_scaling_full.json

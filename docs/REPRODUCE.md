@@ -133,7 +133,14 @@ sign-agreement. A run whose oracles disagree is a broken run.
 ```bash
 cd backend
 
-# Table 5 — native: genuine TRAC-IK vs the C++ KineticFold port, planar 4..16 DOF
+# Table 5 + Figure 5 — the authoritative sweep: n=1000/cell (seeds 1..10), seven DOF
+# points, three solvers, 5 repeats, Wilson CIs + Fisher exact, feasibility oracle.
+# ~15 min. Add --no-oracle for the ~4 min version (main sweep + stats only).
+PYTHONPATH=. python3 native_bench/run_dof_scaling_full.py \
+  --out results/dof_scaling/dof_scaling_full.json
+PYTHONPATH=. python3 native_bench/report_dof_full.py   # human-readable summary
+
+# superseded n=120 pilot — kept reproducible, NOT a source for paper numbers
 PYTHONPATH=. python3 native_bench/run_native_usecase.py --only E \
   --out results/dof_scaling/dof_scaling_native.json
 
@@ -145,9 +152,15 @@ PYTHONPATH=. python3 native_bench/run_dof_sim_scored.py \
 
 Two caveats the paper states and you should expect to see:
 
-- **TRAC-IK is wall-clock budgeted** (a 5 ms `Speed` call), so its clean rate moves
-  with machine load — up to 1.7 pp across repeats, which places the 8-DOF advantage
-  between 3.2× and 3.7×. KineticFold's rates are deterministic.
+- **Both library baselines are wall-clock budgeted**, so their clean rates move with
+  machine load; KineticFold is deterministic given the seed. The sweep measures this
+  rather than assuming it: the per-solve RNG depends only on `(seed, index)` and so is
+  identical across repeats, which makes any movement attributable to wall-clock alone.
+  Across five repeats KineticFold is **bit-identical in every cell**, TRAC-IK moves up
+  to ~1.2 pp and Multi-start up to ~3.3 pp. This is also why the run's replication
+  block finds KineticFold reproducing the committed n=120 pilot exactly while TRAC-IK
+  drifts by up to 1.7 pp — the same effect that leaves the two committed pilot
+  artifacts disagreeing on 8-DOF TRAC-IK (13.3% vs 10.8%).
 - **The capsule scoring is exact by construction.** A capsule's surface gap *is* the
   proxy's segment-distance-minus-radii, so both engines reproduce the proxy to ~1e-16.
   That validates the collision *implementation*, not the geometry — use `--geoms
@@ -217,10 +230,15 @@ every push.
 
 Stated so a reviewer does not have to discover them:
 
-- **DOF-scaling tail.** Table 5 runs `n = 120` per cell. The 4/6/8-DOF rows are
-  overwhelming (Fisher exact `p < 0.0001`); the **12- and 16-DOF rows are not
-  significant** at that n (`p = 0.25` and `p = 1.00`) — at 16 DOF the claim rests on a
-  single clean solve. Re-running those two cells at higher n is an open to-do.
+- **DOF-scaling 16-DOF cell.** Table 5 now runs `n = 1000` per cell and every row is
+  significant against both baselines (Fisher exact `p < 0.05`) **except** 16 DOF vs.
+  Multi-start (`p = 0.21`, 11 clean solves against 5). The 16-DOF lead over TRAC-IK is
+  resolved (`p = 9.5e-4`); the one over Multi-start is not, and is not claimed.
+- **The DOF sweep's engine cross-check is still at `n = 120`.**
+  `run_dof_sim_scored.py` (PyBullet + MuJoCo, capsule and cylinder solids) was run
+  against the superseded pilot, not against Table 5's sweep. Its finding is a property
+  of the collision model rather than of the sample, but the engine-scored ratios quoted
+  in §5.4's last paragraph are the pilot's.
 - **Incremental-FK bit-identity** for the Python reference solver is verified on the
   UR5 and planar arms (500 configurations each), not on Franka (§5.7).
 - **Timing noise.** Wall-clock columns (mean/p95/p99) carry OS scheduling noise;

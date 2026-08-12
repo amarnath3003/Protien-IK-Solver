@@ -56,12 +56,12 @@ referenced with `\eqref`, not hardcoded.
 | Table II | Robots | §IV-A |
 | Table III | Scenario hardness thresholds | §IV-B |
 | Table IV | Baseline configurations | §IV-C, full width |
-| Table V | Clean-solve rate vs. DOF | §V-D |
+| Table V | Clean-solve rate vs. DOF | §V-D, full width |
 | Fig. 1 | KineticFold's compute schedule | §III-C1, full width |
 | Fig. 2 | Success rate by arm | §V-A, full width |
 | Fig. 3 | Per-solve latency | §V-B, full width |
 | Fig. 4 | Real-mesh self-collision | §V-C, full width |
-| Fig. 5 | Clean-solve rate vs. DOF | §V-D, single column |
+| Fig. 5 | Clean-solve rate vs. DOF (2 panels) | §V-D, full width |
 | Fig. 6 | Solve once, score three ways | §V-F, full width |
 
 Figures 1–4 are the four the Markdown calls out. Figures 5 and 6 are additions:
@@ -75,7 +75,9 @@ commented-out float for it in §V-E.
 
 ## Optional tables
 
-`tables/` holds four generated tables from `paper/figures/make_tables.py`
+`tables/` holds five generated tables from `paper/figures/make_tables.py`
+(including `tab_dof_scaling.tex`, which is Table V — already inlined in
+`main.tex`, so the file is a redundant copy kept for regeneration)
 (per-cell success on UR5 and Franka, the latency table, the UR5 collision
 table). They are **not** included by default, because the Markdown reports those
 numbers in prose and figures. Commented-out `\input` lines sit at the right

@@ -44,7 +44,12 @@ TABLE_DIR = PAPER_DIR / "tables"                    # paper/tables
 RESULTS = REPO / "backend" / "results"
 DEFAULT_MASTER_CSV    = RESULTS / "master_full(cpp).csv"         # success + latency (3 seeds, adds planar)
 DEFAULT_COLLISION_CSV = RESULTS / "master_10seed_fast(cpp).csv"  # real-mesh collision only (10 seeds)
-DEFAULT_USECASE_JSON  = RESULTS / "dof_scaling" / "dof_scaling_native.json"  # DOF scaling (SEPARATE experiment)
+DEFAULT_USECASE_JSON  = RESULTS / "dof_scaling" / "dof_scaling_native.json"  # DOF scaling, LEGACY n=120 run
+# The powered replacement: n=1000/cell (seeds 1..10), 7 DOF points, THREE solvers
+# (adds genuine RTB Multi-start, the stronger baseline), 5 sweep repeats to bound the
+# wall-clock nondeterminism of the two library baselines, Wilson CIs + Fisher exact,
+# and a union feasibility oracle. Produced by native_bench/run_dof_scaling_full.py.
+DEFAULT_DOF_FULL_JSON = RESULTS / "dof_scaling" / "dof_scaling_full.json"
 DEFAULT_LANGEVIN_CSV  = RESULTS / "langevin_bench.csv"           # LangevinFold mini-benchmark (SEPARATE, small-scale)
 
 # --------------------------------------------------------------------------- #
