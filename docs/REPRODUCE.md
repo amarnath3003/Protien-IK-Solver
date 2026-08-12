@@ -155,8 +155,13 @@ PYTHONPATH=. python3 native_bench/report_dof_full.py \
 PYTHONPATH=. python3 native_bench/run_native_usecase.py --only E \
   --out results/dof_scaling/dof_scaling_native.json
 
-# §5.4's engine cross-check — re-score the same sweep in PyBullet + MuJoCo,
-# under capsule and cylinder collision solids
+# §5.4's engine cross-check — re-score the sweep in PyBullet + MuJoCo under capsule
+# and cylinder collision solids, at the sweep's own n=1000 and all three solvers.
+# ~9 min (42k solves, each scored by both engines).
+PYTHONPATH=. python3 native_bench/run_dof_sim_scored_full.py \
+  --out results/dof_scaling/dof_scaling_sim_scored_full.json
+
+# the same cross-check pinned to the superseded n=120 pilot (kept reproducible)
 PYTHONPATH=. python3 native_bench/run_dof_sim_scored.py \
   --out results/dof_scaling/dof_scaling_sim_scored.json
 ```
@@ -247,11 +252,14 @@ Stated so a reviewer does not have to discover them:
   `n = 1000` the 16-DOF Multi-start contrast was `p = 0.21` and TRAC-IK read as an
   exact 0/1000 — at `n = 5000` it returns 5/5000, so "TRAC-IK produces nothing at 16
   joints" was itself a small-sample artifact.
-- **The DOF sweep's engine cross-check is still at `n = 120`.**
-  `run_dof_sim_scored.py` (PyBullet + MuJoCo, capsule and cylinder solids) was run
-  against the superseded pilot, not against Table 5's sweep. Its finding is a property
-  of the collision model rather than of the sample, but the engine-scored ratios quoted
-  in §5.4's last paragraph are the pilot's.
+- **The DOF sweep's engine cross-check re-solves under each collision solid.**
+  `run_dof_sim_scored_full.py` runs the solver again for the capsule pass and the
+  cylinder pass. KineticFold is deterministic, so its capsule-to-cylinder difference is
+  purely geometric; TRAC-IK and Multi-start are wall-clock budgeted, so theirs mix the
+  change of solid with run-to-run movement. Most visible at 12 DOF, where Multi-start
+  gains 3.0–4.0 pp under cylinders — not attributable to geometry alone. Scoring the
+  *same* configurations under both solids would need the runner to cache `q_final`
+  across geometry passes.
 - **Incremental-FK bit-identity** for the Python reference solver is verified on the
   UR5 and planar arms (500 configurations each), not on Franka (§5.7).
 - **Timing noise.** Wall-clock columns (mean/p95/p99) carry OS scheduling noise;

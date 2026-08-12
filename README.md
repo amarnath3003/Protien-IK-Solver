@@ -265,6 +265,14 @@ What that buys, concretely:
   16.9%. So collision is reported only as a **ranking** of solvers, never as an absolute
   rate, and the UR5 margin over TRAC-IK is stated at the real-mesh 1.24–1.35× rather
   than the larger number the proxy suggests.
+- **The DOF-scaling result survives a different collision shape.** The planar arms carry
+  no CAD, so they are re-emitted as URDFs and re-scored in both engines under *two*
+  solids: capsules (which equal the proxy by construction — an implementation check, not
+  a geometry one) and flat-capped **cylinders**, a genuinely different idealisation.
+  Under cylinders every solver gains 0–4.7 pp, so the capsule model is the stricter
+  reading — and across all **84 comparisons** (2 solids × 2 engines × 7 chain lengths ×
+  2 baselines) KineticFold leads every single one. The scaling advantage is not an
+  artifact of the capsule caps.
 
 Artifacts: [`backend/results/validation/`](backend/results/validation) ·
 harness: [`backend/app/sim/`](backend/app/sim) ·
@@ -413,9 +421,10 @@ Stated up front, because a reviewer should not have to find them:
   wrapper at its limit, recovering clean folds for 75–97% of targets. The claim is a
   per-solve advantage, and does not by itself predict the ordering under a large
   restart budget.
-- **The DOF sweep's engine cross-check has not been re-run at `n = 1000`.** The
-  PyBullet/MuJoCo re-scoring of the planar chains (capsule and cylinder solids) was run
-  on the superseded `n = 120` pilot.
+- **The DOF sweep's engine cross-check re-solves under each collision solid.** Only
+  KineticFold's capsule-to-cylinder difference is purely geometric (it is deterministic
+  and returns identical configurations both times); the two wall-clock-budgeted
+  baselines mix the change of solid with their own run-to-run movement.
 - **Incremental-FK bit-identity** for the Python reference covers UR5 and the planar arm
   (500 configurations each), not Franka.
 - **LangevinFold is future work.** It runs and is scored, but it is excluded from the

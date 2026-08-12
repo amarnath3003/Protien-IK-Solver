@@ -88,9 +88,17 @@ survive n = 1000.
 | `dof_scaling_16dof_n5000.json` | **Table 5's 16-DOF row**, at `n = 5000`. Clean solves are rare events there: at `n = 1000` the KineticFold/Multi-start contrast was not significant (`p = 0.21`) and TRAC-IK read as an exact 0/1000, both sampling artifacts. The table and figure generators read this file *alongside* the sweep above and take the larger-n row per cell (`_style.load_dof`), so neither committed file is ever hand-edited. |
 | `dof_scaling_full_pass1.json` | the same sweep with a **48-restart** oracle instead of 384 — backs §5.4's sentence that the weaker oracle put 16-DOF feasibility at 24.2% and looked like a geometric floor. Reproduce with `--oracle-scale 1`. |
 | `dof_scaling_native.json` | superseded pilot; produced by `native_bench/run_native_usecase.py --only E`. |
-| `dof_scaling_sim_scored.json` | PyBullet/MuJoCo re-scoring — still at the pilot's `n = 120` (§5.4's last paragraph says so explicitly). |
-| `dof_scaling_sim_scored.json` | **§5.4's last paragraph** — the same sweep re-scored in PyBullet *and* MuJoCo through generated planar URDFs (`app/sim/planar_model.py`), under two collision solids: `capsule` (equals the proxy to ~1e-16 **by construction**, so it validates the implementation, not the geometry) and `cylinder` (a genuinely different idealisation; the proxy is conservative by 1–6 pp and every ranking holds). Produced by `native_bench/run_dof_sim_scored.py`. |
+| `dof_scaling_sim_scored_full.json` | **§5.4's engine cross-check.** PyBullet + MuJoCo re-scoring of the whole sweep at `n = 1000`, all three solvers, under capsule *and* cylinder solids. Backs: the capsule identity (21 cells, zero verdict disagreement, worst gap `8e-14`), the 0–4.7 pp conservatism of the proxy, and the 84-comparison ordering check. Produced by `native_bench/run_dof_sim_scored_full.py`. |
+| `dof_scaling_sim_scored.json` | the same cross-check pinned to the superseded `n = 120` pilot (two solvers, five DOF points); kept reproducible, not a paper source. Produced by `native_bench/run_dof_sim_scored.py`. |
 | `dof_scaling_native.log` | console transcript of the native run |
+
+Both cross-check runners emit the planar arms through `app/sim/planar_model.py`, which
+generates a URDF from the DH spec. The two solids answer different questions: `capsule`
+equals the proxy to ~1e-16 **by construction** (a capsule's surface gap *is*
+segment-distance-minus-radii), so it validates the collision implementation and nothing
+about the geometry; `cylinder` is a genuinely different idealisation of the same arm,
+and is the column that tests whether the solver ordering depends on the capsule caps.
+It does not — see the 84-comparison check above.
 
 ## Oracle validation — `validation/`
 

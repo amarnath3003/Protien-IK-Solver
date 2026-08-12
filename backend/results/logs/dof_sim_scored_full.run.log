@@ -1,0 +1,113 @@
+[native-usecase] genuine baselines: jacobian_dls, multi_start, trac_ik_style | C++ ProteinIK: protein_fast, protein_fast_calib, protein_fast_o2, protein_ik, protein_raw | C++ classical: ccd, fabrik
+[sim-scored-full] dofs=4,6,8,10,12,14,16 solvers=['protein_fast', 'trac_ik_style', 'multi_start'] seeds=1..10 n=1000/cell geoms=capsule,cylinder
+
+================================================================================
+### geometry = capsule
+================================================================================
+pybullet build time: Jan 29 2025 23:16:28
+b3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+base_linkb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+tool0  [planar  4-DOF protein_fast    ] solved 100.0%  CLEAN proxy  74.8%  pb  74.8%  mj  74.8%  | disagree pb/mj 0.0/0.0%  maxgap 5.76e-16
+  [planar  4-DOF trac_ik_style   ] solved 100.0%  CLEAN proxy  38.1%  pb  38.1%  mj  38.1%  | disagree pb/mj 0.0/0.0%  maxgap 3.05e-16
+/usr/lib/python3/dist-packages/scipy/__init__.py:146: UserWarning: A NumPy version >=1.17.3 and <1.25.0 is required for this version of SciPy (detected version 1.26.4
+  warnings.warn(f"A NumPy version >={np_minversion} and <{np_maxversion}"
+  [planar  4-DOF multi_start     ] solved 100.0%  CLEAN proxy  45.9%  pb  45.9%  mj  45.9%  | disagree pb/mj 0.0/0.0%  maxgap 8.21e-14
+b3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+base_linkb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+tool0  [planar  6-DOF protein_fast    ] solved  99.9%  CLEAN proxy  61.1%  pb  61.1%  mj  61.1%  | disagree pb/mj 0.0/0.0%  maxgap 4.02e-16
+  [planar  6-DOF trac_ik_style   ] solved 100.0%  CLEAN proxy  24.7%  pb  24.7%  mj  24.7%  | disagree pb/mj 0.0/0.0%  maxgap 2.22e-16
+  [planar  6-DOF multi_start     ] solved 100.0%  CLEAN proxy  31.1%  pb  31.1%  mj  31.1%  | disagree pb/mj 0.0/0.0%  maxgap 3.34e-15
+b3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+base_linkb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+tool0  [planar  8-DOF protein_fast    ] solved  99.9%  CLEAN proxy  40.1%  pb  40.1%  mj  40.1%  | disagree pb/mj 0.0/0.0%  maxgap 4.59e-15
+  [planar  8-DOF trac_ik_style   ] solved 100.0%  CLEAN proxy  10.1%  pb  10.1%  mj  10.1%  | disagree pb/mj 0.0/0.0%  maxgap 2.91e-16
+  [planar  8-DOF multi_start     ] solved 100.0%  CLEAN proxy  19.2%  pb  19.2%  mj  19.2%  | disagree pb/mj 0.0/0.0%  maxgap 3.61e-16
+b3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+base_linkb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+tool0  [planar 10-DOF protein_fast    ] solved 100.0%  CLEAN proxy  23.6%  pb  23.6%  mj  23.6%  | disagree pb/mj 0.0/0.0%  maxgap 2.01e-15
+  [planar 10-DOF trac_ik_style   ] solved 100.0%  CLEAN proxy   5.3%  pb   5.3%  mj   5.3%  | disagree pb/mj 0.0/0.0%  maxgap 1.84e-15
+  [planar 10-DOF multi_start     ] solved 100.0%  CLEAN proxy   7.8%  pb   7.8%  mj   7.8%  | disagree pb/mj 0.0/0.0%  maxgap 2.98e-16
+b3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+base_linkb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+tool0  [planar 12-DOF protein_fast    ] solved  99.9%  CLEAN proxy   9.3%  pb   9.3%  mj   9.3%  | disagree pb/mj 0.0/0.0%  maxgap 2.98e-16
+  [planar 12-DOF trac_ik_style   ] solved 100.0%  CLEAN proxy   2.1%  pb   2.1%  mj   2.1%  | disagree pb/mj 0.0/0.0%  maxgap 4.16e-16
+  [planar 12-DOF multi_start     ] solved 100.0%  CLEAN proxy   2.6%  pb   2.6%  mj   2.6%  | disagree pb/mj 0.0/0.0%  maxgap 6.80e-16
+b3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+base_linkb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+tool0  [planar 14-DOF protein_fast    ] solved 100.0%  CLEAN proxy   4.5%  pb   4.5%  mj   4.5%  | disagree pb/mj 0.0/0.0%  maxgap 6.31e-16
+  [planar 14-DOF trac_ik_style   ] solved 100.0%  CLEAN proxy   0.8%  pb   0.8%  mj   0.8%  | disagree pb/mj 0.0/0.0%  maxgap 1.18e-16
+  [planar 14-DOF multi_start     ] solved 100.0%  CLEAN proxy   1.3%  pb   1.3%  mj   1.3%  | disagree pb/mj 0.0/0.0%  maxgap 3.54e-16
+b3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+base_linkb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+tool0  [planar 16-DOF protein_fast    ] solved 100.0%  CLEAN proxy   1.1%  pb   1.1%  mj   1.1%  | disagree pb/mj 0.0/0.0%  maxgap 1.49e-16
+  [planar 16-DOF trac_ik_style   ] solved 100.0%  CLEAN proxy   0.0%  pb   0.0%  mj   0.0%  | disagree pb/mj 0.0/0.0%  maxgap 1.14e-16
+  [planar 16-DOF multi_start     ] solved 100.0%  CLEAN proxy   0.3%  pb   0.3%  mj   0.3%  | disagree pb/mj 0.0/0.0%  maxgap 2.08e-16
+
+================================================================================
+### geometry = cylinder
+================================================================================
+b3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+base_linkb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+tool0  [planar  4-DOF protein_fast    ] solved 100.0%  CLEAN proxy  74.8%  pb  77.9%  mj  79.5%  | disagree pb/mj 3.5/4.7%  maxgap 3.26e-02
+  [planar  4-DOF trac_ik_style   ] solved 100.0%  CLEAN proxy  37.6%  pb  40.7%  mj  41.3%  | disagree pb/mj 3.3/3.7%  maxgap 3.70e-02
+  [planar  4-DOF multi_start     ] solved 100.0%  CLEAN proxy  43.4%  pb  46.2%  mj  47.5%  | disagree pb/mj 3.0/4.1%  maxgap 3.63e-02
+b3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+base_linkb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+tool0  [planar  6-DOF protein_fast    ] solved  99.9%  CLEAN proxy  61.1%  pb  64.2%  mj  65.8%  | disagree pb/mj 4.1/4.7%  maxgap 3.94e-02
+  [planar  6-DOF trac_ik_style   ] solved 100.0%  CLEAN proxy  25.4%  pb  27.5%  mj  28.6%  | disagree pb/mj 2.5/3.2%  maxgap 3.26e-02
+  [planar  6-DOF multi_start     ] solved 100.0%  CLEAN proxy  29.9%  pb  31.2%  mj  32.3%  | disagree pb/mj 2.1/2.4%  maxgap 3.41e-02
+b3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+base_linkb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+tool0  [planar  8-DOF protein_fast    ] solved  99.9%  CLEAN proxy  40.1%  pb  42.5%  mj  44.6%  | disagree pb/mj 3.8/4.5%  maxgap 3.89e-02
+  [planar  8-DOF trac_ik_style   ] solved 100.0%  CLEAN proxy  11.1%  pb  12.7%  mj  13.4%  | disagree pb/mj 1.8/2.3%  maxgap 3.25e-02
+  [planar  8-DOF multi_start     ] solved 100.0%  CLEAN proxy  18.1%  pb  19.5%  mj  20.6%  | disagree pb/mj 2.2/2.5%  maxgap 3.66e-02
+b3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+base_linkb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+tool0  [planar 10-DOF protein_fast    ] solved 100.0%  CLEAN proxy  23.6%  pb  25.8%  mj  28.2%  | disagree pb/mj 4.0/4.6%  maxgap 3.90e-02
+  [planar 10-DOF trac_ik_style   ] solved 100.0%  CLEAN proxy   5.4%  pb   6.1%  mj   6.4%  | disagree pb/mj 0.9/1.0%  maxgap 3.54e-02
+  [planar 10-DOF multi_start     ] solved 100.0%  CLEAN proxy   9.4%  pb  10.4%  mj  11.0%  | disagree pb/mj 1.2/1.6%  maxgap 3.63e-02
+b3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+base_linkb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+tool0  [planar 12-DOF protein_fast    ] solved  99.9%  CLEAN proxy   9.3%  pb  10.6%  mj  11.5%  | disagree pb/mj 1.5/2.2%  maxgap 3.59e-02
+  [planar 12-DOF trac_ik_style   ] solved 100.0%  CLEAN proxy   1.9%  pb   2.5%  mj   3.0%  | disagree pb/mj 0.6/1.1%  maxgap 2.66e-02
+  [planar 12-DOF multi_start     ] solved 100.0%  CLEAN proxy   4.8%  pb   5.6%  mj   6.6%  | disagree pb/mj 1.0/1.8%  maxgap 3.28e-02
+b3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+base_linkb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+tool0  [planar 14-DOF protein_fast    ] solved 100.0%  CLEAN proxy   4.5%  pb   5.1%  mj   5.8%  | disagree pb/mj 1.2/1.3%  maxgap 3.37e-02
+  [planar 14-DOF trac_ik_style   ] solved 100.0%  CLEAN proxy   0.7%  pb   0.7%  mj   0.8%  | disagree pb/mj 0.2/0.1%  maxgap 2.42e-02
+  [planar 14-DOF multi_start     ] solved 100.0%  CLEAN proxy   1.3%  pb   1.2%  mj   1.7%  | disagree pb/mj 0.3/0.4%  maxgap 3.22e-02
+b3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+base_linkb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+No inertial data for link, using mass=1, localinertiadiagonal = 1,1,1, identity local inertial frameb3Warning[examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp,126]:
+tool0  [planar 16-DOF protein_fast    ] solved 100.0%  CLEAN proxy   1.1%  pb   1.3%  mj   1.5%  | disagree pb/mj 0.2/0.4%  maxgap 3.70e-02
+  [planar 16-DOF trac_ik_style   ] solved 100.0%  CLEAN proxy   0.0%  pb   0.1%  mj   0.2%  | disagree pb/mj 0.1/0.2%  maxgap 2.37e-02
+  [planar 16-DOF multi_start     ] solved 100.0%  CLEAN proxy   0.2%  pb   0.3%  mj   0.5%  | disagree pb/mj 0.1/0.3%  maxgap 3.34e-02
+
+[done] 75.8s -> results/dof_scaling/dof_scaling_sim_scored_full.json

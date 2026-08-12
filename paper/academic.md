@@ -805,15 +805,31 @@ Multi-start moves, by 0.14 pp.) The same effect is why this sweep reproduces the
 every cell while TRAC-IK drifts by up to 1.7 pp, and why the pilot's two committed artifacts disagree with each other
 on 8-DOF TRAC-IK (13.3% against 10.8%).
 
-The planar chain is synthetic and carries no manufacturer CAD. Its collision solids are the capsules of Eq. (5),
-emitted as a URDF and scored in both engines, which reproduce the proxy to `4e-16` with no verdict disagreement in any
-cell — an identity that holds by construction, a capsule's surface gap being the proxy's segment distance less the two
-radii, so it validates the collision _implementation_ rather than the geometry. Scored instead against solid cylinders
-— a genuinely different idealisation of the same arm — the capsule model is conservative by 1–6 pp and the
-KineticFold/TRAC-IK ordering holds at every chain length (1.9–4.1× on PyBullet, 1.9–3.7× on MuJoCo). That
-cross-check was run on the superseded `n = 120` pilot and has not been repeated at `n = 1000`; what it establishes is a
-property of the collision model rather than of the sample, but the engine-scored ratios above are the pilot's, not
-Table 5's.
+The planar chain is synthetic and carries no manufacturer CAD, so we put the whole sweep through the same
+"solve once, score three ways" discipline as the physical arms: we emit its collision solids as a URDF and re-score
+every solved configuration in PyBullet and in MuJoCo, at the sweep's own `n = 1000`, for all three solvers.
+
+Under the capsules of Eq. (5) both engines reproduce the proxy exactly — 21 cells, 21,000 configurations, no verdict
+disagreement anywhere and a worst distance gap of `8e-14`. That identity holds by construction, a capsule's surface gap
+being the proxy's segment distance less the two radii, so it validates the collision _implementation_ rather than the
+geometry, and we read it only that way.
+
+The geometry question needs a different solid, so we re-emit the same arm with flat-capped cylinders and score it
+again. Two things follow. First, the capsule model is _conservative_: every solver gains under cylinders, by 0 to
+4.7 pp, so the proxy over-reports collision and the rates in Table 5 are the harsher of the two readings. Second, and
+this is what the cross-check exists to establish, the ordering does not move. Across all 84 comparisons — two solids ×
+two engines × seven chain lengths × two baselines — KineticFold leads every one. Over 4–12 DOF, where the baselines
+return enough clean solves to support a ratio, the cylinder-scored advantage is 1.9–4.2× over TRAC-IK on PyBullet and
+1.9–4.4× on MuJoCo, and 1.7–2.5× over Multi-start; at 14 and 16 DOF the baselines return one to eight clean solves per
+1000 under cylinders, too few to quote a ratio from. The advantage is therefore not an artifact of the capsule caps.
+
+Two caveats we state rather than absorb. The engines agree with each other exactly under capsules but differ by up to
+2.4 pp under cylinders (mean 0.89 pp), which is the expected cost of a genuinely harder narrow-phase and a reminder
+that the capsule agreement is arithmetic rather than corroboration. And because the runner re-solves under each solid,
+only KineticFold's capsule-to-cylinder deltas are pure geometry — it is deterministic, so it returns the identical
+configurations both times. The two library baselines re-solve under their wall-clock budgets, so their deltas mix the
+change of solid with the run-to-run movement of Section 5.4's repeat analysis. That confound is visible at 12 DOF,
+where Multi-start gains 3.0–4.0 pp under cylinders; we do not attribute that gain to the geometry alone.
 
 ### 5.5 Deployment roles
 
@@ -832,7 +848,8 @@ generators ever saw, using the harness of Section 4.6.
 The forward kinematics agree with both engines to floating-point noise (Section 4.6), including the modified-DH Franka
 model. The agreement is load-bearing: targets generated from an incorrect FK are solved "successfully" against that
 same error, so only a second model exposes it. Every success claim on these two arms is independently true on two
-engines; the planar chains carry no manufacturer model, and are scored against the generated geometry of Section 5.4.
+engines; the planar chains carry no manufacturer model, so Section 5.4 scores them against generated geometry instead —
+in both engines, at the sweep's own `n = 1000`, and under two different collision solids.
 
 The capsule proxy is systematically optimistic — real meshes collide more — and both engines agree on that and with
 each other (Section 4.6). We therefore report collision only as a
