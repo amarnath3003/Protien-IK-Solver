@@ -135,10 +135,21 @@ cd backend
 
 # Table 5 + Figure 5 — the authoritative sweep: n=1000/cell (seeds 1..10), seven DOF
 # points, three solvers, 5 repeats, Wilson CIs + Fisher exact, feasibility oracle.
-# ~15 min. Add --no-oracle for the ~4 min version (main sweep + stats only).
+# ~6 min. Add --no-oracle for the ~3 min version (main sweep + stats only).
 PYTHONPATH=. python3 native_bench/run_dof_scaling_full.py \
   --out results/dof_scaling/dof_scaling_full.json
+
+# ...plus the 16-DOF row at n=5000. Clean solves are rare events there: at n=1000 the
+# KineticFold/Multi-start contrast is not significant (p=0.21) and TRAC-IK reads as an
+# exact 0.0%. Both are sampling artifacts. ~90 s. The table/figure generators read BOTH
+# files and take the larger-n row per cell, so neither committed file is ever edited.
+PYTHONPATH=. python3 native_bench/run_dof_scaling_full.py \
+  --dofs 16 --seeds 1 2 3 4 5 6 7 8 9 10 --n 500 --repeats 3 --no-oracle \
+  --out results/dof_scaling/dof_scaling_16dof_n5000.json
+
 PYTHONPATH=. python3 native_bench/report_dof_full.py   # human-readable summary
+PYTHONPATH=. python3 native_bench/report_dof_full.py \
+  --json results/dof_scaling/dof_scaling_16dof_n5000.json
 
 # superseded n=120 pilot — kept reproducible, NOT a source for paper numbers
 PYTHONPATH=. python3 native_bench/run_native_usecase.py --only E \
@@ -230,10 +241,12 @@ every push.
 
 Stated so a reviewer does not have to discover them:
 
-- **DOF-scaling 16-DOF cell.** Table 5 now runs `n = 1000` per cell and every row is
-  significant against both baselines (Fisher exact `p < 0.05`) **except** 16 DOF vs.
-  Multi-start (`p = 0.21`, 11 clean solves against 5). The 16-DOF lead over TRAC-IK is
-  resolved (`p = 9.5e-4`); the one over Multi-start is not, and is not claimed.
+- **DOF-scaling 16-DOF cell runs at a different n.** Table 5 is `n = 1000` per cell
+  except 16 DOF, which is `n = 5000`. Every row is now significant against both
+  baselines (Fisher exact `p < 0.05`). The larger sample is not cosmetic: at
+  `n = 1000` the 16-DOF Multi-start contrast was `p = 0.21` and TRAC-IK read as an
+  exact 0/1000 — at `n = 5000` it returns 5/5000, so "TRAC-IK produces nothing at 16
+  joints" was itself a small-sample artifact.
 - **The DOF sweep's engine cross-check is still at `n = 120`.**
   `run_dof_sim_scored.py` (PyBullet + MuJoCo, capsule and cylinder solids) was run
   against the superseded pilot, not against Table 5's sweep. Its finding is a property

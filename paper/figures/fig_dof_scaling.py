@@ -4,14 +4,16 @@ The paper's central scaling result, from the powered sweep
 (``results/dof_scaling/dof_scaling_full.json``, n=1000/cell, seeds 1..10):
 
   (a) KineticFold's clean-solve advantage over BOTH production baselines grows
-      monotonically with chain length -- 2.0x -> 7.5x against genuine TRAC-IK and
-      1.6x -> 3.7x against genuine RTB Multi-start, the stronger of the two. The
-      earlier "peaks near 8 DOF" shape was an artifact of the n=120 pilot.
+      with chain length -- monotonically 2.0x -> 10.4x against genuine TRAC-IK,
+      and 1.7x -> 3.5-4.5x against genuine RTB Multi-start, the stronger of the
+      two. The earlier "peaks near 8 DOF" shape was an artifact of the n=120
+      pilot. The 16-DOF cell is run at n=5000 (rare events); at n=1000 the
+      Multi-start contrast was p=0.21 and TRAC-IK read as an exact 0.0%.
   (b) The collapse in solve rate is a SEARCH limit, not a geometric one. The
       fraction of targets for which any clean solution can be demonstrated stays
-      at 90-97% through 14 DOF and is still 75% at 16 DOF, while the solve rates
-      fall by nearly two orders of magnitude. (An earlier 48-restart oracle put
-      16 DOF at 24% and looked like a feasibility floor; at 384 restarts that
+      at 89.9-97.0% through 14 DOF and is still 75.1% at 16 DOF, while the solve
+      rates fall by nearly two orders of magnitude. (An earlier 48-restart oracle
+      put 16 DOF at 24% and looked like a feasibility floor; at 384 restarts that
       reading disappears, so the oracle's own budget has to be reported.)
 
 All three solvers reach the target ~100% of the time; the entire gap is
@@ -28,10 +30,8 @@ Run: python fig_dof_scaling.py [--json path/to/dof_scaling_full.json]
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
-from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _style as S
@@ -42,24 +42,17 @@ from matplotlib.ticker import FuncFormatter
 SERIES = ["protein_fast", "trac_ik_style", "multi_start"]
 MARKER = {"protein_fast": "o", "trac_ik_style": "s", "multi_start": "^"}
 LINESTYLE = {"protein_fast": "-", "trac_ik_style": "--", "multi_start": ":"}
-FLOOR = 0.08          # log-axis floor (%); a 0/1000 cell is drawn here, labelled
+FLOOR = 0.03          # log-axis floor (%); a zero cell is drawn here, labelled
 FEAS_COLOR = "#7A7A7A"
 
 
-def load(path):
-    D = json.loads(Path(path).read_text(encoding="utf-8"))
-    dofs = D["config"]["dofs"]
-
-    def cell(d, s):
-        return next(c for c in D["cells"] if c["dof"] == d and c["solver"] == s)
-
-    series = {s: [cell(d, s) for d in dofs] for s in SERIES}
-    feas = [cell(d, "protein_fast").get("feasible_pct") for d in dofs]
-    ratios = {
-        base: [next((k for k in D["contrasts"]
-                     if k["dof"] == d and k["baseline"] == base), None) for d in dofs]
-        for base in ("trac_ik_style", "multi_start")
-    }
+def load(paths):
+    D = S.load_dof(paths)
+    dofs = D["dofs"]
+    series = {s: [D["cells"][(d, s)] for d in dofs] for s in SERIES}
+    feas = [D["feasible"].get(d) for d in dofs]
+    ratios = {base: [D["contrasts"].get((d, base)) for d in dofs]
+              for base in ("trac_ik_style", "multi_start")}
     return dofs, series, feas, ratios
 
 
@@ -94,7 +87,7 @@ def panel_rates(ax, dofs, series, feas):
     ax.set_yscale("log")
     ax.set_ylim(FLOOR, 130)
     ax.yaxis.set_major_formatter(FuncFormatter(
-        lambda v, _p: f"{v:g}" if v >= 1 else f"{v:.1f}"))
+        lambda v, _p: f"{v:g}" if v >= 1 else (f"{v:.1f}" if v >= 0.1 else f"{v:.2f}")))
     ax.set_xticks(dofs)
     ax.set_xlabel("Planar arm DOF   (chain length → polymer)")
     ax.set_ylabel("Single-shot clean-solve rate (%)")
@@ -103,8 +96,12 @@ def panel_rates(ax, dofs, series, feas):
 
 
 def panel_ratio(ax, dofs, ratios):
-    for base, col, mk, ls in (("trac_ik_style", S.color("trac_ik_style"), "s", "--"),
-                              ("multi_start", S.color("multi_start"), "^", ":")):
+    top = 1.0
+    # label offset per series: the upper curve is labelled above its peak, the lower
+    # one below, so neither sits on the other's line
+    for base, col, mk, ls, dy in (
+            ("trac_ik_style", S.color("trac_ik_style"), "s", "--", 7),
+            ("multi_start", S.color("multi_start"), "^", ":", -13)):
         xs, ys, weak = [], [], []
         for d, k in zip(dofs, ratios[base]):
             if k is None or k["ratio"] is None:
@@ -119,42 +116,48 @@ def panel_ratio(ax, dofs, ratios):
             if w:
                 ax.plot([x], [y], marker=mk, ms=4.6, color=col, mfc="white",
                         mew=1.3, zorder=4)
-        # label on the last cell that is actually significant -- the terminal point
-        # can be a hollow, low-count cell where the ratio is not resolvable
-        j = max([i for i, w in enumerate(weak) if not w], default=len(xs) - 1)
+        # label at each series' peak, which is where the two curves are furthest
+        # apart -- labelling the terminal point puts Multi-start's text on its own
+        # descending segment
+        j = max(range(len(ys)), key=lambda i: ys[i])
         ax.annotate(f"vs {S.label(base)}", (xs[j], ys[j]),
-                    textcoords="offset points", xytext=(-6, 6), ha="right",
+                    textcoords="offset points", xytext=(-7, dy), ha="right",
                     fontsize=6.2, color=col, fontweight="bold")
+        top = max(top, max(ys))
 
+    ax.set_ylim(0, top * 1.18)          # headroom so the peak labels clear the frame
     ax.axhline(1.0, color="#BBBBBB", lw=1.0, ls="-", zorder=1)
     ax.annotate("parity", (dofs[0], 1.0), textcoords="offset points",
                 xytext=(0, -9), fontsize=5.8, color="#888888")
     ax.set_xticks(dofs)
-    ax.set_ylim(0, None)
     ax.set_xlabel("Planar arm DOF")
     ax.set_ylabel("KineticFold clean-solve advantage (×)")
-    # "through 14 DOF", not "with chain length": at 16 DOF the clean counts are too
-    # small to resolve a ratio (TRAC-IK 0/1000; Multi-start p=0.21), so the terminal
-    # point is drawn but must not be read as the trend reversing
-    ax.set_title("(b) …and widens through 14 DOF", loc="left")
+    # Every cell now resolves, including 16 DOF (re-run at n=5000), so the title can
+    # state the trend without hedging. Against TRAC-IK the rise is strictly monotone
+    # 2.0->10.4x; against Multi-start it rises 1.7->3.5x with a peak of 4.5x at 14.
+    ax.set_title("(b) …and widens as the chain lengthens", loc="left")
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", default=str(S.DEFAULT_DOF_FULL_JSON))
+    ap.add_argument("--json-16", default=str(S.DEFAULT_DOF_16_JSON))
     args = ap.parse_args()
 
     S.use_paper_style()
-    dofs, series, feas, ratios = load(args.json)
+    dofs, series, feas, ratios = load([args.json, args.json_16])
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(S.WIDE, S.WIDE * 0.40))
     panel_rates(ax1, dofs, series, feas)
     panel_ratio(ax2, dofs, ratios)
 
+    ns = sorted({c["n"] for cs in series.values() for c in cs})
+    nstr = f"n = {ns[0]}" if len(ns) == 1 else f"n = {ns[0]}–{ns[-1]}"
     fig.text(0.5, -0.04,
              "All three solvers reach the target ≈100%; the gap is entirely "
-             "self-collision avoidance.  n = 1000 per cell; bands are Wilson 95% "
-             "intervals.  Hollow marker in (b) = not significant at p<0.05.",
+             f"self-collision avoidance.  {nstr} per cell (16 DOF re-run at the "
+             "larger n; rare events); bands are Wilson 95% intervals.  Every ratio "
+             "in (b) is significant at p<0.05 (Fisher exact).",
              ha="center", fontsize=6.1, color="#666")
     fig.tight_layout()
     S.save(fig, "fig_dof_scaling")

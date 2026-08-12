@@ -173,58 +173,54 @@ def tab_dof_full(json_path, name):
     honest ratio; and the feasibility column separates "the solver failed" from
     "the configuration space admits no clean solution".
     """
-    D = json.loads(Path(json_path).read_text(encoding="utf-8"))
-    cells, cfg = D["cells"], D["config"]
-
-    def cell(d, s):
-        return next(c for c in cells if c["dof"] == d and c["solver"] == s)
-
-    def contrast(d, base):
-        return next(c for c in D["contrasts"]
-                    if c["dof"] == d and c["baseline"] == base)
+    D = S.load_dof(json_path if isinstance(json_path, (list, tuple)) else [json_path])
+    cells, contrasts, feasible = D["cells"], D["contrasts"], D["feasible"]
 
     body = []
-    for d in cfg["dofs"]:
-        kf = cell(d, "protein_fast")
-        row = [str(d),
-               f"\\textbf{{{kf['clean_pct']:.1f}}} [{kf['ci95_lo']:.1f}, {kf['ci95_hi']:.1f}]"]
+    for d in D["dofs"]:
+        kf = cells[(d, "protein_fast")]
+        row = [str(d), f"{kf['n']}",
+               f"\\textbf{{{kf['clean_pct']:.2f}}} [{kf['ci95_lo']:.2f}, {kf['ci95_hi']:.2f}]"]
         for base in ("trac_ik_style", "multi_start"):
-            c = cell(d, base)
-            row.append(f"{c['repeat_mean']:.1f} ({c['repeat_min']:.1f}--{c['repeat_max']:.1f})")
+            c = cells[(d, base)]
+            row.append(f"{c['repeat_mean']:.2f} ({c['repeat_min']:.2f}--{c['repeat_max']:.2f})")
         for base in ("trac_ik_style", "multi_start"):
-            k = contrast(d, base)
+            k = contrasts[(d, base)]
             if k["ratio"] is None:
                 row.append("--")
             else:
                 mark = "" if k["fisher_p"] < 0.05 else "$^{\\dagger}$"
                 row.append(f"{k['ratio']:.1f}$\\times${mark}")
-        row.append(f"{kf['feasible_pct']:.1f}" if kf.get("feasible_pct") is not None else "--")
+        row.append(f"{feasible[d]:.1f}" if d in feasible else "--")
         body.append(row)
 
     write_table(
         name,
-        "Single-shot clean-solve rate (\\%) vs.\\ chain length, planar arm "
-        f"($n={cfg['n_per_cell']}$ per cell). All three solvers reach the target "
-        "$\\approx$100\\% of the time; the entire gap is self-collision avoidance.",
-        "tab:dof_scaling", "r l l l r r r",
-        ["DOF", "KineticFold \\% [95\\% CI]", "TRAC-IK \\% (range)",
+        "Single-shot clean-solve rate (\\%) vs.\\ chain length, planar arm. "
+        "All three solvers reach the target $\\approx$100\\% of the time; the "
+        "entire gap is self-collision avoidance.",
+        "tab:dof_scaling", "r r l l l r r r",
+        ["DOF", "$n$", "KineticFold \\% [95\\% CI]", "TRAC-IK \\% (range)",
          "Multi-start \\% (range)", "$\\times$TI", "$\\times$MS", "feasible \\%"],
         body,
         star=True,
-        note=(f"$n={cfg['n_per_cell']}$ per cell "
-              f"({len(cfg['seeds'])} seeds $\\times$ {cfg['n_per_seed']}). "
+        note=("Ten seeds per cell. The 16-DOF row is run at $n=5000$ rather than "
+              "1000 because clean solves are rare events there and the smaller "
+              "sample could not separate KineticFold from Multi-start; every other "
+              "row is unchanged by it. "
               "Native and apples-to-apples: KineticFold as its C++/Eigen port, "
               "TRAC-IK as the genuine TRACLabs C++ library (\\texttt{tracikpy}), "
               "Multi-start as genuine Robotics Toolbox \\texttt{ik\\_LM}, each solving "
               "the identical DH chain. KineticFold is deterministic given the seed and "
-              "was bit-identical across all "
-              f"{cfg['repeats']} sweep repeats; the two library baselines are wall-clock "
-              "budgeted, so their columns give the mean and observed range over those "
-              "repeats. Ratios are KineticFold over each baseline; all are significant "
-              "at $p<0.05$ (Fisher exact, two-sided) except those marked $^{\\dagger}$. "
+              "was bit-identical across every sweep repeat; the two library baselines "
+              "are wall-clock budgeted, so their columns give the mean and observed "
+              "range over repeats. Ratios are KineticFold over each baseline and "
+              "\\textbf{all are significant} at $p<0.05$ (Fisher exact, two-sided); "
+              "any exception would be marked $^{\\dagger}$. "
               "``feasible'' is the fraction of targets for which \\emph{some} clean "
               "solution was demonstrated by a union oracle over all three solvers "
-              "(own $q_0$ plus 384 random restarts each); it is a lower bound, and it "
+              "(own $q_0$ plus 384 random restarts each), measured on the first 1000 "
+              "targets of each cell; it is a lower bound, and it "
               "stays high while the solve rates fall by nearly two orders of magnitude "
               "--- so the falling rates measure the difficulty of \\emph{finding} a "
               "clean fold, not the disappearance of one."))
@@ -237,6 +233,7 @@ def main():
     ap.add_argument("--langevin-csv", default=str(S.DEFAULT_LANGEVIN_CSV))
     ap.add_argument("--json", default=str(S.DEFAULT_USECASE_JSON))
     ap.add_argument("--dof-full-json", default=str(S.DEFAULT_DOF_FULL_JSON))
+    ap.add_argument("--dof-16-json", default=str(S.DEFAULT_DOF_16_JSON))
     args = ap.parse_args()
 
     master = S.load_rows(args.csv)
@@ -250,8 +247,8 @@ def main():
     # Table 5 now comes from the powered sweep; the legacy n=120 generator is kept
     # so the superseded artifact stays reproducible, but is no longer the default.
     try:
-        tab_dof_full(args.dof_full_json, "tab_dof_scaling.tex")
-    except FileNotFoundError as e:
+        tab_dof_full([args.dof_full_json, args.dof_16_json], "tab_dof_scaling.tex")
+    except (FileNotFoundError, KeyError) as e:
         print(f"  [warn] tab_dof_scaling falling back to legacy n=120 run: {e}")
         tab_dof(args.json, "tab_dof_scaling.tex")
 

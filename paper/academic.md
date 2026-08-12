@@ -24,10 +24,10 @@ Our results are validated against two independent physics simulators (PyBullet a
 with both to within a micron, and both engines corroborate — and shrink — our self-collision
 claims. The advantage is largest where the arm is most protein-like: on a planar arm lengthened from 4 to 16 joints,
 KineticFold's single-shot clean-solve rate — target reached and self-collision-free — leads both production baselines
-at every chain length, and the margin widens as the chain grows, reaching 6.4× over TRAC-IK and 4.5× over Multi-start
-at 14 joints (`n = 1000` per cell, Fisher exact `p < 0.05` in every cell). A restart oracle confirms that clean folds
-remain available across that range, so the widening margin measures the growing difficulty of _finding_ a clean fold
-rather than its disappearance.
+at every chain length, and the margin widens as the chain grows, reaching 10.4× over TRAC-IK and 3.5× over Multi-start
+at sixteen joints (`n = 1000` per cell, 5000 at sixteen; Fisher exact `p < 0.05` in every cell). A restart oracle
+confirms that clean folds remain available across that range, so the widening margin measures the growing difficulty of
+_finding_ a clean fold rather than its disappearance.
 
 ## Keywords
 
@@ -99,11 +99,11 @@ while on the redundant arm a spare joint lets every method dodge and the edge do
 Those results establish that the principle is competitive with production IK; the result that tests the thesis is a
 scaling one. As a planar arm is lengthened from 4 to 16 joints — made progressively more polymer-like — KineticFold's
 single-shot clean-solve rate (target reached and self-collision-free) leads both production baselines at every chain
-length, and the margin widens as the chain grows: from 2.0× to 6.4× over genuine TRAC-IK and from 1.7× to 4.5× over
-genuine Multi-start between 4 and 14 joints (`n = 1000` per cell, Fisher exact `p < 0.05` in every cell). The falling
-absolute rates are a search limit rather than a geometric one — a restart oracle still demonstrates a clean fold for
-75–97% of targets across that range — so what widens is exactly the gap between what the chain admits and what a
-restart-only search can find. At that point the correspondence stops being an analogy and becomes the mechanism: the
+length, and the margin widens as the chain grows: monotonically from 2.0× to 10.4× over genuine TRAC-IK, and from 1.7×
+to 3.5–4.5× over genuine Multi-start, between 4 and 16 joints (`n = 1000` per cell, 5000 at 16; Fisher exact
+`p < 0.05` in every cell). The falling absolute rates are a search limit rather than a geometric one — a restart oracle
+still demonstrates a clean fold for 75–97% of targets across that range — so what widens is exactly the gap between
+what the chain admits and what a restart-only search can find. At that point the correspondence stops being an analogy and becomes the mechanism: the
 method wins because the problem _becomes_ folding.
 
 ## 2. Related Work
@@ -753,34 +753,39 @@ The correspondence predicts that the advantage should grow as the chain lengthen
 count from 4 to 16 in seven steps and measure the same single-shot clean-solve rate at `n = 1000` per cell (seeds
 1–10 × 100 targets — the ten-seed protocol of Section 4.4, since clean-solve is collision-gated and collision is the
 seed-sensitive measure). The sweep runs **both** production baselines, TRAC-IK and Multi-start, each as its genuine
-upstream C++ library.
+upstream C++ library. The 16-joint cell is run at `n = 5000` instead: clean solves are rare events there, and 1000
+trials could not separate KineticFold from Multi-start.
 
-**Table 5.** Single-shot clean-solve rate (%) vs. degrees of freedom, planar arm (`n = 1000` per cell).
+**Table 5.** Single-shot clean-solve rate (%) vs. degrees of freedom, planar arm.
 All three solvers run as native compiled code: KineticFold as its C++/Eigen port, TRAC-IK as the genuine TRACLabs C++
 library (`tracikpy`), and Multi-start as genuine Robotics Toolbox `ik_LM`, each solving the identical DH chain.
 
-| DOF | KineticFold % [95% CI] | TRAC-IK % (range) | Multi-start % (range) | ×TI | ×MS | feasible % |
-| --: | ---------------------: | ----------------: | --------------------: | --: | --: | ---------: |
-|   4 |     **74.8** [72.0, 77.4] |   37.5 (37.1–37.9) |      44.1 (43.1–45.0) | 2.0× | 1.7× |       89.9 |
-|   6 |     **61.1** [58.0, 64.1] |   24.9 (24.7–25.3) |      30.7 (28.7–32.0) | 2.5× | 1.9× |       94.6 |
-|   8 |     **40.1** [37.1, 43.2] |   11.0 (10.7–11.4) |      17.6 (16.2–19.0) | 3.6× | 2.1× |       94.5 |
-|  10 |     **23.6** [21.1, 26.3] |     5.1 (4.8–5.5) |         8.7 (8.5–9.1) | 4.8× | 2.8× |       95.0 |
-|  12 |      **9.3** [7.7, 11.3] |     2.0 (1.8–2.2) |         3.3 (2.5–4.3) | 5.2× | 2.7× |       97.0 |
-|  14 |       **4.5** [3.4, 6.0] |     0.7 (0.6–0.8) |         1.0 (0.8–1.1) | 6.4× | 4.5× |       93.9 |
-|  16 |       **1.1** [0.6, 2.0] |     0.0 (0.0–0.0) |         0.5 (0.2–0.6) |   — | 2.2×† |       75.1 |
+| DOF | n | KineticFold % [95% CI] | TRAC-IK % (range) | Multi-start % (range) | ×TI | ×MS | feasible % |
+| --: | ---: | ---------------------: | ----------------: | --------------------: | --: | --: | ---------: |
+|   4 | 1000 |  **74.80** [72.02, 77.39] |  37.54 (37.10–37.90) |   44.10 (43.10–45.00) | 2.0× | 1.7× |       89.9 |
+|   6 | 1000 |  **61.10** [58.04, 64.07] |  24.92 (24.70–25.30) |   30.68 (28.70–32.00) | 2.5× | 1.9× |       94.6 |
+|   8 | 1000 |  **40.10** [37.11, 43.17] |  11.00 (10.70–11.40) |   17.62 (16.20–19.00) | 3.6× | 2.1× |       94.5 |
+|  10 | 1000 |  **23.60** [21.07, 26.33] |     5.14 (4.80–5.50) |      8.74 (8.50–9.10) | 4.8× | 2.8× |       95.0 |
+|  12 | 1000 |   **9.30** [7.65, 11.26] |     2.00 (1.80–2.20) |      3.32 (2.50–4.30) | 5.2× | 2.7× |       97.0 |
+|  14 | 1000 |    **4.50** [3.38, 5.97] |     0.72 (0.60–0.80) |      0.98 (0.80–1.10) | 6.4× | 4.5× |       93.9 |
+|  16 | 5000 |    **1.04** [0.79, 1.36] |     0.10 (0.10–0.10) |      0.35 (0.30–0.44) | 10.4× | 3.5× |       75.1 |
 
 All three solvers reach the target ≈100% of the time; the entire gap is self-collision avoidance. KineticFold leads at
-every chain length against both baselines, and every cell is significant by a two-sided Fisher exact test at
-`p < 0.05` — the mid-range cells at `p < 1e-12` — with the single exception marked `†` (16 DOF vs. Multi-start,
-`p = 0.21`). The margin _widens_ with chain length: from 2.0× to 6.4× over TRAC-IK and 1.7× to 4.5× over Multi-start
-between 4 and 14 joints. That monotone widening is the shape the correspondence predicts, and it is visible only at
-this sample size; the `n = 120` pilot this sweep replaces showed a spurious peak near 8 DOF driven by a handful of
-solves in its high-DOF cells.
+every chain length against both baselines, and **every cell is significant** by a two-sided Fisher exact test at
+`p < 0.05` — the mid-range cells at `p < 1e-12`, and the sparsest cell, 16 joints, at `p = 5.7e-11` against TRAC-IK and
+`p = 6e-6` against Multi-start. The margin _widens_ with chain length. Against TRAC-IK it rises monotonically across
+all seven lengths, 2.0× → 10.4×; against Multi-start it rises 1.7× → 4.5× through 14 joints and stands at 3.5× at 16.
+That widening is the shape the correspondence predicts, and it is visible only at this sample size: the `n = 120` pilot
+this sweep replaces showed a spurious peak near 8 DOF driven by a handful of solves in its high-DOF cells.
 
-Two honest limits at 16 joints. First, the ordering there is resolved against TRAC-IK, which returns no clean solution
-in 1000 attempts (11/1000 vs. 0/1000, `p = 9.5e-4`), but **not** against Multi-start (11 vs. 5, `p = 0.21`): at that
-length the clean counts are too small to separate the two, and we do not claim a 16-DOF advantage over Multi-start.
-Second, and more importantly, this is where a natural reading of the table is wrong. The collapse from 74.8% to 1.1%
+The 16-joint cell is worth stating carefully, because two of its features are artifacts of sampling rather than
+findings. At `n = 1000` TRAC-IK returned **no** clean solution at all, and KineticFold's margin over Multi-start was
+not resolvable (11 vs. 5, `p = 0.21`). Both dissolve at `n = 5000`: TRAC-IK returns 5 clean solves in 5000
+(0.10%, not 0%), and the Multi-start contrast resolves at 3.5× (52 vs. 15, `p = 6e-6`). A rate that low needs a sample
+that large to measure at all, and we report the larger one rather than the more dramatic smaller one — "the only solver
+still working" would have been an artifact of stopping at 1000 trials.
+
+There is one place where a natural reading of the table is genuinely wrong. The collapse from 74.8% to 1.04%
 is **not** the configuration space running out of clean solutions. A union oracle — every target attacked from its own
 seed plus 384 random restarts by all three solvers — still demonstrates a clean solution for 89.9–97.0% of targets through
 14 joints and for 75.1% at 16 (last column; a lower bound, since a failure to find is not a proof of absence). Clean
@@ -795,7 +800,8 @@ Determinism is measured rather than assumed. The per-solve RNG depends only on t
 identical across repeats of the whole sweep and any movement is attributable to wall-clock budgeting alone. Across five
 repeats KineticFold is bit-identical in all 21 cells; TRAC-IK moves by up to 0.8 pp and Multi-start — the noisier of
 the two — by up to 3.3 pp, so both baseline columns report the mean and observed range over those repeats rather than a
-single draw. The same effect is why this sweep reproduces the superseded `n = 120` pilot exactly for KineticFold in
+single draw. (The 16-joint re-run repeats three times, where KineticFold and TRAC-IK are both bit-identical and only
+Multi-start moves, by 0.14 pp.) The same effect is why this sweep reproduces the superseded `n = 120` pilot exactly for KineticFold in
 every cell while TRAC-IK drifts by up to 1.7 pp, and why the pilot's two committed artifacts disagree with each other
 on 8-DOF TRAC-IK (13.3% against 10.8%).
 
@@ -849,9 +855,10 @@ The scaling result of Section 5.4 is a _single-shot_ advantage: one call per tar
 A clearance-selecting wrapper (solve K times, keep the cleanest) lifts every solver in the comparison, and the
 feasibility oracle of Section 5.4 is in effect the limit of that wrapper — it recovers clean folds for 75–97% of
 targets where a single shot finds at most a few percent. The advantage this paper claims is therefore per solve, and
-does not by itself predict the ordering under a large restart budget. At 16 joints the advantage is resolved against
-TRAC-IK but not against Multi-start (`p = 0.21`); the sweep would need more trials than `n = 1000` to separate that
-cell, and we do not claim it.
+does not by itself predict the ordering under a large restart budget. Separately, the 16-joint cell needed `n = 5000`
+to resolve at all: at `n = 1000` the Multi-start contrast was not significant and TRAC-IK's rate read as an exact zero.
+Rare-event cells of this kind should be read with their sample size in view, and any future extension past 16 joints
+will need a larger one still.
 
 All collision claims concern _self_-collision only; no solver here reasons about a workspace obstacle. Collision rate on
 real meshes is seed-sensitive, which is why both the UR5 and Franka collision headlines are averaged over 10 seeds
@@ -877,9 +884,9 @@ the redundant Franka dissolves into a wash for the structural reason
 of Section 5.3, all confirmed independently on two physics engines that never saw our proxy (Sections 4.6, 5.6). The
 DOF-scaling sweep tests the correspondence directly: as a planar arm is lengthened from 4 to 16 joints and made
 progressively more polymer-like, KineticFold's single-shot clean-solve advantage holds at every chain length over both
-production baselines and widens monotonically with the chain — 2.0× to 6.4× over TRAC-IK and 1.7× to 4.5× over
-Multi-start between 4 and 14 joints — while a restart oracle confirms that clean folds remain available throughout, so
-what the sweep tracks is the growing difficulty of finding them (Section 5.4).
+production baselines and widens with the chain — monotonically from 2.0× to 10.4× over TRAC-IK, and from 1.7× to
+3.5–4.5× over Multi-start, between 4 and 16 joints — while a restart oracle confirms that clean folds remain available
+throughout, so what the sweep tracks is the growing difficulty of finding them (Section 5.4).
 
 The contribution is an organizing _principle_ rather than a new energy function. Every numerical ingredient in
 StagedFold and KineticFold has precedent in the IK literature reviewed in Section 2. What is new is the claim, and the

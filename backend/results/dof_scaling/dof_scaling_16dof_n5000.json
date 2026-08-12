@@ -1,0 +1,144 @@
+{
+  "config": {
+    "dofs": [
+      16
+    ],
+    "solvers": [
+      "protein_fast",
+      "trac_ik_style",
+      "multi_start"
+    ],
+    "seeds": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "n_per_seed": 500,
+    "n_per_cell": 5000,
+    "repeats": 3,
+    "oracle_restarts": null,
+    "scenario": "cluttered",
+    "display_names": {
+      "protein_fast": "ProteinIK Fast (V4)",
+      "trac_ik_style": "TRAC-IK (real C++ TRACLabs)",
+      "multi_start": "Multi-start (real RTB ik_LM restarts)"
+    },
+    "python": "3.10.12",
+    "numpy": "1.26.4",
+    "wall_time_s": 88.1
+  },
+  "cells": [
+    {
+      "dof": 16,
+      "solver": "protein_fast",
+      "n": 5000,
+      "solved_pct": 99.98,
+      "clean_pct": 1.04,
+      "clean_k": 52,
+      "ci95_lo": 0.7939964636342376,
+      "ci95_hi": 1.361176910825756,
+      "repeats_pct": [
+        1.04,
+        1.04,
+        1.04
+      ],
+      "repeat_mean": 1.04,
+      "repeat_min": 1.04,
+      "repeat_max": 1.04,
+      "repeat_range_pp": 0.0,
+      "deterministic": true
+    },
+    {
+      "dof": 16,
+      "solver": "trac_ik_style",
+      "n": 5000,
+      "solved_pct": 100.0,
+      "clean_pct": 0.1,
+      "clean_k": 5,
+      "ci95_lo": 0.042721349110879964,
+      "ci95_hi": 0.2338953050058211,
+      "repeats_pct": [
+        0.1,
+        0.1,
+        0.1
+      ],
+      "repeat_mean": 0.10000000000000002,
+      "repeat_min": 0.1,
+      "repeat_max": 0.1,
+      "repeat_range_pp": 0.0,
+      "deterministic": true
+    },
+    {
+      "dof": 16,
+      "solver": "multi_start",
+      "n": 5000,
+      "solved_pct": 100.0,
+      "clean_pct": 0.3,
+      "clean_k": 15,
+      "ci95_lo": 0.18189297776376753,
+      "ci95_hi": 0.4944165955749107,
+      "repeats_pct": [
+        0.3,
+        0.3,
+        0.44
+      ],
+      "repeat_mean": 0.3466666666666667,
+      "repeat_min": 0.3,
+      "repeat_max": 0.44,
+      "repeat_range_pp": 0.14,
+      "deterministic": false
+    }
+  ],
+  "contrasts": [
+    {
+      "dof": 16,
+      "baseline": "trac_ik_style",
+      "kf_k": 52,
+      "kf_n": 5000,
+      "base_k": 5,
+      "base_n": 5000,
+      "kf_pct": 1.04,
+      "base_pct": 0.1,
+      "ratio": 10.4,
+      "fisher_p": 5.7397590192515775e-11
+    },
+    {
+      "dof": 16,
+      "baseline": "multi_start",
+      "kf_k": 52,
+      "kf_n": 5000,
+      "base_k": 15,
+      "base_n": 5000,
+      "kf_pct": 1.04,
+      "base_pct": 0.3,
+      "ratio": 3.466666666666667,
+      "fisher_p": 6.032301485334718e-06
+    }
+  ],
+  "replication": [
+    {
+      "dof": 16,
+      "solver": "protein_fast",
+      "committed": 0.8333333333333334,
+      "subset": 0.8333333333333334,
+      "delta": 0.0
+    },
+    {
+      "dof": 16,
+      "solver": "trac_ik_style",
+      "committed": 0.0,
+      "subset": 0.0,
+      "delta": 0.0
+    }
+  ],
+  "feasibility_flags": {},
+  "oracle_only_flags": {},
+  "feasibility_note": "Union oracle over all three solvers (own q0 + random restarts), OR-ed with every single-shot clean solve observed in the sweep. A True is proof of feasibility; a False is failure-to-find. Feasible counts are LOWER bounds and conditional rates UPPER bounds. 'clean_missed_by_oracle' reports, per cell, how many clean solves the oracle alone failed to re-find -- the direct measure of how loose the bound is."
+}

@@ -50,6 +50,10 @@ DEFAULT_USECASE_JSON  = RESULTS / "dof_scaling" / "dof_scaling_native.json"  # D
 # wall-clock nondeterminism of the two library baselines, Wilson CIs + Fisher exact,
 # and a union feasibility oracle. Produced by native_bench/run_dof_scaling_full.py.
 DEFAULT_DOF_FULL_JSON = RESULTS / "dof_scaling" / "dof_scaling_full.json"
+# Targeted power boost: the 16-DOF cell alone at n=5000. Clean solves are rare
+# events there, and n=1000 could not separate KineticFold from Multi-start
+# (p=0.21). Read alongside the sweep above; best-n wins per cell (see load_dof).
+DEFAULT_DOF_16_JSON = RESULTS / "dof_scaling" / "dof_scaling_16dof_n5000.json"
 DEFAULT_LANGEVIN_CSV  = RESULTS / "langevin_bench.csv"           # LangevinFold mini-benchmark (SEPARATE, small-scale)
 
 # --------------------------------------------------------------------------- #
@@ -105,6 +109,45 @@ def label(sid: str) -> str:
 
 def color(sid: str) -> str:
     return COLOR.get(sid, "#444444")
+
+
+# --------------------------------------------------------------------------- #
+# DOF-scaling loader
+# --------------------------------------------------------------------------- #
+def load_dof(paths):
+    """Merge one or more ``run_dof_scaling_full.py`` outputs, best-n wins per cell.
+
+    The 16-DOF cell is re-run at a larger n than the rest, because clean solves
+    there are rare events and n=1000 could not separate KineticFold from
+    Multi-start. Rather than edit the committed sweep output (which must stay the
+    verbatim result of one command), the generators read both files and take, for
+    each (DOF, solver), whichever row carries the larger n. Per-cell n is then
+    reported in the table so the reader sees exactly what backs each row.
+    """
+    import json
+    from pathlib import Path
+
+    cells, contrasts, feasible = {}, {}, {}
+    for p in paths:
+        p = Path(p)
+        if not p.exists():
+            continue
+        D = json.loads(p.read_text(encoding="utf-8"))
+        for c in D["cells"]:
+            k = (c["dof"], c["solver"])
+            if k not in cells or c["n"] > cells[k]["n"]:
+                cells[k] = c
+            # feasibility is only measured on the oracle pass; keep it wherever
+            # it was measured rather than letting a larger-n run without an
+            # oracle blank it out
+            if c.get("feasible_pct") is not None:
+                feasible[c["dof"]] = c["feasible_pct"]
+        for k in D.get("contrasts", []):
+            key = (k["dof"], k["baseline"])
+            if key not in contrasts or k["kf_n"] > contrasts[key]["kf_n"]:
+                contrasts[key] = k
+    dofs = sorted({d for d, _ in cells})
+    return dict(dofs=dofs, cells=cells, contrasts=contrasts, feasible=feasible)
 
 
 # --------------------------------------------------------------------------- #

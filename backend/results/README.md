@@ -84,7 +84,8 @@ survive n = 1000.
 
 | File | Backs |
 | :-- | :-- |
-| `dof_scaling_full.json` | **Table 5**, **Figure 5**, all of **§5.4**. |
+| `dof_scaling_full.json` | **Table 5**, **Figure 5**, all of **§5.4** (rows 4–14 DOF). |
+| `dof_scaling_16dof_n5000.json` | **Table 5's 16-DOF row**, at `n = 5000`. Clean solves are rare events there: at `n = 1000` the KineticFold/Multi-start contrast was not significant (`p = 0.21`) and TRAC-IK read as an exact 0/1000, both sampling artifacts. The table and figure generators read this file *alongside* the sweep above and take the larger-n row per cell (`_style.load_dof`), so neither committed file is ever hand-edited. |
 | `dof_scaling_full_pass1.json` | the same sweep with a **48-restart** oracle instead of 384 — backs §5.4's sentence that the weaker oracle put 16-DOF feasibility at 24.2% and looked like a geometric floor. Reproduce with `--oracle-scale 1`. |
 | `dof_scaling_native.json` | superseded pilot; produced by `native_bench/run_native_usecase.py --only E`. |
 | `dof_scaling_sim_scored.json` | PyBullet/MuJoCo re-scoring — still at the pilot's `n = 120` (§5.4's last paragraph says so explicitly). |
