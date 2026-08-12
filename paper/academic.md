@@ -9,11 +9,11 @@ from the _process_ that proteins use to fold. StagedFold ports folding's ordered
 target is consulted, coarse collapse, a funnelled narrowing search, a scoped chaperone rescue, and a native-state
 stability check — into an IK algorithm. Its individual moves are standard IK; the folding-inspired _sequence_, together
 with two moves that are unusual in this setting (a target-blind first stage and a scoped-then-escalating rescue),
-constitute the contribution. StagedFold outperforms simple classical baselines but plateaus below production solvers,
-which motivates KineticFold: it adds folding's _kinetic partitioning_ as a compute schedule, attempting a cheap
+constitute the contribution. StagedFold outperforms simple classical baselines but plateaus below production solvers.
+KineticFold adds folding's _kinetic partitioning_ as a compute schedule, attempting a cheap
 downhill fold first and paying for the full staged search only on genuinely frustrated targets. Against a baseline
 field spanning the IK literature (Jacobian-DLS, CCD, FABRIK, TRAC-IK, Multi-start), KineticFold ties the top tier on
-the UR5 and planar arms, where the field saturates at 99.3–100%, and outright leads every cell of the redundant
+the UR5 and planar arms, where the top tier saturates at 99.3–100%, and outright leads every cell of the redundant
 Franka, where it is the only solver above 98% on all three scenarios (98.3–100%) and beats the best baseline by
 3.7 points on the hardest cell. With every solver compiled to native code, it is also the fastest of the field on both
 arms — mean 0.1–0.7 ms, roughly 1.7–7× under TRAC-IK and Multi-start — and a latency tail within a few milliseconds
@@ -32,7 +32,7 @@ _finding_ a clean fold rather than its disappearance.
 ## Keywords
 
 Inverse kinematics; protein folding; kinetic partitioning; self-collision avoidance; simulated annealing; redundant
-manipulators; physics-based validation.
+manipulators; dual-simulator geometric validation.
 
 ## 1. Introduction
 
@@ -40,8 +40,7 @@ Inverse kinematics — finding the joint angles that place a robot's end effecto
 The map from configuration to pose is nonlinear; a target may admit many solutions or none; the Jacobian loses rank at
 singularities; and a redundant or long arm can reach the target while folding into itself. Classical solvers confront
 this as a single optimization to be minimized from the first iteration, whether by damped least squares, cyclic
-coordinate descent, reaching heuristics, or restart-based search, driving pose error down a landscape they treat as one
-basin to descend.
+coordinate descent, reaching heuristics, or restart-based search, driving pose error down from the first iteration.
 
 This is the same search a protein performs when it folds. A protein backbone is a chain of rigid bonds whose only soft
 degrees of freedom are the dihedral rotations between residues; a robot arm is a chain of rigid links whose only
@@ -67,7 +66,7 @@ space they search. We make this precise in Section 3.1.
 | Kinetic partitioning (fast vs. slow folders) | Easy vs. hard targets                |
 
 Algorithms already pass between the two fields: cyclic coordinate descent, a robotics IK method, was adopted into
-structural biology for protein loop closure [1]. Such transfers carry a single _move_ across at a time. This paper
+structural biology for protein loop closure [1]. Each carries a single piece of machinery across. This paper
 carries the folding _process_ itself — the ordered sequence nature uses to fold, not one of its steps — and makes it
 the engine of an IK solver. Section 2 catalogs the prior crossings and their direction.
 
@@ -89,7 +88,7 @@ The contributions of this paper are:
    MuJoCo) — that independently confirms our success claims on both physical arms and _corrects_ our own
    collision-magnitude claim.
 
-Empirically, KineticFold ties the top tier on the UR5 and planar arms, where the field saturates at 99.3–100%, and
+Empirically, KineticFold ties the top tier on the UR5 and planar arms, where that tier saturates at 99.3–100%, and
 leads every cell of the redundant Franka, where it
 is the only solver above 98% across all three scenarios (98.3–100%); it is also the fastest of the field on both the
 6-DOF and 7-DOF arms (mean 0.1–0.7 ms, roughly 1.7–7× under TRAC-IK and Multi-start) at a worst-case tail of 4.7 ms,
@@ -115,8 +114,8 @@ only.
 **Jacobian- and optimization-based IK.** Velocity-level IK descends from resolved-motion-rate control, which maps
 end-effector rates to joint rates through the Jacobian (pseudo)inverse [2]. The raw pseudoinverse is unbounded near
 singularities, which damped least squares (DLS) regularizes with a damping term that trades a little accuracy for
-stability [3], [4], with singularity proximity quantified by the manipulability measure √det(JJᵀ) [5] and refined by
-selective damping [6]. Position-level solvers cast IK as nonlinear least squares and apply Levenberg–Marquardt [7], [8],
+stability [3], [4], with singularity proximity quantified by the manipulability measure √det(JJᵀ) [5]; the damping
+itself is refined per singular value by selectively damped least squares [6]. Position-level solvers cast IK as nonlinear least squares and apply Levenberg–Marquardt [7], [8],
 the optimization twin of DLS. All of these are single-trajectory local optimizers: they follow one gradient from one
 seed and settle into whatever basin they start in, with no intrinsic mechanism to escape a local minimum. We include
 Jacobian-DLS as a baseline and reuse a damped-least-squares step inside our own solvers.
@@ -124,10 +123,12 @@ Jacobian-DLS as a baseline and reuse a damped-least-squares step inside our own 
 **Sampling and restart IK.** Production solvers wrap a local core in global restarts. TRAC-IK [9] runs a joint-limited
 Newton solver — an extension of KDL [10] — concurrently with an SQP optimizer and returns the first to converge; when
 the Newton branch detects stagnation (no progress between successive iterates) it re-seeds from a fresh random
-configuration. Multi-start applies the same idea in the open: it runs several independent seeds and keeps
-the best. Both are strong production methods, and both, when stuck, discard the accumulated partial solution and
+configuration. Multi-start applies the same idea in the open: it runs independent seeds until one
+converges. Both are strong production methods, and both, when stuck, discard the accumulated partial solution and
 restart globally. Analytical generators such as IKFast [11] sidestep iteration by emitting closed-form solutions, but
-only for chains with special solvable structure; they do not generalize to redundant arms or arbitrary constraints.
+only for chains with special solvable structure; a redundant chain is handled only by fixing designated free joints
+and sweeping them on a discretization, and the generated solver is tied to one chain and admits no additional cost
+terms.
 This global-restart-on-stall behaviour is precisely what our chaperone rescue replaces with a _scoped_ perturbation
 (Section 3.2).
 
@@ -144,7 +145,7 @@ arm immediately.
 **Annealing-based IK.** Physics supplies optimizers as well as biology. Simulated annealing — a Metropolis-style
 acceptance criterion combined with a cooling schedule, so that a cost function is annealed toward its minimum rather
 than quenched into the nearest one — is the canonical case [16], [17], and it has been applied directly to manipulator
-IK [18]. KineticFold's Phase-B funnel is exactly such a search (Eqs. 19–20), and we claim no novelty for it. The
+IK [18]. KineticFold's Phase-B funnel is exactly such a search (Eqs. 19–20). The
 distinction is the one that also separates us from the metaheuristics below: annealing supplies an acceptance rule for
 a search already under way, whereas kinetic partitioning decides whether that search is entered at all, and the scoped
 rescue decides how far to escalate once it stalls.
@@ -176,7 +177,7 @@ computational engine of a robot-arm IK solver — has not been attempted.
 
 ## 3. Methodology
 
-This section is the paper's technical core. It states the folding/IK correspondence as a formal search problem
+This section states the folding/IK correspondence as a formal search problem
 (Section 3.1), then builds two solvers of increasing fidelity to folding's process on top of it: StagedFold, which
 ports folding's ordered _sequence_ (Section 3.2); and KineticFold, which ports folding's _compute schedule_
 (Section 3.3).
@@ -234,12 +235,14 @@ Eq. (5)      d(q) = min_{(i,j): |i−j| ≥ 2}  [ dist_seg( ℓᵢ(q), ℓⱼ(q)
 
 where `ℓᵢ(q)` is the line segment between joint origins `pᵢ` and `pᵢ₊₁` (the capsule core of link `i`), `rᵢ` its
 radius, and `dist_seg` the standard closest-point-between-segments distance [41], evaluated over every _non-adjacent_
-link pair, since adjacent links share a joint and are never meaningfully colliding. Pairs bridged by a zero-length link
-are skipped on the same grounds: their segment distance is identically zero, so they would register a permanent false
-contact (the Franka table contains such links). `d(q) ≥ 0` means the arm clears
+link pair, since adjacent links share a joint and are never meaningfully colliding. A pair is skipped when every link bridging it is zero-length, so that one segment's
+endpoint coincides with the other's start: their segment distance is then identically zero and the pair would register
+a permanent false contact (the Franka table contains such links; two of its fifteen non-adjacent pairs are suppressed
+this way). `d(q) ≥ 0` means the arm clears
 itself; `d(q) < 0` means interpenetration. A solve is _clean_ if it is both a success and satisfies `d(q) ≥ 0`. This
 proxy is deliberately cheap — fast enough to sit inside an inner optimization loop — and, as Section 5.6 shows, it is
-_optimistic_ relative to true mesh geometry. We therefore never quote it as an absolute rate, only as a same-tool
+_optimistic_ relative to true mesh geometry. We therefore quote it as an absolute rate only where the capsules _are_ the
+geometry (the synthetic planar chains, Sections 5.3–5.4); on the two physical arms it is used only as a same-tool
 comparison across solvers, cross-checked against two independent full-mesh physics engines.
 
 **The landscape.** Every solver in this paper, from single-trajectory Jacobian-DLS to our own, searches a combined
@@ -254,8 +257,7 @@ to the calibrated constants). This objective is not convex: it has local minima 
 reduces pose error without reaching the target, singular regions where `J(q)` loses rank and the local gradient stops
 being informative, and collision-forbidden regions carved out by `d(q) < 0`. This is, structurally, a protein's
 free-energy landscape — a rugged surface over the torsional degrees of freedom of a chain, punctuated by kinetic traps
-and forbidden by excluded volume, whose global minimum is the native state [23], reachable only by biased descent down
-a funnel and not by exhaustive search [24], [25]. Table 1's mapping is exact on this object: joint angles are dihedral
+and forbidden by excluded volume, — structurally the folding landscape of Section 2. Table 1's mapping is exact on this object: joint angles are dihedral
 angles, link-length constraints are bond-length constraints, the target-reaching basin is the folding funnel,
 self-collision is steric exclusion, and a stuck search is a kinetically trapped molecule, rescued the way a chaperone
 rescues a misfolded chain.
@@ -317,8 +319,8 @@ Eq. (13)   Δq = Jᵀ (J Jᵀ + λ² I₆)⁻¹ e(q),      λ² = 0.15² = 0.022
 ```
 
 This moves the hand into the neighbourhood of the target without attempting precision — the computational analog of a
-protein collapsing to a compact molten globule before its final contacts form. Eq. (13) is the same DLS update [3], [4]
-used by our Jacobian-DLS baseline in Section 2; the only differences here are the loose damping and the 0.4 step scale.
+protein collapsing to a compact molten globule before its final contacts form. Eq. (13) is the standard DLS update [3], [4] — the damped
+counterpart of the Levenberg–Marquardt baseline of Section 2 — run here with loose damping and a 0.4 step scale.
 
 **3.2.3 Funnelled narrowing search (folding-funnel analog).** The main refinement stage, run until the shared
 iteration budget `max_iters = 200` is exhausted, alternates (a) a gradient-free, coordinate-wise stochastic local
@@ -327,14 +329,11 @@ search inside a shrinking radius and (b) one finer DLS gradient step, minimizing
 ```
 Eq. (14)   E_stage3(q) = 3.0·E_target(q) + 1.0·E_limit(q) + 2.0·E_collision(q) + 0.3·E_smooth(q)
 
-Eq. (15)   qᵢ,try = clip( qᵢ + U(−rₜ, rₜ) ),      rₜ = 0.5 · 0.985ᵗ         (fired every other iteration)
+Eq. (15)   qᵢ,try = clip( qᵢ + U(−rₜ, rₜ) ),      rₜ = 0.5 · 0.985ᵗ         (t resets at each rescue; fired every other iteration)
            accept qᵢ,try  iff  E_stage3(q_try) < E_stage3(q)               (greedy — no Metropolis test)
 
 Eq. (16)   Δq = Jᵀ (J Jᵀ + 0.05² I₆)⁻¹ e(q)                                (finer DLS step, every iteration)
 ```
-
-The greedy accept-if-better rule in Eq. (15) is a distinction from KineticFold's Phase-B fold
-(Section 3.3): there is no temperature or Metropolis acceptance anywhere in StagedFold.
 
 **3.2.4 Scoped chaperone rescue (chaperone-action analog).** A stall is detected by keeping a window of the
 last 10 energy values and firing a rescue if progress over the window falls below `2e-4`. The misfolded joint is
@@ -370,8 +369,7 @@ An allostery-inspired compensating step traded ≈1 point of success for a small
 
 ### 3.3 KineticFold: kinetic partitioning as a compute schedule
 
-**Diagnosis.** StagedFold's shortfall was never the average solve; it was the _tail_. On the unmodified,
-always-run-every-stage fold, the slowest ≈10% of targets consumed ≈57% of total wall time. This rules out
+**Diagnosis.** StagedFold's shortfall is not the average solve; it is the _tail_. On the always-run-every-stage fold, the slowest ≈10% of targets consumed ≈57% of total wall time. This rules out
 micro-optimization as a fix: a bit-identical micro-pass over the same inner loop bought only 1.1–1.4×, because the cost
 is not in _how_ the per-fold search runs but in _whether a target enters the expensive per-fold search at all_. The fix
 must be structural, and folding already provides one.
@@ -379,7 +377,7 @@ must be structural, and folding already provides one.
 **3.3.1 The barrierless-first ensemble.** Real proteins exhibit _kinetic partitioning_: some molecules fall straight
 down a smooth funnel to the native state with no search at all, while the rest are kinetically trapped and fold
 slowly [29], the population chaperones act on [30], [31]. KineticFold ports this as a _compute schedule_ rather than a
-search heuristic. A single budget of `max_replicas = 6` governs two phases.
+search heuristic. One constant, `max_replicas = 6`, bounds each phase's replica loop independently.
 
 ![Figure 1. KineticFold's compute schedule.](figures/fig_pipeline.png)
 
@@ -411,7 +409,8 @@ _frustration criterion_: a target is declared _frustrated_ — and only then esc
 Phase-A replicas have run, no converged replica is clash-free.
 
 _Phase B (the full staged fold)_ fires only on frustrated targets: a StagedFold-style fold (coarse collapse → funnel →
-chaperone rescue → stability gate, Sections 3.2.2–3.2.5) with two substitutions. First, its Stage 3 funnel is replaced
+chaperone rescue, Sections 3.2.2–3.2.4), seeded as Phase A is — replica 0 from `q₀`, the rest from random
+configurations — with two substitutions. First, its Stage 3 funnel is replaced
 by a _true Metropolis-accepted_ search rather than StagedFold's greedy Eq. (15). Each single-joint
 candidate `q_try` (one coordinate perturbed by `U(−rₜ, rₜ)`, same shrinking radius as Eq. 15) is accepted with
 probability
@@ -439,15 +438,15 @@ Eq. (21)   φᵢ(q) = | q_local,ᵢ − (q + Jᵀ e(q))ᵢ |,      q_local,ᵢ =
 
 (at the ends, `q_local` is the single neighbour). The rescue window is centred on `argmaxᵢ φᵢ`, the joint whose local
 and global demands disagree most — frustration in the landscape sense of Section 2: locally settled, globally required
-to move. Because `φ` is read off the Jacobian already computed for the step, it costs no extra forward passes,
-whereas Eq. (17) spends one per joint.
+to move. `φ` costs one forward-kinematics pass regardless of DOF, whereas Eq. (17) spends one per joint.
 
 Phase B's coarse collapse runs Eq. (13) for `10·δ` iterations, where the contact-order-inspired factor
 `δ = 1 + min(reach/reach_max, 1) + min(κ(J(q₀))/100, 1) ∈ [1, 3]` scales the budget with how far the target sits and
 how poorly conditioned the arm is there. Once the search reaches `‖Δp‖ < 0.05 ∧ ‖Δω‖ < 0.2` the funnel step is replaced
 in-loop by a short LM polish (Eq. 18's rule, capped at 12 steps), and Phase B stops on the first clean fold or after at
 most two collision-aware converged folds. Attempting spontaneous folding first and invoking the chaperone only on
-failure is how GroEL operates [31].
+failure is how GroEL operates [31]. Both phases feed one pool of converged candidates; the returned configuration is
+the one with the largest self-clearance `d(q)`, and it must clear the stability gate of Section 3.2.5.
 
 **3.3.2 The schedule, not the inner loop.** The reported latencies come from a C++/Eigen port whose inner loop carries
 no optimization beyond fusing pose and Jacobian into a single forward-kinematics pass: each Metropolis candidate is
@@ -467,8 +466,9 @@ correct lever and a naive budget cut is not.
 
 We test three arms of increasing kinematic hardness, three target scenarios of increasing difficulty, and a field of
 six baselines spanning the IK literature of Section 2 — five general-purpose, plus an exact analytical solver that
-applies only to the planar arm. Every solver sees exactly the same targets, and every solver's final configuration is
-independently re-scored by two full physics engines it never queried during solving. This section fixes every parameter
+applies only to the planar arm. Every solver sees exactly the same targets, and every solver's final configuration on the two physical arms is
+independently re-scored by two full physics engines it never queried during solving; the planar chain carries no
+manufacturer URDF, so its collision column is the capsule model of Eq. (5). This section fixes every parameter
 of that protocol; all quantitative results are traceable to a named committed benchmark run.
 
 ### 4.1 Robots
@@ -479,7 +479,7 @@ of that protocol; all quantitative results are traceable to a named committed be
 | ------------------ | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Planar 3-DOF (RRR) | 3   | link lengths `[0.4, 0.3, 0.2]` m; has an exact closed-form IK solution — the ground-truth validator for every numerical solver                                                                                                                                                                                                                                                                                                                                                 |
 | UR5                | 6   | non-redundant; standard-DH; the primary tuning and validation arm                                                                                                                                                                                                                                                                                                                                                                                                              |
-| Franka Panda       | 7   | redundant; requires the modified/Craig DH convention (Eq. 1's reordering, Section 3.1); the standard-DH transform places the computed end-effector ≈1.4 m from the real robot; verified against the `panda_link8` frame in franka_ros's official URDF [43] to ≈1e-7 m via PyBullet; tight, asymmetric joint limits, including joint 4 permanently confined to `[−3.07, −0.07]` rad (the elbow-down constraint) |
+| Franka Panda       | 7   | redundant; requires the modified/Craig DH convention (Eq. 1's reordering, Section 3.1); the standard-DH transform places the computed end-effector ≈1.4 m from the real robot; verified against the `panda_link8` frame in franka_ros's official URDF [43] via PyBullet (Section 4.6); tight, asymmetric joint limits, including joint 4 permanently confined to `[−3.07, −0.07]` rad (the elbow-down constraint) |
 
 ### 4.2 Scenarios (target generators)
 
@@ -533,8 +533,8 @@ kinematics of Section 3.1 (Eqs. 2–4). Table 4 gives each solver's implementati
 | Jacobian-DLS             | Robotics Toolbox `ik_LM` (Corke) [44], single-shot from `q0`                                                             | `ilimit = 200`, `slimit = 1` | none                               | none — single trajectory              |
 | CCD [12]                 | native C++/Eigen port; one-joint base→tip rotation; wrist joints (`min(3, max(1, n//2))`) blend a 0.5×-weighted orientation term | `max_iters = 300` full sweeps | n/a                               | none                                  |
 | FABRIK [13]              | native C++/Eigen port; forward/backward reaching; wrist orientation nudged 0.6× before each position pass            | `max_iters = 150`            | n/a                                | none                                  |
-| TRAC-IK [9]              | genuine TRACLabs C++/KDL/NLopt (`tracikpy`), `solve_type = Speed`, on the identical DH robot                         | 5 ms timeout, `ε = 1e-5`     | concurrent KDL-Newton + NLopt-SQP  | library-native random reseed on stall |
-| Multi-start              | Robotics Toolbox `ik_LM` (Corke) from random seeds                                                                  | `ilimit = 30` per search     | up to `slimit = 100` restarts      | best converged of the restart set     |
+| TRAC-IK [9]              | genuine TRACLabs C++/KDL/NLopt (`tracikpy`), `solve_type = Speed`; manufacturer URDF on UR5/Franka with the DH-frame target mapped through the validated constant frame offset (Section 4.6), DH-generated URDF on the planar arm | 5 ms timeout, `ε = 1e-5`     | concurrent KDL-Newton + NLopt-SQP  | library-native random reseed on stall |
+| Multi-start              | Robotics Toolbox `ik_LM` (Corke) from random seeds                                                                  | `ilimit = 30` per search     | up to `slimit = 100` restarts      | first converged search                |
 | Analytical (planar only) | closed-form trigonometric IK                                                                                        | exact                        | —                                  | —                                     |
 
 **Implementation and environment.** Every solver in the study runs as native compiled code, so the latency comparison of
@@ -545,7 +545,7 @@ are genuine upstream libraries called through thin adapters — TRAC-IK via `tra
 Jacobian-DLS and Multi-start via the Robotics Toolbox (`ik_LM`). Each solver builds its own kinematic chain from the
 identical DH `RobotSpec` (FK-parity-checked against our own forward kinematics), and every metric is recomputed with the
 repo's own DH machinery, so the columns stay comparable across native and library solvers. All benchmarks were run under
-Ubuntu 22.04 (WSL2), Python 3.10, with `tracikpy`, `roboticstoolbox` 1.3.1, `PyKDL` 1.5.1, `pybullet`, and `mujoco`
+Ubuntu 22.04 on WSL1 (kernel 4.4.0-19041-Microsoft), Python 3.10, with `tracikpy`, `roboticstoolbox` 1.3.1, `PyKDL` 1.5.1, `pybullet`, and `mujoco`
 3.10.0 (NumPy pinned `<2` for the tracikpy ABI).
 
 ### 4.4 Protocol and fairness
@@ -563,8 +563,8 @@ begins, and the resulting target list is handed unchanged to every solver in tha
 draw than another. Per-trial solver RNG is decoupled and reproducible (`default_rng(seed * 1_000_003 + i)` for trial
 `i`).
 
-**Warm-up.** Each cell runs `warmup = 8` untimed solves before timing starts, from a separate fixed generator
-(`default_rng(10_000 + w)`), so warm-up draws never overlap with or bias the timed trial stream.
+**Warm-up.** Each cell runs `warmup = 8` untimed solves before timing starts, on that seed's first eight targets, driven by a
+separate fixed generator (`default_rng(10_000 + w)`) that leaves the timed trials' per-trial stream untouched.
 
 **Timing.** Wall-clock is measured with a monotonic counter bracketing only the solver's iteration loop; target
 generation and warm-up are excluded. Latency percentiles (p50/p95/p99) are computed on the _pooled_ set of timings
@@ -579,8 +579,8 @@ and restart count. A solve is _clean_ if and only if it is a success and collisi
 
 ### 4.6 Validation harness: solve once, score three ways
 
-Every solver's final configuration `q*` from every trial is re-scored independently by two full-mesh physics engines it
-never queried while solving: PyBullet [45] and MuJoCo [46], both loading the same URDF (resolved via the
+Every solver's final configuration `q*` from every trial on the two physical arms is re-scored independently by two
+full-mesh physics engines it never queried while solving: PyBullet [45] and MuJoCo [46], both loading the same URDF (resolved via the
 robot_descriptions package [47] — the standard UR5 description and Franka's official franka_ros URDF [43]; MuJoCo loads
 it through a URDF-to-MJCF-compatible rewrite that preserves fixed-joint links as separate bodies rather than fusing
 them). Both queries are purely kinematic — PyBullet via `resetJointState` + `getLinkState`,
@@ -704,13 +704,10 @@ on the redundant Franka the field converges into a wash. Values are from the 10-
 **UR5 — a clear protein-solver win.** The two ProteinIK solvers are the two cleanest of the field. KineticFold has the
 lowest real-mesh collision of _any_ solver in this study on all three scenarios and both engines (PyBullet
 `open_space` 26.2%,
-`near_singular` 40.4%, `cluttered` 56.4%), while matching the top of the success field (99.7 / 100 / 100). It
-does not buy cleanliness by dropping hard targets: StagedFold, whose lower success (87.4% on `cluttered`) removes the
-most collision-prone targets from its own denominator, is nonetheless dirtier than KineticFold in every regime
-(64.6 vs. 56.4% on `cluttered`), so KineticFold solves the hard targets _and_ clashes least of the field. Against
+`near_singular` 40.4%, `cluttered` 56.4%), while matching the top of the success field (99.7 / 100 / 100). StagedFold is dirtier than KineticFold in every regime (64.6 vs. 56.4% on `cluttered`), on the identical target set. Against
 TRAC-IK its collision rate runs 1.24–1.35× lower (26.2 vs. 35.3% on `open_space`,
-40.4 vs. 49.9% on `near_singular`, 56.4 vs. 74.2% on `cluttered`), and it penetrates ≈half as deeply when it does clash
-(cluttered mean clearance −0.019 m vs. −0.037 m); the capsule proxy overstates that margin (Section 4.6). The
+40.4 vs. 49.9% on `near_singular`, 56.4 vs. 74.2% on `cluttered`), and its mean signed clearance over the cell is about half as
+negative (−0.019 m vs. −0.037 m); the capsule proxy overstates that margin (Section 4.6). The
 mechanism traces to Eq. (19)'s Metropolis funnel and the
 collision term in Eq. (14): on frustrated targets, KineticFold's Phase-B search weights `E_collision` heavily
 (coefficient 2.0 in Eq. 14, against 3.0 on the target term) and can escape shallow steric traps via thermal acceptance,
@@ -782,8 +779,7 @@ The 16-joint cell is worth stating carefully, because two of its features are ar
 findings. At `n = 1000` TRAC-IK returned **no** clean solution at all, and KineticFold's margin over Multi-start was
 not resolvable (11 vs. 5, `p = 0.21`). Both dissolve at `n = 5000`: TRAC-IK returns 5 clean solves in 5000
 (0.10%, not 0%), and the Multi-start contrast resolves at 3.5× (52 vs. 15, `p = 6e-6`). A rate that low needs a sample
-that large to measure at all, and we report the larger one rather than the more dramatic smaller one — "the only solver
-still working" would have been an artifact of stopping at 1000 trials.
+that large to measure at all, which is why the 16-joint row carries `n = 5000`.
 
 There is one place where a natural reading of the table is genuinely wrong. The collapse from 74.8% to 1.04%
 is **not** the configuration space running out of clean solutions. A union oracle — every target attacked from its own
