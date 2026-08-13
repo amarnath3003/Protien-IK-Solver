@@ -48,6 +48,8 @@ class StudioModel:
     target_mocap_id: int          # mocap index of the ik_target body
     base_offset_z_deg: float      # constant DH->URDF base offset (about Z)
     n_joints: int
+    halo_geom_id: int = -1        # pulsing halo sphere around the target (-1 = none)
+    target_body_id: int = -1      # body id of ik_target (for mocap_quat updates)
 
 
 # ── URDF resolution (robust to robot_descriptions renames) ────────────────────
@@ -185,15 +187,17 @@ def _studio_urdf(robot: str) -> str:
 # ── scene chrome (floor, sky, lights, target) via MjSpec ──────────────────────
 
 def _augment_scene(spec, extent: float) -> None:
-    """Add a checker floor, gradient skybox, a 3-point light rig, and an IK-target
-    mocap sphere. Each addition is guarded so a MjSpec API mismatch never aborts the
-    whole scene — the robot still renders."""
+    """Studio chrome: deep-space gradient sky, reflective dark grid floor, a warm
+    key / cool fill / rim 4-light cinema rig, tinted haze, a glowing pedestal pad,
+    and an emissive IK-target (core + pulsing halo + RGB orientation triad).
+    Each addition is guarded so a MjSpec API mismatch never aborts the whole
+    scene — the robot still renders."""
     import mujoco
     wb = spec.worldbody
 
     # Visual quality + framing.
     try:
-        spec.visual.quality.shadowsize = 4096
+        spec.visual.quality.shadowsize = 8192
         spec.visual.quality.offsamples = 8
         spec.stat.extent = max(extent, 0.6)
         spec.stat.center = [0.0, 0.0, extent * 0.4]
@@ -205,36 +209,60 @@ def _augment_scene(spec, extent: float) -> None:
         spec.visual.global_.offheight = 1080
     except Exception:
         pass
+    # Cinematic atmosphere: dim the headlight so the rig does the work, tint the haze.
+    try:
+        spec.visual.headlight.ambient = [0.14, 0.15, 0.17]
+        spec.visual.headlight.diffuse = [0.20, 0.21, 0.23]
+        spec.visual.headlight.specular = [0.08, 0.08, 0.08]
+        spec.visual.rgba.haze = [0.045, 0.06, 0.09, 1.0]
+    except Exception:
+        pass
 
-    # Gradient skybox + checker floor texture/material.
+    # Gradient skybox + grid floor texture/material + emissive accent material.
     floor_mat = "studio_floor"
+    glow_mat = "studio_glow"
     try:
         sky = spec.add_texture()
         sky.name = "studio_sky"
         sky.type = mujoco.mjtTexture.mjTEXTURE_SKYBOX
         sky.builtin = mujoco.mjtBuiltin.mjBUILTIN_GRADIENT
-        sky.rgb1 = [0.32, 0.36, 0.42]
-        sky.rgb2 = [0.06, 0.07, 0.09]
-        sky.width = 512
-        sky.height = 512
+        sky.rgb1 = [0.10, 0.14, 0.22]     # deep blue up high…
+        sky.rgb2 = [0.008, 0.012, 0.022]  # …to near-black at the horizon
+        sky.width = 800
+        sky.height = 800
 
         tex = spec.add_texture()
         tex.name = "studio_grid"
         tex.type = mujoco.mjtTexture.mjTEXTURE_2D
         tex.builtin = mujoco.mjtBuiltin.mjBUILTIN_CHECKER
-        tex.rgb1 = [0.18, 0.20, 0.19]
-        tex.rgb2 = [0.11, 0.12, 0.12]
+        tex.rgb1 = [0.125, 0.135, 0.160]
+        tex.rgb2 = [0.085, 0.095, 0.115]
         tex.width = 512
         tex.height = 512
+        try:  # bright grid seams between tiles (best-effort; plain checker without)
+            tex.mark = mujoco.mjtMark.mjMARK_EDGE
+            tex.markrgb = [0.30, 0.36, 0.46]
+        except Exception:
+            pass
 
         mat = spec.add_material()
         mat.name = floor_mat
         mat.textures[mujoco.mjtTextureRole.mjTEXROLE_RGB] = "studio_grid"
-        mat.texrepeat = [8, 8]
+        mat.texrepeat = [3, 3]
         mat.texuniform = True
-        mat.reflectance = 0.12
+        mat.reflectance = 0.38            # dark mirror floor
+        mat.specular = 0.55
+        mat.shininess = 0.75
     except Exception:
         floor_mat = None
+    try:
+        gm = spec.add_material()
+        gm.name = glow_mat
+        gm.emission = 0.85                # self-lit: target/triad glow in the dark
+        gm.specular = 0.0
+        gm.shininess = 0.0
+    except Exception:
+        glow_mat = None
 
     # Floor plane.
     try:
@@ -246,35 +274,90 @@ def _augment_scene(spec, extent: float) -> None:
         if floor_mat:
             g.material = floor_mat
         else:
-            g.rgba = [0.16, 0.18, 0.17, 1.0]
+            g.rgba = [0.10, 0.11, 0.13, 1.0]
     except Exception:
         pass
 
-    # 3-point light rig.
-    for pos, castshadow in (([1.2, 0.8, 2.2], True),
-                            ([-1.5, -1.0, 1.6], False),
-                            ([-0.5, 1.6, 1.2], False)):
+    # Pedestal mount plate under the robot + a soft light-pool accent disc.
+    try:
+        ped = wb.add_geom()
+        ped.type = mujoco.mjtGeom.mjGEOM_CYLINDER
+        ped.size = [0.17, 0.006, 0]
+        ped.pos = [0.0, 0.0, 0.006]
+        ped.rgba = [0.055, 0.062, 0.075, 1.0]
+        ped.contype = 0
+        ped.conaffinity = 0
+        pool = wb.add_geom()
+        pool.type = mujoco.mjtGeom.mjGEOM_CYLINDER
+        pool.size = [max(0.30, extent * 0.36), 0.0012, 0]
+        pool.pos = [0.0, 0.0, 0.0012]
+        pool.rgba = [0.10, 0.45, 0.62, 0.10]
+        pool.contype = 0
+        pool.conaffinity = 0
+        if glow_mat:
+            pool.material = glow_mat
+    except Exception:
+        pass
+
+    # 4-light cinema rig: warm key (shadows), cool fill, blue rim, low kicker.
+    for pos, diffuse, castshadow in (
+            ([1.8, 1.4, 2.8], [0.88, 0.82, 0.72], True),    # warm key
+            ([-2.2, -1.4, 1.8], [0.24, 0.28, 0.36], False),  # cool fill
+            ([-1.0, 2.4, 1.5], [0.28, 0.34, 0.46], False),   # blue rim
+            ([0.8, -2.2, 0.8], [0.15, 0.17, 0.22], False)):  # low kicker
         try:
             li = wb.add_light()
             li.pos = pos
             li.dir = [-pos[0], -pos[1], -pos[2]]
             li.castshadow = castshadow
-            li.diffuse = [0.7, 0.7, 0.7] if castshadow else [0.28, 0.30, 0.34]
+            li.diffuse = diffuse
+            if castshadow:
+                li.specular = [0.45, 0.45, 0.45]
         except Exception:
             pass
 
-    # IK target: a mocap body with a glowing sphere (no collision).
+    # IK target: emissive core + translucent pulsing halo + RGB orientation triad.
     try:
+        r_core = max(0.013, extent * 0.015)
+        ax_len = max(0.085, extent * 0.10)
         b = wb.add_body()
         b.name = "ik_target"
         b.mocap = True
         b.pos = [extent * 0.5, 0.0, extent * 0.5]
-        s = b.add_geom()
-        s.type = mujoco.mjtGeom.mjGEOM_SPHERE
-        s.size = [max(0.02, extent * 0.02), 0, 0]
-        s.rgba = [1.0, 0.75, 0.2, 0.9]
-        s.contype = 0
-        s.conaffinity = 0
+
+        core = b.add_geom()
+        core.name = "ik_target_core"
+        core.type = mujoco.mjtGeom.mjGEOM_SPHERE
+        core.size = [r_core, 0, 0]
+        core.rgba = [1.0, 0.78, 0.25, 1.0]
+        core.contype = 0
+        core.conaffinity = 0
+        if glow_mat:
+            core.material = glow_mat
+
+        halo = b.add_geom()
+        halo.name = "ik_target_halo"
+        halo.type = mujoco.mjtGeom.mjGEOM_SPHERE
+        halo.size = [r_core * 2.3, 0, 0]
+        halo.rgba = [1.0, 0.70, 0.20, 0.16]   # alpha animated at runtime
+        halo.contype = 0
+        halo.conaffinity = 0
+
+        for axis, rgba in ((0, [1.00, 0.28, 0.32, 0.95]),   # x — red
+                           (1, [0.30, 0.95, 0.45, 0.95]),   # y — green
+                           (2, [0.32, 0.58, 1.00, 0.95])):  # z — blue
+            fromto = [0.0] * 6
+            fromto[3 + axis] = ax_len
+            ax = b.add_geom()
+            ax.name = f"ik_target_ax{'xyz'[axis]}"
+            ax.type = mujoco.mjtGeom.mjGEOM_CAPSULE
+            ax.fromto = fromto
+            ax.size = [0.0035, 0, 0]
+            ax.rgba = rgba
+            ax.contype = 0
+            ax.conaffinity = 0
+            if glow_mat:
+                ax.material = glow_mat
     except Exception:
         pass
 
@@ -292,6 +375,15 @@ def build_studio_model(robot: str) -> StudioModel:
     extent = float(np.sum(np.abs(rspec.a)) + np.sum(np.abs(rspec.d))) or 1.0
     _augment_scene(spec, extent)
 
+    # Metallic sheen on the robot's own materials (URDF part colors stay).
+    try:
+        for m in spec.materials:
+            if m.name and not str(m.name).startswith("studio_"):
+                m.specular = 0.80
+                m.shininess = 0.55
+    except Exception:
+        pass
+
     model = spec.compile()
 
     hinges = [j for j in range(model.njnt)
@@ -303,6 +395,7 @@ def build_studio_model(robot: str) -> StudioModel:
     ee_body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, smodel.ee_link_candidates[0])
     tgt_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "ik_target")
     target_mocap_id = int(model.body_mocapid[tgt_id]) if tgt_id >= 0 else -1
+    halo_geom_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "ik_target_halo")
 
     return StudioModel(
         model=model,
@@ -313,4 +406,6 @@ def build_studio_model(robot: str) -> StudioModel:
         target_mocap_id=target_mocap_id,
         base_offset_z_deg=smodel.base_offset_z_deg,
         n_joints=rspec.n_joints,
+        halo_geom_id=int(halo_geom_id),
+        target_body_id=int(tgt_id),
     )
